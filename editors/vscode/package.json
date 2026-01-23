@@ -1,0 +1,51 @@
+{
+  "name": "ox",
+  "displayName": "Ox",
+  "description": "Syntax highlighting and diagnostics for Ox training log files",
+  "version": "0.1.0",
+  "publisher": "ox",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/konnerhorton/ox"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ox",
+        "aliases": [
+          "Ox",
+          "ox"
+        ],
+        "extensions": [
+          ".ox"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ox",
+        "scopeName": "source.ox",
+        "path": "./syntaxes/ox.tmLanguage.json"
+      }
+    ],
+    "themes": [
+      {
+        "label": "Ox Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/ox-dark.json"
+      }
+    ]
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}

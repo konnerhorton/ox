@@ -1,0 +1,73 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Ox",
+  "scopeName": "source.ox",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#block-keyword" },
+    { "include": "#session-header" },
+    { "include": "#item-line" },
+    { "include": "#metadata-line" }
+  ],
+  "repository": {
+    "comment": {
+      "match": "#.*$",
+      "name": "comment.line.number-sign.ox"
+    },
+    "block-keyword": {
+      "match": "^(@session|@exercise|@template|@end)\\b",
+      "name": "keyword.control.block.ox"
+    },
+    "session-header": {
+      "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+([*!W])\\s+(.+)$",
+      "captures": {
+        "1": { "name": "constant.numeric.date.ox" },
+        "2": { "name": "keyword.operator.flag.ox" },
+        "3": { "name": "entity.name.section.ox" }
+      }
+    },
+    "item-line": {
+      "match": "^\\s*([^#@:\\s][^:]*):\\s*(.*)$",
+      "captures": {
+        "1": { "name": "entity.name.function.ox" },
+        "2": { "patterns": [{ "include": "#details" }] }
+      }
+    },
+    "metadata-line": {
+      "match": "^\\s*(equipment|pattern|url|note):\\s*(.*)$",
+      "captures": {
+        "1": { "name": "support.type.property-name.ox" },
+        "2": { "name": "string.unquoted.ox" }
+      }
+    },
+    "details": {
+      "patterns": [
+        { "include": "#quoted-string" },
+        { "include": "#weight" },
+        { "include": "#rep-scheme" },
+        { "include": "#time" },
+        { "include": "#distance" }
+      ]
+    },
+    "quoted-string": {
+      "match": "\"[^\"]*\"",
+      "name": "string.quoted.double.ox"
+    },
+    "weight": {
+      "match": "\\b(BW|\\d+(kg|lbs)([+/]\\d+(kg|lbs))*)\\b",
+      "name": "constant.numeric.weight.ox"
+    },
+    "rep-scheme": {
+      "match": "\\b\\d+x\\d+\\b|\\b\\d+(/\\d+)+\\b",
+      "name": "constant.numeric.reps.ox"
+    },
+    "time": {
+      "match": "\\b\\d+(sec|min|hr)\\b",
+      "name": "constant.numeric.time.ox"
+    },
+    "distance": {
+      "match": "\\b\\d+(km|mi|m|ft|in)\\b",
+      "name": "constant.numeric.distance.ox"
+    }
+  }
+}

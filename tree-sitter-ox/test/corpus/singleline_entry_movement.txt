@@ -1,0 +1,18 @@
+=========================
+Singleline Entry Movement
+=========================
+
+2025-11-90 * kb-oh-press: 32kg 5x3 3min "too light"
+
+---
+
+(source_file
+  (singleline_entry
+    date: (date)
+    flag: (flag)
+    item: (item)
+    details: (details
+      weight: (weight)
+      rep_scheme: (rep_scheme)
+      time: (time)
+      note: (quoted_string))))

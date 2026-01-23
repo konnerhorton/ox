@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=62.4.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tree-sitter-ox"
+description = "Parse training logs."
+version = "0.1.0"
+keywords = ["incremental", "parsing", "tree-sitter", "ox"]
+classifiers = [
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Compilers",
+  "Topic :: Text Processing :: Linguistic",
+  "Typing :: Typed",
+]
+authors = [{ name = "konnerhorton", email = "konnerhorton@gmail.com" }]
+requires-python = ">=3.10"
+license.text = "MIT"
+readme = "README.md"
+
+[project.urls]
+Homepage = "https://github.com/tree-sitter/tree-sitter-ox"
+
+[project.optional-dependencies]
+core = ["tree-sitter~=0.24"]
+
+[tool.cibuildwheel]
+build = "cp310-*"
+build-frontend = "build"
+
+[tool.uv.workspace]
+members = [
+    ".",
+    ".",
+]
+
+[tool.uv.sources]
+tree-sitter-ox = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "tree-sitter-ox",
+]

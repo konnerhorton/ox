@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ox"
+version = "0.1.0"
+description = "Plain text training log parser and analyzer"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "ox contributors"}
+]
+keywords = ["fitness", "training", "workout", "log", "parser", "plain-text", "kettlebell", "strength", "milo"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Utilities",
+    "Topic :: Text Processing",
+]
+dependencies = [
+    "click>=8.3.1",
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.7.1",
+    "numpy>=2.3.5",
+    "pint>=0.25.2",
+    "prompt-toolkit>=3.0.52",
+    "pygls>=1.3.0",
+    "rich>=14.2.0",
+    "tree-sitter>=0.25.2",
+    "tree-sitter-ox",
+]
+
+[tool.uv.sources]
+tree-sitter-ox = { path = "tree-sitter-ox" }
+
+[project.urls]
+Homepage = "https://github.com/konnerhorton/ox"
+Documentation = "https://konnerhorton.github.io/ox"
+Repository = "https://github.com/konnerhorton/ox"
+Issues = "https://github.com/konnerhorton/ox/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+ox = "ox.cli:cli"
+ox-lsp = "ox.lsp:main"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.4",
+    "pytest>=8.0.0",
+]
+
+[tool.uv]
+cache-dir=".uv-cache"

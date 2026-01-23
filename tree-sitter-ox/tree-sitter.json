@@ -1,0 +1,39 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "ox",
+      "camelcase": "Ox",
+      "title": "Ox",
+      "scope": "source.ox",
+      "file-types": [
+        ".ox"
+      ],
+      "injection-regex": "^ox$",
+      "class-name": "TreeSitterOx"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Parse training logs.",
+    "authors": [
+      {
+        "name": "konnerhorton",
+        "email": "konnerhorton@gmail.com"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/tree-sitter/tree-sitter-ox"
+    }
+  },
+  "bindings": {
+    "c": true,
+    "go": true,
+    "node": true,
+    "python": true,
+    "rust": true,
+    "swift": true,
+    "zig": false
+  }
+}

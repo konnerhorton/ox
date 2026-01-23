@@ -1,0 +1,106 @@
+{
+  "name": "Ox Dark",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#1e1e1e",
+    "editor.foreground": "#d4d4d4"
+  },
+  "tokenColors": [
+    {
+      "name": "Comments",
+      "scope": "comment",
+      "settings": {
+        "foreground": "#6A9955",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "name": "Block keywords",
+      "scope": "keyword.control.block.ox",
+      "settings": {
+        "foreground": "#C586C0",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Dates",
+      "scope": "constant.numeric.date.ox",
+      "settings": {
+        "foreground": "#4EC9B0",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Flags",
+      "scope": "keyword.operator.flag.ox",
+      "settings": {
+        "foreground": "#FF6B6B",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Session names",
+      "scope": "entity.name.section.ox",
+      "settings": {
+        "foreground": "#DCDCAA"
+      }
+    },
+    {
+      "name": "Exercise/item names",
+      "scope": "entity.name.function.ox",
+      "settings": {
+        "foreground": "#9CDCFE"
+      }
+    },
+    {
+      "name": "Metadata keys",
+      "scope": "support.type.property-name.ox",
+      "settings": {
+        "foreground": "#569CD6"
+      }
+    },
+    {
+      "name": "Weights",
+      "scope": "constant.numeric.weight.ox",
+      "settings": {
+        "foreground": "#B5CEA8"
+      }
+    },
+    {
+      "name": "Rep schemes",
+      "scope": "constant.numeric.reps.ox",
+      "settings": {
+        "foreground": "#CE9178"
+      }
+    },
+    {
+      "name": "Time",
+      "scope": "constant.numeric.time.ox",
+      "settings": {
+        "foreground": "#D7BA7D"
+      }
+    },
+    {
+      "name": "Distance",
+      "scope": "constant.numeric.distance.ox",
+      "settings": {
+        "foreground": "#D7BA7D"
+      }
+    },
+    {
+      "name": "Quoted strings",
+      "scope": "string.quoted.double.ox",
+      "settings": {
+        "foreground": "#CE9178",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "name": "Unquoted metadata values",
+      "scope": "string.unquoted.ox",
+      "settings": {
+        "foreground": "#D4D4D4"
+      }
+    }
+  ]
+}

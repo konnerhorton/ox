@@ -1,0 +1,34 @@
+==================
+Comments
+==================
+
+# Week 1 - Deload
+2025-11-13 * pullups: 20kg 5/5/5
+
+# This is a comment
+@session
+2025-11-14 * Upper Day
+pullups: 24kg 5/5/5
+@end
+
+---
+
+(source_file
+  (comment)
+  (singleline_entry
+    date: (date)
+    flag: (flag)
+    item: (item)
+    details: (details
+      weight: (weight)
+      rep_scheme: (rep_scheme)))
+  (comment)
+  (session_block
+    date: (date)
+    flag: (flag)
+    name: (name)
+    (item_line
+      item: (item)
+      details: (details
+        weight: (weight)
+        rep_scheme: (rep_scheme)))))

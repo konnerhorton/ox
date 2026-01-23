@@ -1,0 +1,30 @@
+==================
+Template Block
+==================
+
+@template Upper Day
+pullups: 24kg 5/5/5
+kb-oh-press: 32kg 4x4
+kb-row: 32kg 4x4
+@end
+
+---
+
+(source_file
+  (template_block
+    name: (name)
+    (item_line
+      item: (item)
+      details: (details
+        weight: (weight)
+        rep_scheme: (rep_scheme)))
+    (item_line
+      item: (item)
+      details: (details
+        weight: (weight)
+        rep_scheme: (rep_scheme)))
+    (item_line
+      item: (item)
+      details: (details
+        weight: (weight)
+        rep_scheme: (rep_scheme)))))

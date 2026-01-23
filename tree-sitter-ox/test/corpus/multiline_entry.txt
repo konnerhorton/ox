@@ -1,0 +1,41 @@
+==================
+Multiline Entry
+==================
+
+@session
+2025-11-90 * Upper Emom
+kb-snatch: 32kg 5x4
+kb-tgu: 32kg 5x1 "a note" 3min
+kb-sldl: 24kg+32kg 5/5/5
+deadlift: 105lbs/150lbs/170lbs 5/5/5
+@end
+
+---
+
+(source_file
+  (session_block
+    date: (date)
+    flag: (flag)
+    name: (name)
+    (item_line
+      item: (item)
+      details: (details
+        weight: (weight)
+        rep_scheme: (rep_scheme)))
+    (item_line
+      item: (item)
+      details: (details
+        weight: (weight)
+        rep_scheme: (rep_scheme)
+        note: (quoted_string)
+        time: (time)))
+    (item_line
+      item: (item)
+      details: (details
+        weight: (weight)
+        rep_scheme: (rep_scheme)))
+    (item_line
+      item: (item)
+      details: (details
+        weight: (weight)
+        rep_scheme: (rep_scheme)))))

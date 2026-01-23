@@ -1,0 +1,28 @@
+==================
+Exercise Block
+==================
+
+@exercise kb-oh-press
+equipment: kettlebell
+pattern: press
+url: https://example.com/kb-press
+note: keep elbow tight
+@end
+
+---
+
+(source_file
+  (exercise_block
+    name: (identifier)
+    (metadata_line
+      key: (identifier)
+      value: (text_until_newline))
+    (metadata_line
+      key: (identifier)
+      value: (text_until_newline))
+    (metadata_line
+      key: (identifier)
+      value: (text_until_newline))
+    (metadata_line
+      key: (identifier)
+      value: (text_until_newline))))

@@ -1,0 +1,375 @@
+[
+  {
+    "type": "details",
+    "named": true,
+    "fields": {
+      "distance": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "distance",
+            "named": true
+          }
+        ]
+      },
+      "note": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "quoted_string",
+            "named": true
+          }
+        ]
+      },
+      "rep_scheme": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "rep_scheme",
+            "named": true
+          }
+        ]
+      },
+      "time": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "time",
+            "named": true
+          }
+        ]
+      },
+      "weight": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "weight",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "exercise_block",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "metadata_line",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "flag",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "identifier",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "item",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "item_line",
+    "named": true,
+    "fields": {
+      "details": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "details",
+            "named": true
+          }
+        ]
+      },
+      "item": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "item",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "metadata_line",
+    "named": true,
+    "fields": {
+      "key": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "text_until_newline",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "name",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "session_block",
+    "named": true,
+    "fields": {
+      "date": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "date",
+            "named": true
+          }
+        ]
+      },
+      "flag": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "flag",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "name",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "item_line",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "singleline_entry",
+    "named": true,
+    "fields": {
+      "date": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "date",
+            "named": true
+          }
+        ]
+      },
+      "details": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "details",
+            "named": true
+          }
+        ]
+      },
+      "flag": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "flag",
+            "named": true
+          }
+        ]
+      },
+      "item": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "item",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "source_file",
+    "named": true,
+    "root": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "comment",
+          "named": true
+        },
+        {
+          "type": "exercise_block",
+          "named": true
+        },
+        {
+          "type": "session_block",
+          "named": true
+        },
+        {
+          "type": "singleline_entry",
+          "named": true
+        },
+        {
+          "type": "template_block",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "template_block",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "name",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "item_line",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "text_until_newline",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "\n",
+    "named": false
+  },
+  {
+    "type": "!",
+    "named": false
+  },
+  {
+    "type": "*",
+    "named": false
+  },
+  {
+    "type": ":",
+    "named": false
+  },
+  {
+    "type": "@end",
+    "named": false
+  },
+  {
+    "type": "@exercise",
+    "named": false
+  },
+  {
+    "type": "@session",
+    "named": false
+  },
+  {
+    "type": "@template",
+    "named": false
+  },
+  {
+    "type": "W",
+    "named": false
+  },
+  {
+    "type": "comment",
+    "named": true
+  },
+  {
+    "type": "date",
+    "named": true
+  },
+  {
+    "type": "distance",
+    "named": true
+  },
+  {
+    "type": "quoted_string",
+    "named": true
+  },
+  {
+    "type": "rep_scheme",
+    "named": true
+  },
+  {
+    "type": "time",
+    "named": true
+  },
+  {
+    "type": "weight",
+    "named": true
+  }
+]

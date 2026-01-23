@@ -1,0 +1,21 @@
+# Include license and readme
+include LICENSE
+include README.md
+
+# Include tree-sitter grammar files
+recursive-include tree-sitter-ox/src *.c *.h *.cc
+include tree-sitter-ox/grammar.js
+include tree-sitter-ox/package.json
+
+# Include compiled tree-sitter binary
+include tree-sitter-ox/*.so
+include tree-sitter-ox/*.dylib
+include tree-sitter-ox/*.dll
+
+# Include example files
+recursive-include example *.ox
+
+# Exclude unnecessary files
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude .DS_Store

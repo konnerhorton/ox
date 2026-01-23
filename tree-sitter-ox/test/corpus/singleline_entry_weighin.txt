@@ -1,0 +1,16 @@
+========================
+Singleline Entry Weighin
+========================
+
+2025-11-13 W superfly-1: 155lbs "noon"
+
+---
+
+(source_file
+  (singleline_entry
+    date: (date)
+    flag: (flag)
+    item: (item)
+    details: (details
+      weight: (weight)
+      note: (quoted_string))))

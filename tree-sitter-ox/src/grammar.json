@@ -1,0 +1,431 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/grammar.schema.json",
+  "name": "ox",
+  "rules": {
+    "source_file": {
+      "type": "REPEAT",
+      "content": {
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "_entry"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "comment"
+          },
+          {
+            "type": "STRING",
+            "value": "\n"
+          }
+        ]
+      }
+    },
+    "_entry": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "singleline_entry"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "session_block"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "exercise_block"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "template_block"
+        }
+      ]
+    },
+    "comment": {
+      "type": "PATTERN",
+      "value": "#[^\\n]*"
+    },
+    "singleline_entry": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "date",
+          "content": {
+            "type": "SYMBOL",
+            "name": "date"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "flag",
+          "content": {
+            "type": "SYMBOL",
+            "name": "flag"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "item",
+          "content": {
+            "type": "SYMBOL",
+            "name": "item"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ":"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "details",
+              "content": {
+                "type": "SYMBOL",
+                "name": "details"
+              }
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "session_block": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "@session"
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        },
+        {
+          "type": "FIELD",
+          "name": "date",
+          "content": {
+            "type": "SYMBOL",
+            "name": "date"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "flag",
+          "content": {
+            "type": "SYMBOL",
+            "name": "flag"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "name"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "item_line"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "@end"
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "exercise_block": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "@exercise"
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "metadata_line"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "@end"
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "template_block": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "@template"
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "name"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "item_line"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "@end"
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "item_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "item",
+          "content": {
+            "type": "SYMBOL",
+            "name": "item"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ":"
+        },
+        {
+          "type": "FIELD",
+          "name": "details",
+          "content": {
+            "type": "SYMBOL",
+            "name": "details"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "metadata_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "key",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ":"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "value",
+              "content": {
+                "type": "SYMBOL",
+                "name": "text_until_newline"
+              }
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "date": {
+      "type": "PATTERN",
+      "value": "\\d{4}-\\d{2}-\\d{2}"
+    },
+    "flag": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "*"
+        },
+        {
+          "type": "STRING",
+          "value": "!"
+        },
+        {
+          "type": "STRING",
+          "value": "W"
+        }
+      ]
+    },
+    "item": {
+      "type": "PATTERN",
+      "value": "[^\\s:]+"
+    },
+    "identifier": {
+      "type": "PATTERN",
+      "value": "[^\\s:]+"
+    },
+    "name": {
+      "type": "PATTERN",
+      "value": "[^\\n]+"
+    },
+    "text_until_newline": {
+      "type": "PATTERN",
+      "value": "[^\\n]+"
+    },
+    "details": {
+      "type": "REPEAT1",
+      "content": {
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "FIELD",
+            "name": "weight",
+            "content": {
+              "type": "SYMBOL",
+              "name": "weight"
+            }
+          },
+          {
+            "type": "FIELD",
+            "name": "rep_scheme",
+            "content": {
+              "type": "SYMBOL",
+              "name": "rep_scheme"
+            }
+          },
+          {
+            "type": "FIELD",
+            "name": "time",
+            "content": {
+              "type": "SYMBOL",
+              "name": "time"
+            }
+          },
+          {
+            "type": "FIELD",
+            "name": "distance",
+            "content": {
+              "type": "SYMBOL",
+              "name": "distance"
+            }
+          },
+          {
+            "type": "FIELD",
+            "name": "note",
+            "content": {
+              "type": "SYMBOL",
+              "name": "quoted_string"
+            }
+          }
+        ]
+      }
+    },
+    "weight": {
+      "type": "TOKEN",
+      "content": {
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "PATTERN",
+            "value": "\\d+(kg|lbs)((\\+\\d+(kg|lbs))+)?"
+          },
+          {
+            "type": "PATTERN",
+            "value": "\\d+(kg|lbs)((\\/\\d+(kg|lbs))+)?"
+          },
+          {
+            "type": "PATTERN",
+            "value": "BW"
+          }
+        ]
+      }
+    },
+    "rep_scheme": {
+      "type": "PATTERN",
+      "value": "(\\d+x\\d+)|(\\d+(\\/\\d+)+)"
+    },
+    "time": {
+      "type": "PATTERN",
+      "value": "\\d+(sec|min|hr)"
+    },
+    "distance": {
+      "type": "PATTERN",
+      "value": "\\d+(km|mi|m|ft|in)"
+    },
+    "quoted_string": {
+      "type": "PATTERN",
+      "value": "\"[^\"]*\""
+    }
+  },
+  "extras": [
+    {
+      "type": "PATTERN",
+      "value": "[ \\t]"
+    }
+  ],
+  "conflicts": [],
+  "precedences": [],
+  "externals": [],
+  "inline": [],
+  "supertypes": [],
+  "reserved": {}
+}
