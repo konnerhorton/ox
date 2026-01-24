@@ -1,3 +1,7 @@
+---
+icon: material/puzzle
+---
+
 # Editor Support
 
 ## VSCode
