@@ -9,6 +9,14 @@ DATE_FORMAT = "%Y-%m-%d"
 ITEM_FIELDS = ["weight", "rep_scheme", "time", "distance", "note"]
 
 
+def _format_weight(weight: Quantity) -> str:
+    """Format a Quantity as an ox weight string like '24kg' or '135lbs'."""
+    unit_map = {"kilogram": "kg", "pound": "lbs"}
+    unit_str = unit_map.get(str(weight.units), str(weight.units))
+    mag = int(weight.magnitude) if weight.magnitude == int(weight.magnitude) else weight.magnitude
+    return f"{mag}{unit_str}"
+
+
 @dataclass(frozen=True, slots=True)
 class Entry:
     """Base class for log entries.
@@ -67,6 +75,34 @@ class Movement:
         weights = [s.weight for s in self.sets if s.weight is not None]
         return max(weights) if weights else None
 
+    def to_ox(self) -> str:
+        """Serialize to ox format string (e.g., 'squat: 185lbs 5x5')."""
+        parts = []
+        if self.sets:
+            weights = [s.weight for s in self.sets]
+            reps = [s.reps for s in self.sets]
+
+            if all(w is None for w in weights):
+                parts.append("BW")
+            elif all(w == weights[0] for w in weights):
+                parts.append(_format_weight(weights[0]))
+            else:
+                parts.append("/".join(
+                    _format_weight(w) if w is not None else "BW"
+                    for w in weights
+                ))
+
+            if all(r == reps[0] for r in reps):
+                parts.append(f"{len(reps)}x{reps[0]}")
+            else:
+                parts.append("/".join(str(r) for r in reps))
+
+        if self.note:
+            parts.append(f'"{self.note}"')
+
+        detail_str = " ".join(parts)
+        return f"{self.name}: {detail_str}" if detail_str else f"{self.name}:"
+
 
 @dataclass(frozen=True, slots=True)
 class TrainingSession(Entry):
@@ -80,6 +116,19 @@ class TrainingSession(Entry):
     """
     name: str = field()
     movements: tuple[Movement, ...]
+
+    def to_ox(self) -> str:
+        """Serialize to ox format string."""
+        date_str = self.date.strftime(DATE_FORMAT)
+        if self.name is None:
+            return f"{date_str} {self.flag} {self.movements[0].to_ox()}"
+        else:
+            lines = ["@session"]
+            lines.append(f"{date_str} {self.flag} {self.name}")
+            for m in self.movements:
+                lines.append(m.to_ox())
+            lines.append("@end")
+            return "\n".join(lines)
 
 
 @dataclass
