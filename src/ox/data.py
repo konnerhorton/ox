@@ -75,16 +75,26 @@ class Movement:
         weights = [s.weight for s in self.sets if s.weight is not None]
         return max(weights) if weights else None
 
-    def to_ox(self) -> str:
-        """Serialize to ox format string (e.g., 'squat: 185lbs 5x5')."""
+    def to_ox(self, compact_reps: bool = False) -> str:
+        """Serialize to ox format string (e.g., 'squat: 185lbs 5x5').
+
+        Args:
+            compact_reps: If True, always use NxR format when reps are uniform.
+                If False (default), only use NxR when weight is uniform;
+                use R/R/R when weights vary per set.
+        """
         parts = []
         if self.sets:
             weights = [s.weight for s in self.sets]
             reps = [s.reps for s in self.sets]
 
+            uniform_weight = all(w is None for w in weights) or all(
+                w is not None and w == weights[0] for w in weights
+            )
+
             if all(w is None for w in weights):
                 parts.append("BW")
-            elif all(w == weights[0] for w in weights):
+            elif uniform_weight:
                 parts.append(_format_weight(weights[0]))
             else:
                 parts.append("/".join(
@@ -92,7 +102,10 @@ class Movement:
                     for w in weights
                 ))
 
-            if all(r == reps[0] for r in reps):
+            use_compact = all(r == reps[0] for r in reps) and (
+                compact_reps or uniform_weight
+            )
+            if use_compact:
                 parts.append(f"{len(reps)}x{reps[0]}")
             else:
                 parts.append("/".join(str(r) for r in reps))
