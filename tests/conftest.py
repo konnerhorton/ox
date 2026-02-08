@@ -1,6 +1,11 @@
 """Shared test fixtures and configuration."""
 
+from pathlib import Path
+
 import pytest
+
+from ox.cli import parse_file
+from ox.db import create_db
 
 
 @pytest.fixture
@@ -57,3 +62,21 @@ def weight_edge_cases():
         "progressive_explicit": "24kg/32kg/48kg",
         "progressive_implied": "160/185/210lbs",  # This is the known bug
     }
+
+
+@pytest.fixture
+def simple_db(simple_log_file):
+    """In-memory SQLite database loaded from the simple test log."""
+    log = parse_file(simple_log_file)
+    conn = create_db(log)
+    yield conn
+    conn.close()
+
+
+@pytest.fixture
+def example_db():
+    """In-memory SQLite database loaded from the example training log."""
+    log = parse_file(Path(__file__).parent.parent / "example" / "example.ox")
+    conn = create_db(log)
+    yield conn
+    conn.close()
