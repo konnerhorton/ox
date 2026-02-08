@@ -212,7 +212,7 @@ def run_report(conn: sqlite3.Connection, report_name: str, arg_string: str):
 
 @click.command()
 @click.argument('file', type=click.Path(exists=True, path_type=Path))
-@click.version_option(version="0.1.0")
+@click.version_option(version="0.2.0")
 def cli(file):
     """Interactive training log analyzer.
 
