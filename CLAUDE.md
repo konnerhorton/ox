@@ -5,6 +5,7 @@ Uses a custom tree-sitter grammar to parse `.ox` log files into structured data 
 
 
 ## Usage Notes
+- `SPEC.md` is your guide for the goals, non-goals, and roadmap for this repo.
 - if you edit `tree-sitter/grammar.js` run `tree-sitter generate` then reinstall the package before doing any additional work.
 
 ## Commands
