@@ -15,6 +15,7 @@ from prompt_toolkit.completion import WordCompleter
 from ox.parse import process_node
 from ox.data import TrainingLog
 from ox.db import create_db
+from ox.reports import REPORTS, parse_report_args, report_usage
 
 console = Console()
 
@@ -53,6 +54,7 @@ def show_help():
     console.print("\n[bold cyan]Available Commands:[/bold cyan]")
     console.print("  [green]stats[/green]              - Show summary statistics for all exercises")
     console.print("  [green]history[/green] EXERCISE   - Show training history for an exercise")
+    console.print("  [green]report[/green]             - List available reports (or run one)")
     console.print("  [green]query[/green] SQL          - Run a SQL query against your training data")
     console.print("  [green]tables[/green]             - Show available tables and views")
     console.print("  [green]help[/green]               - Show this help message")
@@ -159,6 +161,55 @@ def show_tables(conn: sqlite3.Connection):
     console.print()
 
 
+def show_report_list():
+    """Show available reports with descriptions and usage."""
+    console.print("\n[bold cyan]Available Reports:[/bold cyan]")
+    for name, entry in REPORTS.items():
+        usage = report_usage(name, entry)
+        console.print(f"  [green]{name}[/green] - {entry['description']}")
+        console.print(f"    Usage: {usage}")
+    console.print()
+
+
+def render_report(columns: list[str], rows: list[tuple]):
+    """Render (columns, rows) as a rich table."""
+    if not rows:
+        console.print("[yellow]No results.[/yellow]\n")
+        return
+
+    table = Table(box=DEFAULT_TABLE_BOX)
+    for col in columns:
+        table.add_column(col, style="cyan")
+
+    for row in rows:
+        table.add_row(*(str(v) for v in row))
+
+    console.print(table)
+    console.print(f"\n[dim]{len(rows)} row(s)[/dim]\n")
+
+
+def run_report(conn: sqlite3.Connection, report_name: str, arg_string: str):
+    """Look up and execute a report by name."""
+    if report_name not in REPORTS:
+        console.print(f"[red]Unknown report: {report_name}[/red]")
+        show_report_list()
+        return
+
+    entry = REPORTS[report_name]
+
+    if not arg_string.strip() and any(p.get("required") for p in entry["params"]):
+        usage = report_usage(report_name, entry)
+        console.print(f"[yellow]Usage: {usage}[/yellow]\n")
+        return
+
+    try:
+        kwargs = parse_report_args(entry["params"], arg_string)
+        columns, rows = entry["fn"](conn, **kwargs)
+        render_report(columns, rows)
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]\n")
+
+
 @click.command()
 @click.argument('file', type=click.Path(exists=True, path_type=Path))
 @click.version_option(version="0.1.0")
@@ -181,7 +232,7 @@ def cli(file):
         raise click.Abort()
 
     # Setup tab completion for commands
-    commands = ['history', 'stats', 'query', 'tables', 'help', 'exit', 'quit']
+    commands = ['history', 'stats', 'report', 'query', 'tables', 'help', 'exit', 'quit']
     completer = WordCompleter(commands, ignore_case=True)
 
     # Create prompt session
@@ -218,6 +269,15 @@ def cli(file):
                     console.print("[yellow]Usage: history EXERCISE[/yellow]")
                 else:
                     show_history(log, args)
+
+            elif command == "report":
+                if not args:
+                    show_report_list()
+                else:
+                    parts2 = args.split(maxsplit=1)
+                    report_name = parts2[0]
+                    report_args = parts2[1] if len(parts2) > 1 else ""
+                    run_report(db, report_name, report_args)
 
             elif command == "query":
                 if not args:

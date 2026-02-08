@@ -81,6 +81,10 @@ Create a plugin framework that allows users to write their own, some included on
 - Estimated 1RM calculations from weight/rep data (useful for percentage-based programs like 5/3/1)
 - Generate specific plans from a known progression (like the 4-week cycle in the Wendler 5/3/1 given a training max)
 
+### CLI
+- more comprehensive help menu
+- auto-population is related to ox log excercises (when I type the history command, the autocomplete will help suggest relevant excercises)
+
 ### Better editor experience
 
 - LSP completions (exercise names, session templates)
