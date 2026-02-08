@@ -1,5 +1,7 @@
 """Command-line interface for ox."""
 
+import sqlite3
+
 import click
 from pathlib import Path
 from tree_sitter import Language, Parser
@@ -12,6 +14,7 @@ from prompt_toolkit.completion import WordCompleter
 
 from ox.parse import process_node
 from ox.data import TrainingLog
+from ox.db import create_db
 
 console = Console()
 
@@ -50,6 +53,8 @@ def show_help():
     console.print("\n[bold cyan]Available Commands:[/bold cyan]")
     console.print("  [green]stats[/green]              - Show summary statistics for all exercises")
     console.print("  [green]history[/green] EXERCISE   - Show training history for an exercise")
+    console.print("  [green]query[/green] SQL          - Run a SQL query against your training data")
+    console.print("  [green]tables[/green]             - Show available tables and views")
     console.print("  [green]help[/green]               - Show this help message")
     console.print("  [green]exit[/green] or [green]quit[/green]     - Exit the program")
     console.print()
@@ -120,6 +125,40 @@ def show_history(log: TrainingLog, exercise: str):
     console.print()  # Blank line after table
 
 
+def show_query(conn: sqlite3.Connection, sql: str):
+    """Execute a SQL query and display results as a rich table."""
+    try:
+        cursor = conn.execute(sql)
+        rows = cursor.fetchall()
+        if not rows:
+            console.print("[yellow]No results.[/yellow]\n")
+            return
+
+        columns = [desc[0] for desc in cursor.description]
+
+        table = Table(box=DEFAULT_TABLE_BOX)
+        for col in columns:
+            table.add_column(col, style="cyan")
+
+        for row in rows:
+            table.add_row(*(str(v) for v in row))
+
+        console.print(table)
+        console.print(f"\n[dim]{len(rows)} row(s)[/dim]\n")
+    except Exception as e:
+        console.print(f"[red]SQL error: {e}[/red]\n")
+
+
+def show_tables(conn: sqlite3.Connection):
+    """Show available tables and views."""
+    rows = conn.execute(
+        "SELECT type, name FROM sqlite_master WHERE type IN ('table', 'view') ORDER BY type, name"
+    ).fetchall()
+    for type_, name in rows:
+        console.print(f"  [green]{name}[/green] ({type_})")
+    console.print()
+
+
 @click.command()
 @click.argument('file', type=click.Path(exists=True, path_type=Path))
 @click.version_option(version="0.1.0")
@@ -132,6 +171,7 @@ def cli(file):
     try:
         console.print(f"[cyan]Loading {file}...[/cyan]")
         log = parse_file(file)
+        db = create_db(log)
         console.print(
             f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
             f"{len(log.planned_sessions)} planned sessions\n"
@@ -141,7 +181,7 @@ def cli(file):
         raise click.Abort()
 
     # Setup tab completion for commands
-    commands = ['history', 'stats', 'help', 'exit', 'quit']
+    commands = ['history', 'stats', 'query', 'tables', 'help', 'exit', 'quit']
     completer = WordCompleter(commands, ignore_case=True)
 
     # Create prompt session
@@ -179,6 +219,15 @@ def cli(file):
                 else:
                     show_history(log, args)
 
+            elif command == "query":
+                if not args:
+                    console.print("[yellow]Usage: query SELECT ...[/yellow]")
+                else:
+                    show_query(db, args)
+
+            elif command == "tables":
+                show_tables(db)
+
             else:
                 console.print(f"[red]Unknown command: {command}[/red]")
                 console.print("Type 'help' for available commands")
@@ -187,6 +236,8 @@ def cli(file):
             continue  # Ctrl+C just cancels current line
         except EOFError:
             break  # Ctrl+D exits
+
+    db.close()
 
 
 if __name__ == '__main__':

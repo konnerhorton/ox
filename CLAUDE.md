@@ -23,13 +23,15 @@ uv run ruff format src/ tests/ # format
 src/ox/
   parse.py   - Tree-sitter node → data structures (the core parser)
   data.py    - Dataclasses: TrainingSet, Movement, TrainingSession, TrainingLog
+  db.py      - In-memory SQLite layer: create_db(log) → Connection
   units.py   - Pint unit registry (shared instance)
   cli.py     - Click CLI with interactive REPL (ox command)
   lsp.py     - LSP server for .ox files (ox-lsp command)
 tests/
-  conftest.py        - Shared fixtures (simple_log_content, weight_edge_cases)
+  conftest.py        - Shared fixtures (simple_log_content, weight_edge_cases, simple_db)
   test_parse.py      - Unit tests for weight/rep parsing
   test_data.py       - Unit tests for data structures
+  test_db.py         - Tests for SQLite schema, loading, views, queries
   test_integration.py - End-to-end parsing tests
 tree-sitter-ox/
   grammar.js  - Tree-sitter grammar definition for .ox format
