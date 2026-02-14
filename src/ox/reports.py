@@ -172,7 +172,9 @@ def parse_report_args(params: list[dict], arg_string: str) -> dict:
                 required_names = [
                     f"--{p['name']}" for p in params if p.get("required", False)
                 ]
-                raise ValueError(f"Missing required flag(s): {', '.join(required_names)}")
+                raise ValueError(
+                    f"Missing required flag(s): {', '.join(required_names)}"
+                )
             parsed[name] = param.get("default")
 
     return parsed
@@ -205,14 +207,26 @@ REPORTS = {
         "description": "Volume over time for a movement",
         "params": [
             {"name": "movement", "type": str, "required": True, "short": "m"},
-            {"name": "bin", "type": str, "default": "weekly", "required": False, "short": "b"},
+            {
+                "name": "bin",
+                "type": str,
+                "default": "weekly",
+                "required": False,
+                "short": "b",
+            },
         ],
     },
     "matrix": {
         "fn": session_matrix,
         "description": "Session count per movement per time period",
         "params": [
-            {"name": "bin", "type": str, "default": "weekly", "required": False, "short": "b"},
+            {
+                "name": "bin",
+                "type": str,
+                "default": "weekly",
+                "required": False,
+                "short": "b",
+            },
         ],
     },
 }

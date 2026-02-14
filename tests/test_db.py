@@ -88,14 +88,19 @@ class TestDataLoading:
 
     def test_session_dates(self, simple_db):
         dates = [
-            r[0] for r in simple_db.execute("SELECT date FROM sessions ORDER BY date").fetchall()
+            r[0]
+            for r in simple_db.execute(
+                "SELECT date FROM sessions ORDER BY date"
+            ).fetchall()
         ]
         assert dates == ["2025-01-10", "2025-01-11", "2025-01-12"]
 
     def test_session_flags(self, simple_db):
         flags = [
             r[0]
-            for r in simple_db.execute("SELECT flag FROM sessions ORDER BY date").fetchall()
+            for r in simple_db.execute(
+                "SELECT flag FROM sessions ORDER BY date"
+            ).fetchall()
         ]
         assert flags == ["*", "*", "!"]
 

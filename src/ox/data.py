@@ -13,7 +13,11 @@ def _format_weight(weight: Quantity) -> str:
     """Format a Quantity as an ox weight string like '24kg' or '135lbs'."""
     unit_map = {"kilogram": "kg", "pound": "lbs"}
     unit_str = unit_map.get(str(weight.units), str(weight.units))
-    mag = int(weight.magnitude) if weight.magnitude == int(weight.magnitude) else weight.magnitude
+    mag = (
+        int(weight.magnitude)
+        if weight.magnitude == int(weight.magnitude)
+        else weight.magnitude
+    )
     return f"{mag}{unit_str}"
 
 
@@ -25,6 +29,7 @@ class Entry:
         date: Entry date
         flag: Entry status (*=completed, !=planned, W=weigh-in)
     """
+
     date: datetime.date
     flag: str
 
@@ -37,13 +42,14 @@ class TrainingSet:
         reps: Number of repetitions
         weight: Weight used (optional), assumes bodyweight if no weight listed
     """
+
     reps: int
     weight: Optional[Quantity] = None
 
     @property
     def volume(self) -> Optional[Quantity]:
         """Calculate volume (reps * weight)."""
-        return self.weight * self.reps  if self.weight else None
+        return self.weight * self.reps if self.weight else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +61,7 @@ class Movement:
         sets: List of training sets
         note: Optional notes about the exercise
     """
+
     name: str
     sets: List[TrainingSet]
     note: Optional[str]
@@ -97,10 +104,11 @@ class Movement:
             elif uniform_weight:
                 parts.append(_format_weight(weights[0]))
             else:
-                parts.append("/".join(
-                    _format_weight(w) if w is not None else "BW"
-                    for w in weights
-                ))
+                parts.append(
+                    "/".join(
+                        _format_weight(w) if w is not None else "BW" for w in weights
+                    )
+                )
 
             use_compact = all(r == reps[0] for r in reps) and (
                 compact_reps or uniform_weight
@@ -127,6 +135,7 @@ class TrainingSession(Entry):
         date: Inherited from Entry
         flag: Inherited from Entry
     """
+
     name: str = field()
     movements: tuple[Movement, ...]
 
@@ -151,6 +160,7 @@ class TrainingLog:
     Attributes:
         sessions: Tuple of TrainingSession objects
     """
+
     sessions: tuple[TrainingSession, ...]
 
     @property

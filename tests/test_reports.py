@@ -204,7 +204,13 @@ class TestParseReportArgs:
     def test_mixed_short_and_long(self):
         params = [
             {"name": "movement", "type": str, "required": True, "short": "m"},
-            {"name": "bin", "type": str, "default": "weekly", "required": False, "short": "b"},
+            {
+                "name": "bin",
+                "type": str,
+                "default": "weekly",
+                "required": False,
+                "short": "b",
+            },
         ]
         result = parse_report_args(params, "-m kb-swing --bin monthly")
         assert result == {"movement": "kb-swing", "bin": "monthly"}

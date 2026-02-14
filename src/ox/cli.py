@@ -52,11 +52,21 @@ def parse_file(file_path: Path) -> TrainingLog:
 def show_help():
     """Display help message with available commands."""
     console.print("\n[bold cyan]Available Commands:[/bold cyan]")
-    console.print("  [green]stats[/green]              - Show summary statistics for all exercises")
-    console.print("  [green]history[/green] EXERCISE   - Show training history for an exercise")
-    console.print("  [green]report[/green]             - List available reports (or run one)")
-    console.print("  [green]query[/green] SQL          - Run a SQL query against your training data")
-    console.print("  [green]tables[/green]             - Show available tables and views")
+    console.print(
+        "  [green]stats[/green]              - Show summary statistics for all exercises"
+    )
+    console.print(
+        "  [green]history[/green] EXERCISE   - Show training history for an exercise"
+    )
+    console.print(
+        "  [green]report[/green]             - List available reports (or run one)"
+    )
+    console.print(
+        "  [green]query[/green] SQL          - Run a SQL query against your training data"
+    )
+    console.print(
+        "  [green]tables[/green]             - Show available tables and views"
+    )
     console.print("  [green]help[/green]               - Show this help message")
     console.print("  [green]exit[/green] or [green]quit[/green]     - Exit the program")
     console.print()
@@ -85,10 +95,7 @@ def show_stats(log: TrainingLog):
         last_date = max(d for d, _ in sessions)
 
         table.add_row(
-            exercise_name,
-            str(len(sessions)),
-            str(total_reps),
-            str(last_date)
+            exercise_name, str(len(sessions)), str(total_reps), str(last_date)
         )
 
     console.print(table)
@@ -116,12 +123,7 @@ def show_history(log: TrainingLog, exercise: str):
         top_weight = str(movement.top_set_weight) if movement.top_set_weight else "BW"
         volume = str(movement.total_volume()) if movement.total_volume() else "—"
 
-        table.add_row(
-            str(date),
-            sets_reps,
-            top_weight,
-            volume
-        )
+        table.add_row(str(date), sets_reps, top_weight, volume)
 
     console.print(table)
     console.print()  # Blank line after table
@@ -211,7 +213,7 @@ def run_report(conn: sqlite3.Connection, report_name: str, arg_string: str):
 
 
 @click.command()
-@click.argument('file', type=click.Path(exists=True, path_type=Path))
+@click.argument("file", type=click.Path(exists=True, path_type=Path))
 @click.version_option(version="0.2.0")
 def cli(file):
     """Interactive training log analyzer.
@@ -232,7 +234,7 @@ def cli(file):
         raise click.Abort()
 
     # Setup tab completion for commands
-    commands = ['history', 'stats', 'report', 'query', 'tables', 'help', 'exit', 'quit']
+    commands = ["history", "stats", "report", "query", "tables", "help", "exit", "quit"]
     completer = WordCompleter(commands, ignore_case=True)
 
     # Create prompt session
@@ -300,5 +302,5 @@ def cli(file):
     db.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()
