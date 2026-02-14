@@ -67,6 +67,7 @@ def show_help():
     console.print(
         "  [green]tables[/green]             - Show available tables and views"
     )
+    console.print("  [green]reload[/green]             - Reload the log file from disk")
     console.print("  [green]help[/green]               - Show this help message")
     console.print("  [green]exit[/green] or [green]quit[/green]     - Exit the program")
     console.print()
@@ -234,7 +235,17 @@ def cli(file):
         raise click.Abort()
 
     # Setup tab completion for commands
-    commands = ["history", "stats", "report", "query", "tables", "help", "exit", "quit"]
+    commands = [
+        "history",
+        "stats",
+        "report",
+        "query",
+        "tables",
+        "reload",
+        "help",
+        "exit",
+        "quit",
+    ]
     completer = WordCompleter(commands, ignore_case=True)
 
     # Create prompt session
@@ -289,6 +300,19 @@ def cli(file):
 
             elif command == "tables":
                 show_tables(db)
+
+            elif command == "reload":
+                try:
+                    console.print(f"[cyan]Reloading {file}...[/cyan]")
+                    log = parse_file(file)
+                    db.close()
+                    db = create_db(log)
+                    console.print(
+                        f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
+                        f"{len(log.planned_sessions)} planned sessions\n"
+                    )
+                except Exception as e:
+                    console.print(f"[red]✗[/red] Error reloading file: {e}\n")
 
             else:
                 console.print(f"[red]Unknown command: {command}[/red]")
