@@ -194,6 +194,35 @@ class TestParseReportArgs:
         result = parse_report_args(params, '--movement "kb-swing"')
         assert result == {"movement": "kb-swing"}
 
+    def test_short_flag(self):
+        params = [
+            {"name": "movement", "type": str, "required": True, "short": "m"},
+        ]
+        result = parse_report_args(params, "-m kb-swing")
+        assert result == {"movement": "kb-swing"}
+
+    def test_mixed_short_and_long(self):
+        params = [
+            {"name": "movement", "type": str, "required": True, "short": "m"},
+            {"name": "bin", "type": str, "default": "weekly", "required": False, "short": "b"},
+        ]
+        result = parse_report_args(params, "-m kb-swing --bin monthly")
+        assert result == {"movement": "kb-swing", "bin": "monthly"}
+
+    def test_unknown_short_flag_raises(self):
+        params = [
+            {"name": "movement", "type": str, "required": True, "short": "m"},
+        ]
+        with pytest.raises(ValueError, match="Unknown flag: -x"):
+            parse_report_args(params, "-x foo")
+
+    def test_short_flag_without_value_raises(self):
+        params = [
+            {"name": "movement", "type": str, "required": True, "short": "m"},
+        ]
+        with pytest.raises(ValueError, match="-m requires a value"):
+            parse_report_args(params, "-m")
+
 
 class TestReportUsage:
     """Test usage string generation."""
@@ -212,7 +241,12 @@ class TestReportUsage:
     def test_optional_bracketed(self):
         usage = report_usage("volume", REPORTS["volume"])
         # Optional params should be in brackets
-        assert "[--bin" in usage
+        assert "[-b/--bin" in usage
+
+    def test_short_flags_shown(self):
+        usage = report_usage("volume", REPORTS["volume"])
+        assert "-m/--movement" in usage
+        assert "-b/--bin" in usage
 
 
 class TestRegistry:
