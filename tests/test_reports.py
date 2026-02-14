@@ -6,7 +6,7 @@ from ox.data import TrainingLog
 from ox.db import create_db
 from ox.reports import (
     REPORTS,
-    _time_bin_format,
+    _time_bin_expr,
     parse_report_args,
     report_usage,
     session_matrix,
@@ -15,20 +15,29 @@ from ox.reports import (
 
 
 class TestTimeBins:
-    """Test time bin format helper."""
+    """Test time bin expression helper."""
 
     def test_daily(self):
-        assert _time_bin_format("daily") == "%Y-%m-%d"
+        assert _time_bin_expr("daily") == "strftime('%Y-%m-%d', date)"
 
     def test_weekly(self):
-        assert _time_bin_format("weekly") == "%Y-W%W"
+        assert (
+            _time_bin_expr("weekly")
+            == "date(date, '-' || strftime('%w', date) || ' days')"
+        )
+
+    def test_weekly_num(self):
+        assert _time_bin_expr("weekly-num") == "strftime('%Y-W%W', date)"
 
     def test_monthly(self):
-        assert _time_bin_format("monthly") == "%Y-%m"
+        assert _time_bin_expr("monthly") == "strftime('%Y-%m', date)"
+
+    def test_custom_col(self):
+        assert _time_bin_expr("daily", "s.date") == "strftime('%Y-%m-%d', s.date)"
 
     def test_invalid_raises(self):
         with pytest.raises(ValueError, match="Unknown time bin"):
-            _time_bin_format("yearly")
+            _time_bin_expr("yearly")
 
 
 class TestVolumeOverTime:
@@ -42,7 +51,23 @@ class TestVolumeOverTime:
         _, rows = volume_over_time(example_db, "squat", bin="weekly")
         # squat appears in many weeks in example.ox
         assert len(rows) > 1
-        # Each row's period should be in YYYY-WXX format
+        # Each row's period should be a date string (Sunday of that week)
+        for row in rows:
+            assert row[0].startswith("2024-")
+            assert len(row[0]) == 10  # "2024-01-14"
+
+    def test_weekly_period_is_sunday(self, example_db):
+        """Weekly bin periods should fall on a Sunday."""
+        import datetime
+
+        _, rows = volume_over_time(example_db, "squat", bin="weekly")
+        for row in rows:
+            dt = datetime.date.fromisoformat(row[0])
+            assert dt.weekday() == 6, f"{row[0]} is not a Sunday"
+
+    def test_weekly_num_grouping(self, example_db):
+        _, rows = volume_over_time(example_db, "squat", bin="weekly-num")
+        assert len(rows) > 1
         for row in rows:
             assert row[0].startswith("2024-W")
 

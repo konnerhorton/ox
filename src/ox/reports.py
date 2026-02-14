@@ -10,17 +10,19 @@ import sqlite3
 from collections import defaultdict
 
 TIME_BINS = {
-    "daily": "%Y-%m-%d",
-    "weekly": "%Y-W%W",
-    "monthly": "%Y-%m",
+    "daily": "strftime('%Y-%m-%d', {col})",
+    "weekly": "date({col}, '-' || strftime('%w', {col}) || ' days')",
+    "weekly-num": "strftime('%Y-W%W', {col})",
+    "monthly": "strftime('%Y-%m', {col})",
 }
 
 
-def _time_bin_format(bin: str) -> str:
-    """Return strftime format string for a time bin name.
+def _time_bin_expr(bin: str, col: str = "date") -> str:
+    """Return a SQL expression for a time bin name.
 
     Args:
-        bin: One of "daily", "weekly", "monthly"
+        bin: One of "daily", "weekly", "weekly-num", "monthly"
+        col: The date column name to use in the expression
 
     Raises:
         ValueError: If bin is not a recognized time bin
@@ -29,7 +31,7 @@ def _time_bin_format(bin: str) -> str:
         raise ValueError(
             f"Unknown time bin '{bin}'. Choose from: {', '.join(TIME_BINS)}"
         )
-    return TIME_BINS[bin]
+    return TIME_BINS[bin].format(col=col)
 
 
 def volume_over_time(
@@ -46,11 +48,11 @@ def volume_over_time(
         (columns, rows) where columns are
         ["period", "total_volume", "total_reps", "avg_weight_per_rep"]
     """
-    fmt = _time_bin_format(bin)
+    expr = _time_bin_expr(bin, "date")
     rows = conn.execute(
         f"""
         SELECT
-            strftime('{fmt}', date) AS period,
+            {expr} AS period,
             ROUND(SUM(reps * weight_magnitude), 1) AS total_volume,
             SUM(reps) AS total_reps,
             ROUND(SUM(reps * weight_magnitude) * 1.0 / SUM(reps), 1) AS avg_weight_per_rep
@@ -80,7 +82,7 @@ def session_matrix(
     Returns:
         (columns, rows) where columns are ["period", movement1, movement2, ...]
     """
-    fmt = _time_bin_format(bin)
+    expr = _time_bin_expr(bin, "s.date")
 
     # Get movement names sorted by total frequency (most common first)
     movement_names = [
@@ -99,7 +101,7 @@ def session_matrix(
     raw = conn.execute(
         f"""
         SELECT
-            strftime('{fmt}', s.date) AS period,
+            {expr} AS period,
             m.name AS movement_name,
             COUNT(DISTINCT s.id) AS session_count
         FROM sessions s
