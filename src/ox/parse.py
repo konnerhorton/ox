@@ -8,18 +8,20 @@ from pint import Quantity
 from ox.units import ureg
 
 
-
 def get_or_last(lst, i):
     """Return the ith element if it exists, else the last element."""
     return lst[min(i, len(lst) - 1)]
+
 
 def get_flag(raw_entry: Node) -> str:
     """Extract flag from node."""
     return raw_entry.child_by_field_name("flag").text.decode("utf-8")
 
+
 def get_name(raw_entry: Node) -> str:
     """Extract session name from node."""
     return raw_entry.child_by_field_name("name").text.decode("utf-8").strip().strip('"')
+
 
 def get_date(raw_entry: Node) -> datetime.date:
     """Extract and parse date from node."""
@@ -39,9 +41,7 @@ def get_details(raw_entry) -> dict[str, str]:
 
 def get_item(raw_entry: Node) -> str:
     """Extract item name from node."""
-    return (
-        raw_entry.child_by_field_name("item").text.decode("utf-8").strip().strip(":")
-    )
+    return raw_entry.child_by_field_name("item").text.decode("utf-8").strip().strip(":")
 
 
 def weight_text_to_quantity(weight_text: str) -> Quantity:
@@ -56,7 +56,6 @@ def weight_text_to_quantity(weight_text: str) -> Quantity:
             return None
     else:
         return None
-
 
 
 def process_weights(weight_str: str) -> list[Quantity]:
@@ -92,10 +91,10 @@ def process_details(details: dict[str, str]) -> tuple[list[TrainingSet], str | N
     sets = []
     if "rep_scheme" in details.keys():
         reps_raw = details["rep_scheme"]
-        if '/' in reps_raw:
+        if "/" in reps_raw:
             reps = [int(r) for r in details["rep_scheme"].split("/")]
-        elif 'x' in reps_raw:
-            s, r = reps_raw.split('x')
+        elif "x" in reps_raw:
+            s, r = reps_raw.split("x")
             reps = [int(r) for i in range(int(s))]
 
     if "weight" in details.keys():
@@ -107,12 +106,18 @@ def process_details(details: dict[str, str]) -> tuple[list[TrainingSet], str | N
             training_set = TrainingSet(reps=r, weight=get_or_last(weights, i))
             sets.append(training_set)
     if "note" in details.keys():
-        note = re.sub('\'|\"', '',details["note"], ).strip()
+        note = re.sub(
+            "'|\"",
+            "",
+            details["note"],
+        ).strip()
 
     return sets, note
 
 
-def process_singleline_completed_session(raw_entry: Node) -> tuple[datetime.date, tuple[Movement, ...]]:
+def process_singleline_completed_session(
+    raw_entry: Node,
+) -> tuple[datetime.date, tuple[Movement, ...]]:
     """Process a completed single-line entry.
 
     Returns:
@@ -126,7 +131,9 @@ def process_singleline_completed_session(raw_entry: Node) -> tuple[datetime.date
     return date, movement
 
 
-def process_session_block_completed(raw_entry: Node) -> tuple[datetime.date, str, list[Movement]]:
+def process_session_block_completed(
+    raw_entry: Node,
+) -> tuple[datetime.date, str, list[Movement]]:
     """Process a completed session block.
 
     Returns:
@@ -155,7 +162,7 @@ def process_singleline_entry(raw_entry: Node) -> TrainingSession | None:
     if flag == "W":
         # TODO: implement weigh-in processing
         return None
-    if flag in ["*", '!']:
+    if flag in ["*", "!"]:
         date, movement = process_singleline_completed_session(raw_entry)
         return TrainingSession(name=None, date=date, flag=flag, movements=movement)
     return None
@@ -178,9 +185,11 @@ def process_session_block(raw_entry: Node) -> TrainingSession | None:
     """
     flag = get_flag(raw_entry)
 
-    if flag in ['*', '!']:
+    if flag in ["*", "!"]:
         date, name, movements = process_session_block_completed(raw_entry)
-        return TrainingSession(name=name, flag=flag, date=date, movements=tuple(movements))
+        return TrainingSession(
+            name=name, flag=flag, date=date, movements=tuple(movements)
+        )
     else:
         # TODO: handle pending sessions
         return process_session_block_pending(raw_entry)

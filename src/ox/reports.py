@@ -150,12 +150,19 @@ def parse_report_args(params: list[dict], arg_string: str) -> dict:
             param = next((p for p in params if p["name"] == key), None)
             if param is None:
                 raise ValueError(f"Unknown flag: --{key}")
-            if i + 1 >= len(tokens):
-                raise ValueError(f"--{key} requires a value")
-            parsed[key] = param["type"](tokens[i + 1])
-            i += 2
+            flag = f"--{key}"
+        elif token.startswith("-") and len(token) == 2:
+            key = token[1:]
+            param = next((p for p in params if p.get("short") == key), None)
+            if param is None:
+                raise ValueError(f"Unknown flag: -{key}")
+            flag = f"-{key}"
         else:
             raise ValueError(f"Unexpected argument: {token}")
+        if i + 1 >= len(tokens):
+            raise ValueError(f"{flag} requires a value")
+        parsed[param["name"]] = param["type"](tokens[i + 1])
+        i += 2
 
     # Apply defaults and check required
     for param in params:
@@ -165,7 +172,9 @@ def parse_report_args(params: list[dict], arg_string: str) -> dict:
                 required_names = [
                     f"--{p['name']}" for p in params if p.get("required", False)
                 ]
-                raise ValueError(f"Missing required flag(s): {', '.join(required_names)}")
+                raise ValueError(
+                    f"Missing required flag(s): {', '.join(required_names)}"
+                )
             parsed[name] = param.get("default")
 
     return parsed
@@ -183,7 +192,8 @@ def report_usage(name: str, entry: dict) -> str:
     """
     parts = [f"report {name}"]
     for p in entry["params"]:
-        flag = f"--{p['name']} <{p['name']}>"
+        short = f"-{p['short']}/" if p.get("short") else ""
+        flag = f"{short}--{p['name']} <{p['name']}>"
         if p.get("required", False):
             parts.append(flag)
         else:
@@ -196,15 +206,27 @@ REPORTS = {
         "fn": volume_over_time,
         "description": "Volume over time for a movement",
         "params": [
-            {"name": "movement", "type": str, "required": True},
-            {"name": "bin", "type": str, "default": "weekly", "required": False},
+            {"name": "movement", "type": str, "required": True, "short": "m"},
+            {
+                "name": "bin",
+                "type": str,
+                "default": "weekly",
+                "required": False,
+                "short": "b",
+            },
         ],
     },
     "matrix": {
         "fn": session_matrix,
         "description": "Session count per movement per time period",
         "params": [
-            {"name": "bin", "type": str, "default": "weekly", "required": False},
+            {
+                "name": "bin",
+                "type": str,
+                "default": "weekly",
+                "required": False,
+                "short": "b",
+            },
         ],
     },
 }

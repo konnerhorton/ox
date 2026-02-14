@@ -51,7 +51,9 @@ JOIN sets t ON t.movement_id = m.id;
 """
 
 
-def _decompose_weight(weight: Optional[Quantity]) -> tuple[Optional[float], Optional[str]]:
+def _decompose_weight(
+    weight: Optional[Quantity],
+) -> tuple[Optional[float], Optional[str]]:
     """Split a pint Quantity into (magnitude, unit_string) for SQLite storage.
 
     Returns (None, None) for bodyweight (weight is None).

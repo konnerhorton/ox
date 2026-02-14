@@ -109,8 +109,8 @@ class TestParseFile:
 
         # Basic sanity checks
         assert len(log.sessions) > 0
-        assert all(hasattr(s, 'date') for s in log.sessions)
-        assert all(hasattr(s, 'movements') for s in log.sessions)
+        assert all(hasattr(s, "date") for s in log.sessions)
+        assert all(hasattr(s, "movements") for s in log.sessions)
 
 
 class TestEndToEndScenarios:

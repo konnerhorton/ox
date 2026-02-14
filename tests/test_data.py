@@ -108,7 +108,7 @@ class TestTrainingLog:
             movements=(
                 Movement("pullups", [TrainingSet(10, None)], None),
                 Movement("bench-press", [TrainingSet(5, 135 * ureg.pounds)], None),
-            )
+            ),
         )
 
         session2 = TrainingSession(
@@ -117,8 +117,10 @@ class TestTrainingLog:
             name="Lower Day",
             movements=(
                 Movement("squat", [TrainingSet(5, 185 * ureg.pounds)], None),
-                Movement("pullups", [TrainingSet(8, None)], None),  # Same exercise, different day
-            )
+                Movement(
+                    "pullups", [TrainingSet(8, None)], None
+                ),  # Same exercise, different day
+            ),
         )
 
         return TrainingLog(sessions=(session1, session2))
@@ -178,14 +180,14 @@ class TestTrainingLog:
             date=date(2025, 1, 10),
             flag="*",
             name="Completed",
-            movements=(Movement("pullups", [TrainingSet(10, None)], None),)
+            movements=(Movement("pullups", [TrainingSet(10, None)], None),),
         )
 
         planned = TrainingSession(
             date=date(2025, 1, 11),
             flag="!",
             name="Planned",
-            movements=(Movement("squat", [TrainingSet(5, 185 * ureg.pounds)], None),)
+            movements=(Movement("squat", [TrainingSet(5, 185 * ureg.pounds)], None),),
         )
 
         log = TrainingLog(sessions=(completed, planned))
