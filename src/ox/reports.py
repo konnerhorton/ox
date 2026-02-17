@@ -182,17 +182,18 @@ def parse_report_args(params: list[dict], arg_string: str) -> dict:
     return parsed
 
 
-def report_usage(name: str, entry: dict) -> str:
-    """Generate a usage string for a report.
+def report_usage(name: str, entry: dict, command: str = "report") -> str:
+    """Generate a usage string for a report or generator.
 
     Args:
-        name: Report name
-        entry: Report registry entry
+        name: Report/generator name
+        entry: Registry entry with params list
+        command: CLI command prefix ("report" or "generate")
 
     Returns:
         Formatted usage string
     """
-    parts = [f"report {name}"]
+    parts = [f"{command} {name}"]
     for p in entry["params"]:
         short = f"-{p['short']}/" if p.get("short") else ""
         flag = f"{short}--{p['name']} <{p['name']}>"
@@ -232,3 +233,17 @@ REPORTS = {
         ],
     },
 }
+
+
+def get_all_reports() -> dict[str, dict]:
+    """Return built-in reports merged with plugin reports."""
+    from ox.plugins import REPORT_PLUGINS
+
+    merged = dict(REPORTS)
+    for name, desc in REPORT_PLUGINS.items():
+        merged[name] = {
+            "fn": desc["fn"],
+            "description": desc["description"],
+            "params": desc["params"],
+        }
+    return merged

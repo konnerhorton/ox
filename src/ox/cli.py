@@ -15,7 +15,8 @@ from prompt_toolkit.completion import WordCompleter
 from ox.parse import process_node
 from ox.data import TrainingLog
 from ox.db import create_db
-from ox.reports import REPORTS, parse_report_args, report_usage
+from ox.plugins import GENERATOR_PLUGINS, load_plugins
+from ox.reports import get_all_reports, parse_report_args, report_usage
 
 console = Console()
 
@@ -60,6 +61,9 @@ def show_help():
     )
     console.print(
         "  [green]report[/green]             - List available reports (or run one)"
+    )
+    console.print(
+        "  [green]generate[/green]           - List available generators (or run one)"
     )
     console.print(
         "  [green]query[/green] SQL          - Run a SQL query against your training data"
@@ -167,7 +171,7 @@ def show_tables(conn: sqlite3.Connection):
 def show_report_list():
     """Show available reports with descriptions and usage."""
     console.print("\n[bold cyan]Available Reports:[/bold cyan]")
-    for name, entry in REPORTS.items():
+    for name, entry in get_all_reports().items():
         usage = report_usage(name, entry)
         console.print(f"  [green]{name}[/green] - {entry['description']}")
         console.print(f"    Usage: {usage}")
@@ -193,12 +197,13 @@ def render_report(columns: list[str], rows: list[tuple]):
 
 def run_report(conn: sqlite3.Connection, report_name: str, arg_string: str):
     """Look up and execute a report by name."""
-    if report_name not in REPORTS:
+    all_reports = get_all_reports()
+    if report_name not in all_reports:
         console.print(f"[red]Unknown report: {report_name}[/red]")
         show_report_list()
         return
 
-    entry = REPORTS[report_name]
+    entry = all_reports[report_name]
 
     if not arg_string.strip() and any(p.get("required") for p in entry["params"]):
         usage = report_usage(report_name, entry)
@@ -209,6 +214,44 @@ def run_report(conn: sqlite3.Connection, report_name: str, arg_string: str):
         kwargs = parse_report_args(entry["params"], arg_string)
         columns, rows = entry["fn"](conn, **kwargs)
         render_report(columns, rows)
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]\n")
+
+
+def show_generator_list():
+    """Show available generators with descriptions and usage."""
+    if not GENERATOR_PLUGINS:
+        console.print("[yellow]No generator plugins installed.[/yellow]\n")
+        return
+    console.print("\n[bold cyan]Available Generators:[/bold cyan]")
+    for name, entry in GENERATOR_PLUGINS.items():
+        usage = report_usage(name, entry, command="generate")
+        console.print(f"  [green]{name}[/green] - {entry['description']}")
+        console.print(f"    Usage: {usage}")
+    console.print()
+
+
+def run_generator(conn: sqlite3.Connection, gen_name: str, arg_string: str):
+    """Look up and execute a generator by name."""
+    if gen_name not in GENERATOR_PLUGINS:
+        console.print(f"[red]Unknown generator: {gen_name}[/red]")
+        show_generator_list()
+        return
+
+    entry = GENERATOR_PLUGINS[gen_name]
+
+    if not arg_string.strip() and any(p.get("required") for p in entry["params"]):
+        usage = report_usage(gen_name, entry, command="generate")
+        console.print(f"[yellow]Usage: {usage}[/yellow]\n")
+        return
+
+    try:
+        kwargs = parse_report_args(entry["params"], arg_string)
+        if entry.get("needs_db"):
+            output = entry["fn"](conn, **kwargs)
+        else:
+            output = entry["fn"](**kwargs)
+        console.print(output)
     except ValueError as e:
         console.print(f"[red]{e}[/red]\n")
 
@@ -226,6 +269,7 @@ def cli(file):
         console.print(f"[cyan]Loading {file}...[/cyan]")
         log = parse_file(file)
         db = create_db(log)
+        load_plugins()
         console.print(
             f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
             f"{len(log.planned_sessions)} planned sessions\n"
@@ -239,9 +283,10 @@ def cli(file):
         "history",
         "stats",
         "report",
+        "reload",
+        "generate",
         "query",
         "tables",
-        "reload",
         "help",
         "exit",
         "quit",
@@ -291,6 +336,15 @@ def cli(file):
                     report_name = parts2[0]
                     report_args = parts2[1] if len(parts2) > 1 else ""
                     run_report(db, report_name, report_args)
+
+            elif command == "generate":
+                if not args:
+                    show_generator_list()
+                else:
+                    parts2 = args.split(maxsplit=1)
+                    gen_name = parts2[0]
+                    gen_args = parts2[1] if len(parts2) > 1 else ""
+                    run_generator(db, gen_name, gen_args)
 
             elif command == "query":
                 if not args:
