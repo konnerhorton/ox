@@ -76,9 +76,7 @@ def _load_from_directory() -> None:
                 descriptors = module.register()
                 _register_descriptors(descriptors, str(path))
             except Exception:
-                logger.warning(
-                    "Error calling register() in %s", path, exc_info=True
-                )
+                logger.warning("Error calling register() in %s", path, exc_info=True)
 
 
 def _load_from_entry_points() -> None:
@@ -90,9 +88,7 @@ def _load_from_entry_points() -> None:
                 descriptors = module.register()
                 _register_descriptors(descriptors, f"entry_point:{ep.name}")
         except Exception:
-            logger.warning(
-                "Error loading entry point '%s'", ep.name, exc_info=True
-            )
+            logger.warning("Error loading entry point '%s'", ep.name, exc_info=True)
 
 
 def load_plugins() -> None:

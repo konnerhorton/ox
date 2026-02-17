@@ -279,7 +279,18 @@ def cli(file):
         raise click.Abort()
 
     # Setup tab completion for commands
-    commands = ["history", "stats", "report", "reload", "generate", "query", "tables", "help", "exit", "quit"]
+    commands = [
+        "history",
+        "stats",
+        "report",
+        "reload",
+        "generate",
+        "query",
+        "tables",
+        "help",
+        "exit",
+        "quit",
+    ]
     completer = WordCompleter(commands, ignore_case=True)
 
     # Create prompt session
