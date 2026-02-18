@@ -453,8 +453,6 @@ version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
-    { name = "mkdocs" },
-    { name = "mkdocs-material" },
     { name = "numpy" },
     { name = "pint" },
     { name = "prompt-toolkit" },
@@ -466,6 +464,8 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "mkdocs" },
+    { name = "mkdocs-material" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -473,8 +473,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.3.1" },
-    { name = "mkdocs", specifier = ">=1.6.1" },
-    { name = "mkdocs-material", specifier = ">=9.7.1" },
     { name = "numpy", specifier = ">=2.3.5" },
     { name = "pint", specifier = ">=0.25.2" },
     { name = "prompt-toolkit", specifier = ">=3.0.52" },
@@ -486,6 +484,8 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "mkdocs-material", specifier = ">=9.7.1" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "ruff", specifier = ">=0.14.4" },
 ]

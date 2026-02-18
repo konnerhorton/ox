@@ -27,9 +27,15 @@ Developers and power users comfortable with text files and CLIs.
 - **Tree-sitter grammar** (`tree-sitter-ox/grammar.js`) parses `.ox` files into syntax trees
 - **Python parser** (`src/ox/parse.py`) converts tree-sitter nodes into dataclasses
 - **Data model** (`src/ox/data.py`) — `TrainingSet`, `Movement`, `TrainingSession`, `TrainingLog`
-- **CLI** (`src/ox/cli.py`) — interactive REPL with `stats` and `history` commands
+- **SQLite query layer** (`src/ox/db.py`) — in-memory DB with `sessions`, `movements`, `sets` tables and `training` view; arbitrary SQL via CLI
+- **Plugin system** (`src/ox/plugins.py`) — discovery from `~/.ox/plugins/`, entry points, and builtins; report and generator types
+- **Reports** (`src/ox/reports.py`) — `volume` (volume over time) and `matrix` (session count per movement) with parameterized args; `get_all_reports()` merges builtin and plugin reports
+- **Builtin e1rm plugin** — estimated 1RM via Brzycki/Epley formulas, filters on `^rm` note convention
+- **Builtin wendler531 plugin** — Wendler 5/3/1 cycle generator
+- **CLI** (`src/ox/cli.py`) — interactive REPL with `stats`, `history`, `report`, `generate`, `query`, `tables`, `reload` commands and tab completion
 - **LSP** (`src/ox/lsp.py`) — basic diagnostics (syntax errors) for editor integration
 - **VSCode extension** — syntax highlighting
+- **MkDocs documentation site** (`docs/`)
 - **Round-trip serialization** — `to_ox()` methods write data back to `.ox` format
 - **Unit handling** — weights tracked as `pint.Quantity` (kg, lbs)
 
@@ -43,47 +49,19 @@ Developers and power users comfortable with text files and CLIs.
 - LSP only does diagnostics — no completions, hover, or go-to-definition
 - Tree-sitter grammar only accepts `kg` and `lbs` — should accept any valid pint mass unit
 - `pint.Quantity` should be used for time as well
-- for the CLI:
-  - after loading, options the user has should be listed, with a comprehensive help menu available upon request
-  - options will include: list excercises (sorted by most frequently found in the log), stats and history as is, volume progression
+- CLI exercise autocompletion (tab-complete exercise names from the log, not just commands)
 
 ## Direction
-
-### SQLite query layer
-
-The current analysis is hardcoded in Python methods on `TrainingLog` (`stats`, `movement_history`, etc.). This limits what users can ask of their data.
-
-**Plan:** After parsing `.ox` into dataclasses, load into an in-memory SQLite database. This gives:
-
-- Users can write arbitrary SQL queries against their training data
-- A `query` CLI command (e.g. `ox query "SELECT ..."`)
-- A foundation for plugins — any analysis is just a SQL query
-- No new dependencies (sqlite3 is in the stdlib)
-
-The `.ox` file remains the source of truth. SQLite is a derived, ephemeral view — re-created from the parsed file each session. No caching, no sync issues.
-
-**Schema direction:**
-
-```
-sessions(id, date, flag, name)
-movements(id, session_id, name, note)
-sets(id, movement_id, reps, weight_magnitude, weight_unit)
-```
 
 ### Richer analysis
 
 - Cycle tracking — micro/meso/macro periodization
 - Exercise definitions feeding into analysis (e.g. grouping by movement pattern)
-- Track total volume of a given excercise over time (for example, total volume of kb-swings on a weekly basis this year)
-
-Create a plugin framework that allows users to write their own, some included ones might be:
-
-- Estimated 1RM calculations from weight/rep data (useful for percentage-based programs like 5/3/1)
-- Generate specific plans from a known progression (like the 4-week cycle in the Wendler 5/3/1 given a training max)
+- Generator plugins (e.g. Wendler 5/3/1 cycle generation from a training max)
 
 ### CLI
-- more comprehensive help menu
-- auto-population is related to ox log excercises (when I type the history command, the autocomplete will help suggest relevant excercises)
+
+- Exercise autocompletion (tab-complete exercise names from the log, not just commands)
 
 ### Better editor experience
 
