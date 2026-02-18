@@ -46,13 +46,16 @@ def get_item(raw_entry: Node) -> str:
 
 def weight_text_to_quantity(weight_text: str) -> Quantity:
     """Convert weight string like "24kg" to Quantity."""
-    match = re.match(r"^(\d+)(\w+)$|'BW'", weight_text)
+    match = re.match(r"^(\d+(?:\.\d+)?)(\w+)$", weight_text)
     if match:
-        if match[2] == "kg":
-            return float(match[1]) * ureg.kilogram
-        elif match[2] == "lbs":
-            return float(match[1]) * ureg.pounds
-        else:
+        magnitude = float(match[1])
+        unit_str = match[2]
+        try:
+            unit = ureg.parse_units(unit_str)
+            if not unit.dimensionality == ureg.kilogram.dimensionality:
+                return None
+            return magnitude * unit
+        except Exception:
             return None
     else:
         return None

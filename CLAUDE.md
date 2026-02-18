@@ -6,7 +6,7 @@ Uses a custom tree-sitter grammar to parse `.ox` log files into structured data 
 
 ## Usage Notes
 - `SPEC.md` is your guide for the goals, non-goals, and roadmap for this repo.
-- if you edit `tree-sitter/grammar.js` run `tree-sitter generate` then reinstall the package before doing any additional work.
+- if you edit `tree-sitter-ox/grammar.js` run `cd tree-sitter-ox && tree-sitter generate` then reinstall the package with `uv cache clean tree-sitter-ox && uv pip install tree-sitter-ox/` before doing any additional work. The cache clean is required because uv caches built wheels by version number and won't rebuild the C extension otherwise.
 
 ## Commands
 
@@ -62,12 +62,12 @@ example/
 # Session block: multiple exercises in one session
 @session
 2025-01-11 * Upper Day
-bench-press: 135lbs 5x5
+bench-press: 135lb 5x5
 kb-oh-press: 24kg 5/5/5
 @end
 
 # Flags: * = completed, ! = planned, W = weigh-in
-# Weight formats: 24kg, 135lbs, BW (bodyweight), 24kg+32kg (combined), 24kg/32kg/48kg (progressive)
+# Weight formats: 24kg, 135lb, BW (bodyweight), 24kg+32kg (combined), 24kg/32kg/48kg (progressive)
 # Rep formats: 5x5 (sets x reps), 5/5/5 (per-set reps)
 ```
 

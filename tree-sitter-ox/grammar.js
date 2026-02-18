@@ -19,7 +19,9 @@ module.exports = grammar({
       $.singleline_entry,
       $.session_block,
       $.exercise_block,
-      $.template_block
+      $.template_block,
+      $.note_entry,
+      $.query_entry
     ),
 
     comment: ($) => /#[^\n]*/,
@@ -35,6 +37,25 @@ module.exports = grammar({
         "\n"
       ),
 
+    // Standalone note entry: date note: "text"
+    note_entry: ($) =>
+      seq(
+        field("date", $.date),
+        "note:",
+        field("text", $.quoted_string),
+        "\n"
+      ),
+
+    // Query entry: date query "name" "SQL"
+    query_entry: ($) =>
+      seq(
+        field("date", $.date),
+        "query",
+        field("name", $.quoted_string),
+        field("sql", $.quoted_string),
+        "\n"
+      ),
+
     // @session block
     session_block: ($) =>
       seq(
@@ -44,7 +65,7 @@ module.exports = grammar({
         field("flag", $.flag),
         field("name", $.name),
         "\n",
-        repeat($.item_line),
+        repeat(choice($.item_line, $.note_line)),
         "@end",
         "\n"
       ),
@@ -66,7 +87,7 @@ module.exports = grammar({
         "@template",
         field("name", $.name),
         "\n",
-        repeat($.item_line),
+        repeat(choice($.item_line, $.note_line)),
         "@end",
         "\n"
       ),
@@ -77,6 +98,14 @@ module.exports = grammar({
         field("item", $.item),
         ":",
         field("details", $.details),
+        "\n"
+      ),
+
+    // Note line within a session/template block: note: "text"
+    note_line: ($) =>
+      seq(
+        "note:",
+        field("text", $.quoted_string),
         "\n"
       ),
 
@@ -103,7 +132,6 @@ module.exports = grammar({
     name: ($) => /[^\n]+/,
 
     // Text until newline (for metadata values, standalone notes)
-    // TODO: standalone notes should require quotes for consistency
     text_until_newline: ($) => /[^\n]+/,
 
     // Details: combination of weights, reps, time, distance, quoted notes
@@ -117,19 +145,23 @@ module.exports = grammar({
           field("note", $.quoted_string)
         )
       ),
-    
-    // TODO: should have any mass measurement from Python's pint available here. not just kg and lbs
+
+    // Mass units: curated from pint's default_en.txt
+    // Breaking change: lbs → lb (pint's official symbol)
+    // BW remains a special bodyweight token
     weight: ($) => token(choice(
-      /\d+(kg|lbs)((\+\d+(kg|lbs))+)?/,  // 24kg or 24kg+32kg+48kg
-      /\d+(kg|lbs)((\/\d+(kg|lbs))+)?/,  // 24kg or 24kg/32kg/48kg
+      /\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)((\+\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))+)?/,  // single or combined: 24kg or 24kg+32kg
+      /\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)((\/\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))+)?/,  // single or progressive: 24kg/32kg/48kg
       /BW/                                // bodyweight
     )),
 
     rep_scheme: ($) => /(\d+x\d+)|(\d+(\/\d+)+)/,  // 4x4 or 5/5/5
 
-    time: ($) => /\d+(sec|min|hr)/,
+    // Time units: curated from pint's default_en.txt
+    time: ($) => /\d+(\.\d+)?(s|sec|second|min|minute|h|hr|hour|d|day|week|month|yr|year)/,
 
-    distance: ($) => /\d+(km|mi|m|ft|in)/,
+    // Distance units: curated from pint's default_en.txt
+    distance: ($) => /\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)/,
 
     quoted_string: ($) => /"[^"]*"/,
   },

@@ -24,13 +24,13 @@ def simple_log_content():
 
 @session
 2025-01-11 * Upper Day
-bench-press: 135lbs 5x5
+bench-press: 135lb 5x5
 kb-oh-press: 24kg 5/5/5
 @end
 
 @session
 2025-01-12 ! Lower Day
-squat: 185lbs 3x5
+squat: 185lb 3x5
 @end
 """
 
@@ -57,10 +57,10 @@ def weight_edge_cases():
     """
     return {
         "single_kg": "24kg",
-        "single_lbs": "135lbs",
+        "single_lb": "135lb",
         "combined": "24kg+32kg",
         "progressive_explicit": "24kg/32kg/48kg",
-        "progressive_implied": "160/185/210lbs",  # This is the known bug
+        "progressive_implied": "160/185/210lb",  # This is the known bug
     }
 
 

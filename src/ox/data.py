@@ -10,8 +10,8 @@ ITEM_FIELDS = ["weight", "rep_scheme", "time", "distance", "note"]
 
 
 def _format_weight(weight: Quantity) -> str:
-    """Format a Quantity as an ox weight string like '24kg' or '135lbs'."""
-    unit_map = {"kilogram": "kg", "pound": "lbs"}
+    """Format a Quantity as an ox weight string like '24kg' or '135lb'."""
+    unit_map = {"kilogram": "kg", "pound": "lb"}
     unit_str = unit_map.get(str(weight.units), str(weight.units))
     mag = (
         int(weight.magnitude)
