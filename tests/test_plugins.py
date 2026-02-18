@@ -210,7 +210,13 @@ class TestLoadPlugins:
 
         load_plugins()
         assert "idem" in REPORT_PLUGINS
-        assert len(REPORT_PLUGINS) == 1
+
+    def test_builtin_e1rm_registered(self, tmp_path, monkeypatch):
+        """load_plugins() registers the built-in e1rm report."""
+        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+        load_plugins()
+        assert "e1rm" in REPORT_PLUGINS
+        assert REPORT_PLUGINS["e1rm"]["type"] == "report"
 
     def test_clears_previous(self, tmp_path, monkeypatch):
         """After removing a plugin file, reload should not keep stale entries."""

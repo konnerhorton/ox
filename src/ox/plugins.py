@@ -91,9 +91,17 @@ def _load_from_entry_points() -> None:
             logger.warning("Error loading entry point '%s'", ep.name, exc_info=True)
 
 
+def _load_builtins() -> None:
+    """Load plugins that ship with ox."""
+    from ox.builtins import e1rm
+
+    _register_descriptors(e1rm.register(), "builtin:e1rm")
+
+
 def load_plugins() -> None:
     """Discover and load all plugins. Call once at startup."""
     REPORT_PLUGINS.clear()
     GENERATOR_PLUGINS.clear()
+    _load_builtins()
     _load_from_directory()
     _load_from_entry_points()
