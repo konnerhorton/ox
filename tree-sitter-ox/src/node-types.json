@@ -154,6 +154,84 @@
     "fields": {}
   },
   {
+    "type": "note_entry",
+    "named": true,
+    "fields": {
+      "date": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "date",
+            "named": true
+          }
+        ]
+      },
+      "text": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "quoted_string",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "note_line",
+    "named": true,
+    "fields": {
+      "text": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "quoted_string",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "query_entry",
+    "named": true,
+    "fields": {
+      "date": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "date",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "quoted_string",
+            "named": true
+          }
+        ]
+      },
+      "sql": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "quoted_string",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "session_block",
     "named": true,
     "fields": {
@@ -194,6 +272,10 @@
       "types": [
         {
           "type": "item_line",
+          "named": true
+        },
+        {
+          "type": "note_line",
           "named": true
         }
       ]
@@ -263,6 +345,14 @@
           "named": true
         },
         {
+          "type": "note_entry",
+          "named": true
+        },
+        {
+          "type": "query_entry",
+          "named": true
+        },
+        {
           "type": "session_block",
           "named": true
         },
@@ -298,6 +388,10 @@
       "types": [
         {
           "type": "item_line",
+          "named": true
+        },
+        {
+          "type": "note_line",
           "named": true
         }
       ]
@@ -355,6 +449,14 @@
   {
     "type": "distance",
     "named": true
+  },
+  {
+    "type": "note:",
+    "named": false
+  },
+  {
+    "type": "query",
+    "named": false
   },
   {
     "type": "quoted_string",

@@ -22,10 +22,45 @@ class TestWeightTextToQuantity:
         result = weight_text_to_quantity("24kg")
         assert result == 24 * ureg.kilogram
 
-    def test_parse_lbs(self):
+    def test_parse_lb(self):
         """Test parsing pound weights."""
-        result = weight_text_to_quantity("135lbs")
-        assert result == 135 * ureg.pounds
+        result = weight_text_to_quantity("135lb")
+        assert result == 135 * ureg.pound
+
+    def test_parse_gram(self):
+        """Test parsing gram weights."""
+        result = weight_text_to_quantity("500g")
+        assert result == 500 * ureg.gram
+
+    def test_parse_ounce(self):
+        """Test parsing ounce weights."""
+        result = weight_text_to_quantity("16oz")
+        assert result == 16 * ureg.ounce
+
+    def test_parse_stone(self):
+        """Test parsing stone weights."""
+        result = weight_text_to_quantity("12stone")
+        assert result == 12 * ureg.stone
+
+    def test_parse_pound_alias(self):
+        """Test parsing 'pound' as long-form unit."""
+        result = weight_text_to_quantity("135pound")
+        assert result == 135 * ureg.pound
+
+    def test_parse_kilogram_alias(self):
+        """Test parsing 'kilogram' as long-form unit."""
+        result = weight_text_to_quantity("24kilogram")
+        assert result == 24 * ureg.kilogram
+
+    def test_parse_decimal_weight(self):
+        """Test parsing decimal weights."""
+        result = weight_text_to_quantity("2.5kg")
+        assert result == 2.5 * ureg.kilogram
+
+    def test_rejects_non_mass_unit(self):
+        """Test that non-mass units are rejected."""
+        assert weight_text_to_quantity("100m") is None
+        assert weight_text_to_quantity("30min") is None
 
     def test_parse_invalid(self):
         """Test invalid weight strings return None."""
@@ -84,12 +119,12 @@ class TestProcessWeights:
         This is currently BROKEN - the parser doesn't handle implied units.
         Marking as xfail so we know it's a known issue.
         """
-        result = process_weights("160/185/210lbs")
+        result = process_weights("160/185/210lb")
 
         assert len(result) == 3
-        assert result[0] == 160 * ureg.pounds
-        assert result[1] == 185 * ureg.pounds
-        assert result[2] == 210 * ureg.pounds
+        assert result[0] == 160 * ureg.pound
+        assert result[1] == 185 * ureg.pound
+        assert result[2] == 210 * ureg.pound
 
     def test_combined_and_progressive(self):
         """Test mixing combined and progressive weights.
