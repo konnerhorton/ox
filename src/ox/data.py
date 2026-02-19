@@ -9,6 +9,16 @@ DATE_FORMAT = "%Y-%m-%d"
 ITEM_FIELDS = ["weight", "rep_scheme", "time", "distance", "note"]
 
 
+@dataclass(frozen=True, slots=True)
+class Diagnostic:
+    line: int  # 1-based line number
+    col: int  # 0-based column
+    end_line: int
+    end_col: int
+    message: str
+    severity: str  # "error" | "warning"
+
+
 def _format_weight(weight: Quantity) -> str:
     """Format a Quantity as an ox weight string like '24kg' or '135lb'."""
     unit_map = {"kilogram": "kg", "pound": "lb"}
@@ -159,9 +169,11 @@ class TrainingLog:
 
     Attributes:
         sessions: Tuple of TrainingSession objects
+        diagnostics: Tuple of parse diagnostics (errors/warnings)
     """
 
     sessions: tuple[TrainingSession, ...]
+    diagnostics: tuple[Diagnostic, ...] = field(default_factory=tuple)
 
     @property
     def completed_sessions(self) -> tuple[TrainingSession, ...]:
