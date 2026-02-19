@@ -15,6 +15,7 @@ from prompt_toolkit.completion import WordCompleter
 from ox.parse import process_node
 from ox.data import TrainingLog
 from ox.db import create_db
+from ox.lint import collect_diagnostics
 from ox.plugins import GENERATOR_PLUGINS, load_plugins
 from ox.reports import get_all_reports, parse_report_args, report_usage
 
@@ -47,7 +48,8 @@ def parse_file(file_path: Path) -> TrainingLog:
         if entry:
             entries.append(entry)
 
-    return TrainingLog(tuple(entries))
+    diagnostics = collect_diagnostics(tree)
+    return TrainingLog(tuple(entries), diagnostics)
 
 
 def show_help():
@@ -72,6 +74,9 @@ def show_help():
         "  [green]tables[/green]             - Show available tables and views"
     )
     console.print("  [green]reload[/green]             - Reload the log file from disk")
+    console.print(
+        "  [green]lint[/green]               - Show parse errors in the log file"
+    )
     console.print("  [green]help[/green]               - Show this help message")
     console.print("  [green]exit[/green] or [green]quit[/green]     - Exit the program")
     console.print()
@@ -274,6 +279,11 @@ def cli(file):
             f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
             f"{len(log.planned_sessions)} planned sessions\n"
         )
+        if log.diagnostics:
+            console.print(
+                f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
+                "Run 'lint' for details.[/yellow]\n"
+            )
     except Exception as e:
         console.print(f"[red]✗[/red] Error loading file: {e}", style="red")
         raise click.Abort()
@@ -287,6 +297,7 @@ def cli(file):
         "generate",
         "query",
         "tables",
+        "lint",
         "help",
         "exit",
         "quit",
@@ -365,8 +376,21 @@ def cli(file):
                         f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
                         f"{len(log.planned_sessions)} planned sessions\n"
                     )
+                    if log.diagnostics:
+                        console.print(
+                            f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
+                            "Run 'lint' for details.[/yellow]\n"
+                        )
                 except Exception as e:
                     console.print(f"[red]✗[/red] Error reloading file: {e}\n")
+
+            elif command == "lint":
+                if not log.diagnostics:
+                    console.print("[green]No parse errors found.[/green]\n")
+                else:
+                    for d in log.diagnostics:
+                        console.print(f"Line {d.line}, col {d.col}: {d.message}")
+                    console.print()
 
             else:
                 console.print(f"[red]Unknown command: {command}[/red]")

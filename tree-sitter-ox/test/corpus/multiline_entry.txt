@@ -7,7 +7,7 @@ Multiline Entry
 kb-snatch: 32kg 5x4
 kb-tgu: 32kg 5x1 "a note" 3min
 kb-sldl: 24kg+32kg 5/5/5
-deadlift: 105lbs/150lbs/170lbs 5/5/5
+deadlift: 105lb/150lb/170lb 5/5/5
 @end
 
 ---

@@ -2,8 +2,10 @@
 
 from lsprotocol import types as lsp
 from pygls.lsp.server import LanguageServer
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Parser
 import tree_sitter_ox
+
+from ox.lint import collect_diagnostics as _collect_diagnostics
 
 server = LanguageServer(name="ox-lsp", version="0.1.0")
 
@@ -15,53 +17,19 @@ _parser = Parser(_language)
 def get_diagnostics(text: str) -> list[lsp.Diagnostic]:
     """Parse text and return diagnostics for any errors."""
     tree = _parser.parse(bytes(text, encoding="utf-8"))
-    diagnostics = []
-
-    def visit_node(node: Node):
-        # Check for ERROR nodes (syntax errors)
-        if node.type == "ERROR":
-            diagnostics.append(
-                lsp.Diagnostic(
-                    range=lsp.Range(
-                        start=lsp.Position(
-                            line=node.start_point[0], character=node.start_point[1]
-                        ),
-                        end=lsp.Position(
-                            line=node.end_point[0], character=node.end_point[1]
-                        ),
-                    ),
-                    message="Syntax error",
-                    severity=lsp.DiagnosticSeverity.Error,
-                    source="ox",
-                )
-            )
-            return  # Don't recurse into ERROR nodes
-
-        # Check for MISSING nodes (expected tokens that weren't found)
-        if node.is_missing:
-            diagnostics.append(
-                lsp.Diagnostic(
-                    range=lsp.Range(
-                        start=lsp.Position(
-                            line=node.start_point[0], character=node.start_point[1]
-                        ),
-                        end=lsp.Position(
-                            line=node.end_point[0], character=node.end_point[1]
-                        ),
-                    ),
-                    message=f"Missing {node.type}",
-                    severity=lsp.DiagnosticSeverity.Error,
-                    source="ox",
-                )
-            )
-            return
-
-        # Recurse into children
-        for child in node.children:
-            visit_node(child)
-
-    visit_node(tree.root_node)
-    return diagnostics
+    ox_diagnostics = _collect_diagnostics(tree)
+    return [
+        lsp.Diagnostic(
+            range=lsp.Range(
+                start=lsp.Position(line=d.line - 1, character=d.col),
+                end=lsp.Position(line=d.end_line - 1, character=d.end_col),
+            ),
+            message=d.message,
+            severity=lsp.DiagnosticSeverity.Error,
+            source="ox",
+        )
+        for d in ox_diagnostics
+    ]
 
 
 def publish_diagnostics(uri: str, diagnostics: list[lsp.Diagnostic]):
