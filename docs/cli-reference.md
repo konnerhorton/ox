@@ -26,11 +26,17 @@ You'll see a prompt like this:
 
 ```
 Loading training.ox...
-✓ Loaded 45 sessions
+✓ Loaded 45 completed, 2 planned sessions
 
 Type 'help' for commands, 'exit' to quit
 
 ox>
+```
+
+If the file has parse errors, a warning is shown:
+
+```
+Warning: 2 parse error(s). Run 'lint' for details.
 ```
 
 ## Commands
@@ -53,7 +59,8 @@ bench-press           10          150           2024-01-19
 kb-swing              8           600           2024-01-18
 pullup                15          300           2024-01-21
 
-Total sessions: 45
+Completed sessions: 45
+Planned sessions: 2
 Unique exercises: 12
 ```
 
@@ -83,6 +90,134 @@ Date          Sets × Reps       Top Weight    Volume
 **Notes:**
 - Exercise names must match exactly (case-sensitive)
 - Use the name as it appears in your log (e.g., `kb-swing`, not `kettlebell swing`)
+
+### `report`
+
+List available reports or run one. Reports query the SQLite database and return tabular results.
+
+**Usage:**
+```
+ox> report                          # list available reports
+ox> report REPORT_NAME [OPTIONS]    # run a report
+```
+
+**Example — list reports:**
+```
+ox> report
+
+Available Reports:
+  volume - Volume over time for a movement
+    Usage: report volume -m/--movement <movement> [-b/--bin <bin>]
+  matrix - Session count per movement per time period
+    Usage: report matrix [-b/--bin <bin>]
+  e1rm - Estimated 1RM progression for a movement
+    Usage: report e1rm -m/--movement <movement> [-f/--formula <formula>]
+```
+
+**Example — run `volume` report:**
+```
+ox> report volume -m squat
+ox> report volume --movement deadlift --bin monthly
+```
+
+**Example — run `matrix` report:**
+```
+ox> report matrix
+ox> report matrix --bin monthly
+```
+
+**Example — run `e1rm` report:**
+```
+ox> report e1rm -m deadlift
+ox> report e1rm --movement squat --formula epley
+```
+
+For details on each report, see [Reports & Plugins](plugins.md).
+
+### `generate`
+
+List available generators or run one. Generators produce `.ox` formatted text for planning sessions.
+
+**Usage:**
+```
+ox> generate                          # list available generators
+ox> generate GENERATOR_NAME [OPTIONS] # run a generator
+```
+
+Generator output can be pasted directly into your training log.
+
+For details on generators and how to install them, see [Reports & Plugins](plugins.md).
+
+### `query`
+
+Run a raw SQL query against your training data.
+
+**Usage:**
+```
+ox> query SELECT ...
+```
+
+**Examples:**
+```
+ox> query SELECT * FROM sessions LIMIT 10
+ox> query SELECT movement_name, COUNT(*) as sessions FROM movements GROUP BY movement_name ORDER BY sessions DESC
+ox> query SELECT date, weight_magnitude, reps FROM training WHERE movement_name = 'squat' ORDER BY date
+```
+
+Use `tables` to see what tables and views are available.
+
+### `tables`
+
+Show available tables and views in the SQLite database.
+
+**Usage:**
+```
+ox> tables
+```
+
+**Output:**
+```
+  movements (table)
+  sessions (table)
+  training (table)
+```
+
+### `reload`
+
+Reload the log file from disk without restarting. Use this after editing your training log.
+
+**Usage:**
+```
+ox> reload
+```
+
+**Output:**
+```
+Reloading training.ox...
+✓ Loaded 46 completed, 2 planned sessions
+```
+
+### `lint`
+
+Show parse errors in the log file.
+
+**Usage:**
+```
+ox> lint
+```
+
+**Output (no errors):**
+```
+No parse errors found.
+```
+
+**Output (with errors):**
+```
+Line 42, col 0: Syntax error
+Line 87, col 12: Missing weight
+```
+
+Lint errors are also summarized on startup and after `reload`.
 
 ### `help`
 
@@ -153,7 +288,7 @@ Options:
 ```bash
 $ ox ~/training/2024.ox
 Loading /home/user/training/2024.ox...
-✓ Loaded 156 sessions
+✓ Loaded 156 completed, 4 planned sessions
 
 Type 'help' for commands, 'exit' to quit
 
@@ -166,11 +301,15 @@ ox> stats
 ox> history deadlift
 ```
 
-This shows your deadlift history, making it easy to see if you're progressing over time.
+### Query the Database Directly
+
+```bash
+ox> query SELECT strftime('%Y-%m', date) as month, SUM(reps * weight_magnitude) as volume FROM training WHERE movement_name = 'squat' GROUP BY month
+```
 
 ### Multiple Logs
 
-Want to analyze different time periods? Just run ox with different files:
+Want to analyze different time periods? Run ox with different files:
 
 ```bash
 # Analyze Q1
@@ -209,8 +348,9 @@ ox> stats
 2. Add today's workout
 3. Save the file
 4. Run `ox training.ox` in a terminal
-5. Use `history` to check progress
-6. Keep training!
+5. Use `reload` if you want to keep the session open and re-parse
+6. Use `history` to check progress
+7. Keep training!
 
 ## Troubleshooting
 
@@ -232,7 +372,12 @@ ox training.ox
 
 ### Parse Errors
 
-If the CLI fails to load your file, check for syntax errors:
+If the CLI warns about parse errors on load, run `lint` to see details:
+
+```
+ox> lint
+Line 42, col 0: Syntax error
+```
 
 - Dates must be `YYYY-MM-DD` format
 - Exercise names can't have spaces
@@ -246,16 +391,4 @@ See the [syntax documentation](index.md) for details.
 No history found for 'sqat'
 ```
 
-**Solution:** Check your spelling! Exercise names must match exactly. Use `stats` to see all exercise names in your log.
-
-## Future Commands
-
-Commands planned for future releases:
-
-- `compare EXERCISE1 EXERCISE2` - Compare two exercises
-- `weekly` - Show weekly summary
-- `volume` - Show total volume over time
-- `export` - Export data to CSV/JSON
-- `graph EXERCISE` - Show ASCII graph of progression
-
-Have ideas for new commands? [Open an issue](https://github.com/konnerhorton/ox/issues)!
+**Solution:** Check your spelling. Exercise names must match exactly. Use `stats` to see all exercise names in your log.

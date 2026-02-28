@@ -28,7 +28,7 @@ Then reload VSCode (`Ctrl+Shift+P` → "Developer: Reload Window").
 - Language configuration with:
   - Comment toggling (`#`)
   - Auto-closing quotes
-  - Code folding for `@session`, `@exercise`, and `@template` blocks
+  - Code folding for `@session` and `@exercise` blocks
 
 ### Development Mode
 
@@ -49,6 +49,72 @@ If you're developing the extension, you can run it in debug mode instead of syml
 ```
 
 Open `editors/vscode` as a workspace and press F5 to launch a new VSCode window with the extension loaded.
+
+## Language Server (LSP)
+
+Ox ships with a Language Server Protocol implementation (`ox-lsp`) that provides real-time diagnostics in any LSP-compatible editor.
+
+### What it provides
+
+- **Diagnostics** — syntax errors are underlined as you type, on save, and on open
+
+### Starting the server
+
+The `ox-lsp` command is installed alongside `ox`:
+
+```bash
+ox-lsp
+```
+
+The server communicates over stdio and is typically launched automatically by your editor's LSP client.
+
+### VSCode
+
+Add the following to your VSCode `settings.json` to enable the language server alongside the syntax-highlighting extension:
+
+```json
+{
+  "languageServerExample.trace.server": "verbose"
+}
+```
+
+Or configure it via a generic LSP client extension (e.g., `vscode-languageclient`) pointing to `ox-lsp`.
+
+### Neovim (with nvim-lspconfig)
+
+```lua
+local lspconfig = require('lspconfig')
+local configs = require('lspconfig.configs')
+
+if not configs.ox_lsp then
+  configs.ox_lsp = {
+    default_config = {
+      cmd = { 'ox-lsp' },
+      filetypes = { 'ox' },
+      root_dir = function(fname)
+        return lspconfig.util.find_git_ancestor(fname) or vim.fn.getcwd()
+      end,
+      settings = {},
+    },
+  }
+end
+
+lspconfig.ox_lsp.setup {}
+```
+
+### Helix
+
+Add to your `languages.toml`:
+
+```toml
+[[language]]
+name = "ox"
+file-types = ["ox"]
+language-servers = ["ox-lsp"]
+
+[language-server.ox-lsp]
+command = "ox-lsp"
+```
 
 ## Other Editors
 
