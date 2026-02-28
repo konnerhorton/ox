@@ -9,12 +9,36 @@ import shlex
 import sqlite3
 from collections import defaultdict
 
+from ox.units import Q_, ureg
+
+# Unit strings as stored in the DB (Pint internal names)
+_DB_UNITS = ["kilogram", "pound"]
+
 TIME_BINS = {
     "daily": "strftime('%Y-%m-%d', {col})",
     "weekly": "date({col}, '-' || strftime('%w', {col}) || ' days')",
     "weekly-num": "strftime('%Y-W%W', {col})",
     "monthly": "strftime('%Y-%m', {col})",
 }
+
+
+def _weight_sql_expr(magnitude_col: str, unit_col: str, target_unit: str) -> str:
+    """SQL CASE expression converting weight_magnitude to target_unit.
+
+    Uses Pint to derive conversion factors, so any valid mass unit string is accepted.
+
+    Raises:
+        ValueError: If target_unit is not a recognized Pint unit
+    """
+    try:
+        target = ureg.parse_units(target_unit)
+    except Exception:
+        raise ValueError(f"Unknown unit: '{target_unit}'")
+    cases = []
+    for db_unit in _DB_UNITS:
+        factor = float(Q_(1, db_unit).to(target).magnitude)
+        cases.append(f"WHEN '{db_unit}' THEN {magnitude_col} * {factor}")
+    return f"CASE {unit_col} {' '.join(cases)} ELSE {magnitude_col} END"
 
 
 def _time_bin_expr(bin: str, col: str = "date") -> str:
@@ -35,7 +59,7 @@ def _time_bin_expr(bin: str, col: str = "date") -> str:
 
 
 def volume_over_time(
-    conn: sqlite3.Connection, movement: str, bin: str = "weekly"
+    conn: sqlite3.Connection, movement: str, bin: str = "weekly", unit: str = "lb"
 ) -> tuple[list[str], list[tuple]]:
     """Volume over time for a single movement.
 
@@ -43,19 +67,21 @@ def volume_over_time(
         conn: SQLite connection with training data
         movement: Movement name to filter by
         bin: Time bin size ("daily", "weekly", "monthly")
+        unit: Weight unit for output values (default "lb")
 
     Returns:
         (columns, rows) where columns are
-        ["period", "total_volume", "total_reps", "avg_weight_per_rep"]
+        ["period", "total_volume (<unit>)", "total_reps", "avg_weight_per_rep (<unit>)"]
     """
     expr = _time_bin_expr(bin, "date")
+    w = _weight_sql_expr("weight_magnitude", "weight_unit", unit)
     rows = conn.execute(
         f"""
         SELECT
             {expr} AS period,
-            ROUND(SUM(reps * weight_magnitude), 1) AS total_volume,
-            SUM(reps) AS total_reps,
-            ROUND(SUM(reps * weight_magnitude) * 1.0 / SUM(reps), 1) AS avg_weight_per_rep
+            ROUND(SUM(reps * {w}), 1)                      AS total_volume,
+            SUM(reps)                                       AS total_reps,
+            ROUND(SUM(reps * {w}) * 1.0 / SUM(reps), 1)   AS avg_weight_per_rep
         FROM training
         WHERE movement_name = ?
         GROUP BY period
@@ -63,7 +89,12 @@ def volume_over_time(
         """,
         (movement,),
     ).fetchall()
-    columns = ["period", "total_volume", "total_reps", "avg_weight_per_rep"]
+    columns = [
+        "period",
+        f"total_volume ({unit})",
+        "total_reps",
+        f"avg_weight_per_rep ({unit})",
+    ]
     return columns, rows
 
 
@@ -216,6 +247,13 @@ REPORTS = {
                 "default": "weekly",
                 "required": False,
                 "short": "b",
+            },
+            {
+                "name": "unit",
+                "type": str,
+                "default": "lb",
+                "required": False,
+                "short": "u",
             },
         ],
     },

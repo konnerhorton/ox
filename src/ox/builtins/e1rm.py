@@ -12,6 +12,8 @@ Example .ox line:
     deadlift: 315lbs 1x3 "^rm top set felt good"
 """
 
+from ox.units import Q_
+
 
 def _brzycki(weight, reps):
     """Brzycki formula: weight * 36 / (37 - reps)."""
@@ -31,7 +33,7 @@ FORMULAS = {
 }
 
 
-def estimated_1rm(conn, movement, formula="brzycki"):
+def estimated_1rm(conn, movement, formula="brzycki", unit="lb"):
     """Estimated 1RM progression for a movement.
 
     Finds sets where the movement note contains "^rm", takes the
@@ -41,6 +43,7 @@ def estimated_1rm(conn, movement, formula="brzycki"):
         conn: SQLite connection
         movement: Movement name to filter by
         formula: 1RM formula to use ("brzycki" or "epley")
+        unit: Weight unit for output values (default "lb")
 
     Returns:
         (columns, rows) tuple
@@ -71,23 +74,24 @@ def estimated_1rm(conn, movement, formula="brzycki"):
 
     if not rows:
         return (
-            ["date", "estimated_1rm", "weight", "reps", "unit"],
+            ["date", f"estimated_1rm ({unit})", f"weight ({unit})", "reps"],
             [],
         )
 
     # Group by date, take the heaviest set per date
     seen_dates = {}
-    for date, weight, reps, unit in rows:
-        if date not in seen_dates or weight > seen_dates[date][0]:
-            seen_dates[date] = (weight, reps, unit)
+    for date, raw_weight, reps, raw_unit in rows:
+        if date not in seen_dates or raw_weight > seen_dates[date][0]:
+            seen_dates[date] = (raw_weight, reps, raw_unit)
 
     result = []
     for date in sorted(seen_dates):
-        weight, reps, unit = seen_dates[date]
-        e1rm = round(calc(weight, reps), 1)
-        result.append((date, e1rm, weight, reps, unit))
+        raw_weight, reps, raw_unit = seen_dates[date]
+        converted = round(float(Q_(raw_weight, raw_unit).to(unit).magnitude), 1)
+        e1rm = round(calc(converted, reps), 1)
+        result.append((date, e1rm, converted, reps))
 
-    columns = ["date", "estimated_1rm", "weight", "reps", "unit"]
+    columns = ["date", f"estimated_1rm ({unit})", f"weight ({unit})", "reps"]
     return columns, result
 
 
@@ -106,6 +110,13 @@ def register():
                     "default": "brzycki",
                     "required": False,
                     "short": "f",
+                },
+                {
+                    "name": "unit",
+                    "type": str,
+                    "default": "lb",
+                    "required": False,
+                    "short": "u",
                 },
             ],
         }

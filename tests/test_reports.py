@@ -45,7 +45,12 @@ class TestVolumeOverTime:
 
     def test_columns(self, example_db):
         columns, _ = volume_over_time(example_db, "squat")
-        assert columns == ["period", "total_volume", "total_reps", "avg_weight_per_rep"]
+        assert columns == [
+            "period",
+            "total_volume (lb)",
+            "total_reps",
+            "avg_weight_per_rep (lb)",
+        ]
 
     def test_weekly_grouping(self, example_db):
         _, rows = volume_over_time(example_db, "squat", bin="weekly")
