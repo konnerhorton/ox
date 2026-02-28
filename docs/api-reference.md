@@ -9,19 +9,48 @@ Use ox as a Python library to parse and analyze your training logs.
 ## Basic Usage
 
 ```python
-from ox import parse
+from pathlib import Path
+from ox.cli import parse_file
 
 # Parse a training log file
-log = parse("training.ox")
+log = parse_file(Path("training.ox"))
 
 # Access all sessions
 for session in log.sessions:
     print(f"{session.date}: {session.name}")
     for movement in session.movements:
-        print(f"  {movement.name}: {movement.sets}")
+        print(f"  {movement.name}: {movement.total_reps} reps")
 ```
 
 ## Data Structures
+
+### TrainingLog
+
+A collection of training sessions with query methods.
+
+**Attributes:**
+- `sessions`: `tuple[TrainingSession, ...]` - All sessions in the log
+- `notes`: `tuple[Note, ...]` - Top-level notes not attached to a session
+- `diagnostics`: `tuple[Diagnostic, ...]` - Parse errors and warnings
+
+**Properties:**
+- `completed_sessions`: sessions with flag `"*"`
+- `planned_sessions`: sessions with flag `"!"`
+
+**Methods:**
+- `movements(name=None)` - Iterate over `(date, Movement)` pairs, optionally filtered by name
+- `movement_history(name)` - Sorted list of `(date, Movement)` for a given exercise
+- `most_recent_session(name)` - Most recent `(date, Movement)` for a given exercise
+
+**Example:**
+```python
+print(len(log.completed_sessions))   # 45
+print(len(log.planned_sessions))     # 2
+print(len(log.notes))                # top-level notes
+
+for date, movement in log.movements("squat"):
+    print(f"{date}: {movement.total_reps} reps")
+```
 
 ### TrainingSession
 
@@ -29,35 +58,46 @@ Represents a single workout session.
 
 **Attributes:**
 - `date`: `datetime.date` - The date of the session
-- `name`: `str | None` - Session name (e.g., "Upper Body")
-- `flag`: `str` - Session flag ("*", "!", or "W")
+- `name`: `str | None` - Session name (e.g., "Upper Body"), `None` for single-line entries
+- `flag`: `str` - Session flag (`"*"`, `"!"`, or `"W"`)
 - `movements`: `tuple[Movement, ...]` - Exercises in this session
-- `note`: `str | None` - Session-level notes
+- `notes`: `tuple[Note, ...]` - Notes attached to this session
 
 **Example:**
 ```python
 session = log.sessions[0]
-print(session.date)        # 2024-01-15
-print(session.name)        # "Upper Body"
-print(session.flag)        # "*"
+print(session.date)            # 2024-01-15
+print(session.name)            # "Upper Body"
+print(session.flag)            # "*"
 print(len(session.movements))  # 3
+print(session.notes)           # ()
 ```
 
 ### Movement
 
-Represents a single exercise/movement.
+Represents a single exercise/movement within a session.
 
 **Attributes:**
-- `name`: `str` - Exercise name (e.g., "squat", "bench-press")
+- `name`: `str` - Exercise name (e.g., `"squat"`, `"bench-press"`)
 - `sets`: `list[TrainingSet]` - List of sets performed
-- `note`: `str | None` - Movement-specific notes
+- `note`: `str | None` - Movement-specific note
+
+**Properties:**
+- `total_reps`: `int` - Total reps across all sets
+- `top_set_weight`: `Quantity | None` - Heaviest weight used across all sets
+
+**Methods:**
+- `total_volume()` - Total volume (`reps × weight`) across all sets, or `None` for bodyweight movements
+- `to_ox(compact_reps=False)` - Serialize back to `.ox` format
 
 **Example:**
 ```python
 movement = session.movements[0]
-print(movement.name)       # "squat"
-print(len(movement.sets))  # 5
-print(movement.note)       # "felt heavy"
+print(movement.name)             # "squat"
+print(movement.total_reps)       # 25
+print(movement.top_set_weight)   # 185 pound
+print(movement.total_volume())   # 4625 pound
+print(movement.note)             # "felt heavy"
 ```
 
 ### TrainingSet
@@ -66,14 +106,55 @@ Represents a single set of an exercise.
 
 **Attributes:**
 - `reps`: `int` - Number of repetitions
-- `weight`: `Quantity` - Weight used (using pint units)
+- `weight`: `Quantity | None` - Weight used (`None` means bodyweight)
+
+**Properties:**
+- `volume`: `Quantity | None` - `reps × weight`, or `None` for bodyweight sets
 
 **Example:**
 ```python
 training_set = movement.sets[0]
-print(training_set.reps)          # 5
-print(training_set.weight)        # 135 <Unit('pound')>
-print(training_set.weight.to('kg'))  # 61.23 kilogram
+print(training_set.reps)               # 5
+print(training_set.weight)             # 185 pound
+print(training_set.weight.to('kg'))    # 83.91 kilogram
+print(training_set.volume)             # 925 pound
+```
+
+### Note
+
+Represents a note entry — either top-level (standalone) or attached to a session.
+
+**Attributes:**
+- `text`: `str` - The note text
+- `date`: `datetime.date | None` - Set for standalone `note_entry` lines; `None` for in-session notes
+
+**Example:**
+```python
+# Top-level notes from the log
+for note in log.notes:
+    print(f"{note.date}: {note.text}")
+
+# Session-level notes
+for note in session.notes:
+    print(note.text)
+```
+
+### Diagnostic
+
+Represents a parse error or warning found in the log file.
+
+**Attributes:**
+- `line`: `int` - 1-based line number
+- `col`: `int` - 0-based column
+- `end_line`: `int` - 1-based end line
+- `end_col`: `int` - 0-based end column
+- `message`: `str` - Description of the error
+- `severity`: `str` - `"error"` or `"warning"`
+
+**Example:**
+```python
+for diag in log.diagnostics:
+    print(f"Line {diag.line}, col {diag.col}: {diag.message}")
 ```
 
 ## Common Tasks
@@ -83,57 +164,47 @@ print(training_set.weight.to('kg'))  # 61.23 kilogram
 Get all instances of a specific exercise:
 
 ```python
-from ox import parse
+from pathlib import Path
+from ox.cli import parse_file
 
-log = parse("training.ox")
+log = parse_file(Path("training.ox"))
 
-# Find all squat sessions
-for session in log.sessions:
-    for movement in session.movements:
-        if movement.name == "squat":
-            print(f"{session.date}: {len(movement.sets)} sets")
+for date, movement in log.movements("squat"):
+    print(f"{date}: {len(movement.sets)} sets, {movement.total_reps} reps")
 ```
 
 ### Track Progress Over Time
 
 ```python
-from ox import parse
+from pathlib import Path
+from ox.cli import parse_file
 
-log = parse("training.ox")
+log = parse_file(Path("training.ox"))
 
-# Track squat progress
-squat_history = []
-for session in log.sessions:
-    for movement in session.movements:
-        if movement.name == "squat":
-            max_weight = max(s.weight for s in movement.sets)
-            squat_history.append((session.date, max_weight))
+squat_history = log.movement_history("squat")
 
-# Sort by date
-squat_history.sort()
-
-# Print progression
-for date, weight in squat_history:
-    print(f"{date}: {weight}")
+for date, movement in squat_history:
+    top = movement.top_set_weight
+    print(f"{date}: top set {top}")
 ```
 
 ### Calculate Volume
 
 ```python
-from ox import parse
+from pathlib import Path
+from ox.cli import parse_file
 
-log = parse("training.ox")
+log = parse_file(Path("training.ox"))
 
-# Calculate total volume for a session
-for session in log.sessions:
-    total_volume = 0
-    for movement in session.movements:
-        for training_set in movement.sets:
-            # Volume = reps × weight
-            volume = training_set.reps * training_set.weight.to('kg').magnitude
-            total_volume += volume
-
-    print(f"{session.date}: {total_volume:.1f} kg total volume")
+for session in log.completed_sessions:
+    volumes = [
+        m.total_volume()
+        for m in session.movements
+        if m.total_volume() is not None
+    ]
+    if volumes:
+        total = sum(v.to('kg').magnitude for v in volumes)
+        print(f"{session.date}: {total:.1f} kg total volume")
 ```
 
 ### Working with Units
@@ -141,23 +212,20 @@ for session in log.sessions:
 ox uses [pint](https://pint.readthedocs.io/) for unit handling:
 
 ```python
-from ox import parse
-
-log = parse("training.ox")
-
 movement = log.sessions[0].movements[0]
 weight = movement.sets[0].weight
 
 # Convert units
 print(weight.to('kg'))      # Convert to kilograms
-print(weight.to('lbs'))     # Convert to pounds
+print(weight.to('pound'))   # Convert to pounds
 
 # Get numeric value
 print(weight.magnitude)     # Just the number
 print(weight.units)         # Just the unit
 
 # Compare weights
-if weight > 100 * ureg.pounds:
+from ox.units import ureg
+if weight > 100 * ureg.pound:
     print("Heavy!")
 ```
 
@@ -165,14 +233,14 @@ if weight > 100 * ureg.pounds:
 
 ```python
 from datetime import date
-from ox import parse
+from pathlib import Path
+from ox.cli import parse_file
 
-log = parse("training.ox")
+log = parse_file(Path("training.ox"))
 
 start_date = date(2024, 1, 1)
 end_date = date(2024, 1, 31)
 
-# Get sessions in date range
 january_sessions = [
     s for s in log.sessions
     if start_date <= s.date <= end_date
@@ -181,103 +249,110 @@ january_sessions = [
 print(f"Sessions in January: {len(january_sessions)}")
 ```
 
+### Check for Parse Errors
+
+```python
+from pathlib import Path
+from ox.cli import parse_file
+
+log = parse_file(Path("training.ox"))
+
+if log.diagnostics:
+    for d in log.diagnostics:
+        print(f"Line {d.line}: {d.message} ({d.severity})")
+else:
+    print("No parse errors.")
+```
+
+### Serialize Back to .ox Format
+
+Data structures support round-trip serialization:
+
+```python
+from pathlib import Path
+from ox.cli import parse_file
+
+log = parse_file(Path("training.ox"))
+
+# Serialize a session back to .ox format
+session = log.sessions[0]
+print(session.to_ox())
+
+# Serialize a movement
+movement = session.movements[0]
+print(movement.to_ox())
+```
+
 ### Export to Dictionary
 
 ```python
-from ox import parse
+from pathlib import Path
+from ox.cli import parse_file
 import json
 
-log = parse("training.ox")
+log = parse_file(Path("training.ox"))
 
-# Convert to dict for JSON export (example structure)
 data = []
 for session in log.sessions:
     session_data = {
         "date": session.date.isoformat(),
         "name": session.name,
-        "movements": []
+        "flag": session.flag,
+        "movements": [
+            {
+                "name": m.name,
+                "note": m.note,
+                "sets": [
+                    {"reps": s.reps, "weight": str(s.weight)}
+                    for s in m.sets
+                ],
+            }
+            for m in session.movements
+        ],
     }
-    for movement in session.movements:
-        movement_data = {
-            "name": movement.name,
-            "sets": [
-                {
-                    "reps": s.reps,
-                    "weight": str(s.weight)
-                }
-                for s in movement.sets
-            ]
-        }
-        session_data["movements"].append(movement_data)
     data.append(session_data)
 
-# Save to JSON
 with open("training_data.json", "w") as f:
     json.dump(data, f, indent=2)
 ```
 
-## Advanced Usage
+## Using the Database Layer
 
-### Custom Analysis
-
-Build your own analytics:
+For more complex queries, load your log into an in-memory SQLite database:
 
 ```python
-from ox import parse
-from collections import defaultdict
+from pathlib import Path
+from ox.cli import parse_file
+from ox.db import create_db
 
-log = parse("training.ox")
+log = parse_file(Path("training.ox"))
+conn = create_db(log)
 
-# Track frequency of each exercise
-exercise_count = defaultdict(int)
-for session in log.sessions:
-    for movement in session.movements:
-        exercise_count[movement.name] += 1
+# Query total volume per week for a movement
+rows = conn.execute("""
+    SELECT
+        date(date, '-' || strftime('%w', date) || ' days') AS week,
+        SUM(reps * weight_magnitude) AS volume
+    FROM training
+    WHERE movement_name = 'squat'
+    GROUP BY week
+    ORDER BY week
+""").fetchall()
 
-# Sort by frequency
-sorted_exercises = sorted(
-    exercise_count.items(),
-    key=lambda x: x[1],
-    reverse=True
-)
+for week, volume in rows:
+    print(f"{week}: {volume:.1f}")
 
-print("Most frequent exercises:")
-for exercise, count in sorted_exercises[:5]:
-    print(f"{exercise}: {count} times")
+conn.close()
 ```
 
-### Weekly Summaries
-
-```python
-from ox import parse
-from datetime import timedelta
-
-log = parse("training.ox")
-
-# Group by week
-weekly_sessions = defaultdict(list)
-for session in log.sessions:
-    week_start = session.date - timedelta(days=session.date.weekday())
-    weekly_sessions[week_start].append(session)
-
-# Print weekly summaries
-for week_start, sessions in sorted(weekly_sessions.items()):
-    print(f"\nWeek of {week_start}:")
-    print(f"  Sessions: {len(sessions)}")
-
-    # Count total sets
-    total_sets = sum(
-        len(m.sets)
-        for s in sessions
-        for m in s.movements
-    )
-    print(f"  Total sets: {total_sets}")
-```
+See [Reports & Plugins](plugins.md) for built-in reports that use this layer.
 
 ## API Documentation
 
-For complete API documentation, see the source code in `src/ox/`:
+For complete source-level documentation, see:
 
-- `data.py` - Core data structures
-- `parse.py` - Parser functions
-- `units.py` - Unit registry configuration
+- `src/ox/data.py` - Core data structures (`TrainingLog`, `TrainingSession`, `Movement`, `TrainingSet`, `Note`, `Diagnostic`)
+- `src/ox/parse.py` - Tree-sitter node processing
+- `src/ox/cli.py` - `parse_file()` entry point
+- `src/ox/db.py` - SQLite schema and `create_db()`
+- `src/ox/units.py` - Pint unit registry (`ureg`)

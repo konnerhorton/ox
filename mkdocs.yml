@@ -3,6 +3,14 @@ site_url: https://konnerhorton.github.io/ox
 theme:
   name: material
 
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - CLI Reference: cli-reference.md
+  - Reports & Plugins: plugins.md
+  - API Reference: api-reference.md
+  - Editor Support: editor-support.md
+
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true

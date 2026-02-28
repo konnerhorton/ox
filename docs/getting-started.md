@@ -40,7 +40,7 @@ Log quick workouts or single exercises:
 
 Group related exercises together:
 
-```title="title"
+```
 @session
 2024-01-16 * Upper Body
 bench-press: 135lbs 5x5
@@ -135,5 +135,6 @@ box-jump: BW 3x5
 
 - Check out the [full syntax documentation](index.md) for all features
 - See [example.ox](https://github.com/konnerhorton/ox/blob/master/example/example.ox) for a complete training log
-- Learn how to [analyze your logs with the API](api-reference.md)
 - Explore [CLI commands](cli-reference.md) for working with logs
+- Learn about [built-in reports and the plugin system](plugins.md)
+- Use the [Python API](api-reference.md) for custom analysis
