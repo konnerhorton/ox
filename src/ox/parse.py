@@ -2,7 +2,7 @@
 
 from tree_sitter import Node
 from datetime import datetime
-from ox.data import DATE_FORMAT, Movement, TrainingSession, TrainingSet
+from ox.data import DATE_FORMAT, Movement, Note, TrainingSession, TrainingSet
 import re
 from pint import Quantity
 from ox.units import ureg
@@ -42,6 +42,11 @@ def get_details(raw_entry) -> dict[str, str]:
 def get_item(raw_entry: Node) -> str:
     """Extract item name from node."""
     return raw_entry.child_by_field_name("item").text.decode("utf-8").strip().strip(":")
+
+
+def get_note_text(node: Node) -> str:
+    """Extract note text from a note_entry or note_line node."""
+    return node.child_by_field_name("text").text.decode("utf-8").strip('"')
 
 
 def weight_text_to_quantity(weight_text: str) -> Quantity:
@@ -136,11 +141,11 @@ def process_singleline_completed_session(
 
 def process_session_block_completed(
     raw_entry: Node,
-) -> tuple[datetime.date, str, list[Movement]]:
+) -> tuple[datetime.date, str, list[Movement], tuple[Note, ...]]:
     """Process a completed session block.
 
     Returns:
-        Tuple of (date, name, movements)
+        Tuple of (date, name, movements, notes)
     """
     movements = []
     date = get_date(raw_entry)
@@ -151,7 +156,9 @@ def process_session_block_completed(
         details = get_details(m)
         sets, note = process_details(details)
         movements.append(Movement(name=item, sets=sets, note=note))
-    return date, name, movements
+    note_lines = [c for c in raw_entry.children if c.type == "note_line"]
+    notes = tuple(Note(text=get_note_text(n)) for n in note_lines)
+    return date, name, movements, notes
 
 
 def process_singleline_entry(raw_entry: Node) -> TrainingSession | None:
@@ -189,27 +196,34 @@ def process_session_block(raw_entry: Node) -> TrainingSession | None:
     flag = get_flag(raw_entry)
 
     if flag in ["*", "!"]:
-        date, name, movements = process_session_block_completed(raw_entry)
+        date, name, movements, notes = process_session_block_completed(raw_entry)
         return TrainingSession(
-            name=name, flag=flag, date=date, movements=tuple(movements)
+            name=name, flag=flag, date=date, movements=tuple(movements), notes=notes
         )
     else:
         # TODO: handle pending sessions
         return process_session_block_pending(raw_entry)
 
 
-def process_node(node: Node) -> TrainingSession | None:
+def process_note_entry(node: Node) -> Note:
+    """Process a standalone note_entry node."""
+    return Note(text=get_note_text(node), date=get_date(node))
+
+
+def process_node(node: Node) -> TrainingSession | Note | None:
     """Process any node type and return appropriate data structure.
 
     Args:
         node: Tree-sitter node to process
 
     Returns:
-        TrainingSession or None
+        TrainingSession, Note, or None
     """
     if node.type == "singleline_entry":
         return process_singleline_entry(node)
     if node.type == "session_block":
         return process_session_block(node)
+    if node.type == "note_entry":
+        return process_note_entry(node)
     # Skip comments, exercise_block, template_block for now
     return None

@@ -37,11 +37,11 @@ module.exports = grammar({
         "\n"
       ),
 
-    // Standalone note entry: date note: "text"
+    // Standalone note entry: date note "text"
     note_entry: ($) =>
       seq(
         field("date", $.date),
-        "note:",
+        "note",
         field("text", $.quoted_string),
         "\n"
       ),

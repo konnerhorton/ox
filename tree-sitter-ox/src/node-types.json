@@ -451,6 +451,10 @@
     "named": true
   },
   {
+    "type": "note",
+    "named": false
+  },
+  {
     "type": "note:",
     "named": false
   },

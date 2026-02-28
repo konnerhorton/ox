@@ -13,7 +13,7 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 
 from ox.parse import process_node
-from ox.data import TrainingLog
+from ox.data import Note, TrainingLog, TrainingSession
 from ox.db import create_db
 from ox.lint import collect_diagnostics
 from ox.plugins import GENERATOR_PLUGINS, load_plugins
@@ -43,13 +43,16 @@ def parse_file(file_path: Path) -> TrainingLog:
     root_node = tree.root_node
 
     entries = []
+    log_notes = []
     for child in root_node.children:
-        entry = process_node(child)
-        if entry:
-            entries.append(entry)
+        result = process_node(child)
+        if isinstance(result, TrainingSession):
+            entries.append(result)
+        elif isinstance(result, Note):
+            log_notes.append(result)
 
     diagnostics = collect_diagnostics(tree)
-    return TrainingLog(tuple(entries), diagnostics)
+    return TrainingLog(tuple(entries), tuple(log_notes), diagnostics)
 
 
 def show_help():
