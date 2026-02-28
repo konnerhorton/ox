@@ -121,7 +121,7 @@
         },
         {
           "type": "STRING",
-          "value": "note:"
+          "value": "note"
         },
         {
           "type": "FIELD",

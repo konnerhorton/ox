@@ -32,6 +32,18 @@ CREATE TABLE sets (
     FOREIGN KEY (movement_id) REFERENCES movements(id)
 );
 
+CREATE TABLE session_notes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES sessions(id),
+    text       TEXT NOT NULL
+);
+
+CREATE TABLE notes (
+    id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    text TEXT NOT NULL
+);
+
 CREATE VIEW training AS
 SELECT
     s.id AS session_id,
@@ -96,6 +108,18 @@ def create_db(log: TrainingLog) -> sqlite3.Connection:
                     "INSERT INTO sets (movement_id, reps, weight_magnitude, weight_unit) VALUES (?, ?, ?, ?)",
                     (movement_id, training_set.reps, mag, unit),
                 )
+
+        for note in session.notes:
+            conn.execute(
+                "INSERT INTO session_notes (session_id, text) VALUES (?, ?)",
+                (session_id, note.text),
+            )
+
+    for note in log.notes:
+        conn.execute(
+            "INSERT INTO notes (date, text) VALUES (?, ?)",
+            (note.date.isoformat(), note.text),
+        )
 
     conn.commit()
     return conn

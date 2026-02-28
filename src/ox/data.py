@@ -19,6 +19,17 @@ class Diagnostic:
     severity: str  # "error" | "warning"
 
 
+@dataclass(frozen=True, slots=True)
+class Note:
+    text: str
+    date: Optional[date] = (
+        None  # set for standalone note_entry; None for in-session note_line
+    )
+
+    def to_ox(self) -> str:
+        return f'{self.date.strftime(DATE_FORMAT)} note "{self.text}"'
+
+
 def _format_weight(weight: Quantity) -> str:
     """Format a Quantity as an ox weight string like '24kg' or '135lb'."""
     unit_map = {"kilogram": "kg", "pound": "lb"}
@@ -148,6 +159,7 @@ class TrainingSession(Entry):
 
     name: str = field()
     movements: tuple[Movement, ...]
+    notes: tuple[Note, ...] = ()
 
     def to_ox(self) -> str:
         """Serialize to ox format string."""
@@ -157,6 +169,8 @@ class TrainingSession(Entry):
         else:
             lines = ["@session"]
             lines.append(f"{date_str} {self.flag} {self.name}")
+            for n in self.notes:
+                lines.append(f'note: "{n.text}"')
             for m in self.movements:
                 lines.append(m.to_ox())
             lines.append("@end")
@@ -173,6 +187,7 @@ class TrainingLog:
     """
 
     sessions: tuple[TrainingSession, ...]
+    notes: tuple[Note, ...] = field(default_factory=tuple)
     diagnostics: tuple[Diagnostic, ...] = field(default_factory=tuple)
 
     @property
