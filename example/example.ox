@@ -90,15 +90,15 @@ note: comfortable pace unless noted, focus on form
 # Week 1 - Strength Focus
 @session
 2024-01-15 * Lower Strength
-squat: 185lbs 5x5
-deadlift: 225lbs 3x5
+squat: 185lb 5x5
+deadlift: 225lb 3x5
 box-jump: BW 3x5
 @end
 
 @session
 2024-01-16 * Upper Strength
-bench-press: 155lbs 5x5
-overhead-press: 95lbs 3x8
+bench-press: 155lb 5x5
+overhead-press: 95lb 3x8
 pullup: BW 4x10
 @end
 
@@ -114,8 +114,8 @@ kb-turkish-getup: 24kg 5x1 "each arm"
 
 @session
 2024-01-19 * Full Body
-squat: 165lbs 4x8
-bench-press: 135lbs 4x8
+squat: 165lb 4x8
+bench-press: 135lb 4x8
 pullup: BW 4x8
 kb-swing: 24kg 4x20
 @end
@@ -125,15 +125,15 @@ kb-swing: 24kg 4x20
 # Week 2 - Volume Phase
 @session
 2024-01-22 * Lower Volume
-squat: 155lbs 5x10
-deadlift: 185lbs 5x5
+squat: 155lb 5x10
+deadlift: 185lb 5x5
 box-jump: BW 5x3
 @end
 
 @session
 2024-01-23 * Upper Volume
-bench-press: 135lbs 5x10
-overhead-press: 85lbs 4x10
+bench-press: 135lb 5x10
+overhead-press: 85lb 4x10
 pullup: BW 5x8
 @end
 
@@ -157,16 +157,16 @@ kb-swing: 32kg 5x20
 # Week 3 - Progressive Overload
 @session
 2024-01-29 * Lower Heavy
-squat: 205lbs 5x5
-deadlift: 245lbs 3x5
+squat: 205lb 5x5
+deadlift: 245lb 3x5
 pullup: BW 4x8
 @end
 
 @session
 2024-01-30 * Upper Heavy
-bench-press: 165lbs 5x5
-overhead-press: 105lbs 3x8
-pullup: BW+25lbs 4x5
+bench-press: 165lb 5x5
+overhead-press: 105lb 3x8
+pullup: BW+25lb 4x5
 @end
 
 @session
@@ -182,10 +182,10 @@ box-jump: BW 5x5
 # Week 4 - Mixed Work
 @session
 2024-02-02 * Full Body Power
-squat: 185lbs 5x3
-bench-press: 155lbs 5x3
-deadlift: 225lbs 5x3
-pullup: BW+20lbs 4x5
+squat: 185lb 5x3
+bench-press: 155lb 5x3
+deadlift: 225lb 5x3
+pullup: BW+20lb 4x5
 @end
 
 @session
@@ -201,7 +201,7 @@ kb-snatch: 32kg 5x3 "each arm"
 @session
 2024-02-05 * Circuit Training
 burpee: BW 5x15
-squat: 135lbs 5x10
+squat: 135lb 5x10
 kb-swing: 24kg 5x20
 box-jump: BW 5x8
 @end
@@ -209,14 +209,14 @@ box-jump: BW 5x8
 # Week 5 - Pyramid Work
 @session
 2024-02-07 * Lower Pyramid
-squat: 135lbs/155lbs/175lbs/195lbs/175lbs 5/5/5/3/5 "pyramid"
-deadlift: 185lbs/205lbs/225lbs 5/3/1
+squat: 135lb/155lb/175lb/195lb/175lb 5/5/5/3/5 "pyramid"
+deadlift: 185lb/205lb/225lb 5/3/1
 @end
 
 @session
 2024-02-08 * Upper Pyramid
-bench-press: 135lbs/145lbs/155lbs/165lbs 5/5/3/1
-overhead-press: 85lbs/95lbs/105lbs 5/3/1
+bench-press: 135lb/145lb/155lb/165lb 5/5/3/1
+overhead-press: 85lb/95lb/105lb 5/3/1
 pullup: BW 5/5/5/5/5
 @end
 
@@ -232,15 +232,15 @@ kb-clean-and-press: 24kg 6x5 "each arm"
 # Week 6 - Deload
 @session
 2024-02-12 * Deload Lower
-squat: 135lbs 3x5 "deload week"
-deadlift: 185lbs 3x5
+squat: 135lb 3x5 "deload week"
+deadlift: 185lb 3x5
 box-jump: BW 3x3
 @end
 
 @session
 2024-02-13 * Deload Upper
-bench-press: 115lbs 3x5 "deload week"
-overhead-press: 75lbs 3x5
+bench-press: 115lb 3x5 "deload week"
+overhead-press: 75lb 3x5
 pullup: BW 3x5
 @end
 
@@ -256,7 +256,7 @@ kb-turkish-getup: 24kg 5x1 "each arm"
 @session
 2024-02-19 * 5/3/1 Squat Day
 note: "Cycle 1 Week 1"
-squat: 155lbs/175lbs/195lbs 5/5/8
+squat: 155lb/175lb/195lb 5/5/8
 pullup: BW 5x5
 kb-swing: 32kg 3x20
 @end
@@ -264,14 +264,14 @@ kb-swing: 32kg 3x20
 @session
 2024-02-20 * 5/3/1 Bench Day
 note: "Cycle 1 Week 1"
-bench-press: 125lbs/140lbs/155lbs 5/5/10
-overhead-press: 85lbs 4x8
+bench-press: 125lb/140lb/155lb 5/5/10
+overhead-press: 85lb 4x8
 @end
 
 @session
 2024-02-21 * 5/3/1 Deadlift Day
 note: "Cycle 1 Week 1"
-deadlift: 185lbs/210lbs/235lbs 5/5/8
+deadlift: 185lb/210lb/235lb 5/5/8
 kb-swing: 32kg 5x15
 @end
 
@@ -289,21 +289,21 @@ burpee: BW 5x10
 @session
 2024-02-26 * 5/3/1 Squat Day
 note: "Cycle 1 Week 2"
-squat: 165lbs/185lbs/205lbs 3/3/6
+squat: 165lb/185lb/205lb 3/3/6
 box-jump: BW 5x3
 @end
 
 @session
 2024-02-27 * 5/3/1 Bench Day
 note: "Cycle 1 Week 2"
-bench-press: 135lbs/150lbs/165lbs 3/3/8
+bench-press: 135lb/150lb/165lb 3/3/8
 pullup: BW 5x8
 @end
 
 @session
 2024-02-28 * 5/3/1 Deadlift Day
 note: "Cycle 1 Week 2"
-deadlift: 200lbs/225lbs/250lbs 3/3/7
+deadlift: 200lb/225lb/250lb 3/3/7
 kb-swing: 32kg 5x15
 @end
 
@@ -321,21 +321,21 @@ kb-turkish-getup: 32kg 5x1 "each arm"
 @session
 2024-03-04 * 5/3/1 Squat Day
 note: "Cycle 1 Week 3"
-squat: 175lbs/195lbs/215lbs 5/3/8
+squat: 175lb/195lb/215lb 5/3/8
 pullup: BW 4x8
 @end
 
 @session
 2024-03-05 * 5/3/1 Bench Day
 note: "Cycle 1 Week 3"
-bench-press: 145lbs/160lbs/175lbs 5/3/9
-overhead-press: 95lbs 4x8
+bench-press: 145lb/160lb/175lb 5/3/9
+overhead-press: 95lb 4x8
 @end
 
 @session
 2024-03-06 * 5/3/1 Deadlift Day
 note: "Cycle 1 Week 3"
-deadlift: 215lbs/240lbs/265lbs 5/3/8 "grip was tough on the last set"
+deadlift: 215lb/240lb/265lb 5/3/8 "grip was tough on the last set"
 @end
 
 2024-03-07 * run: 45min "felt strong"
@@ -351,21 +351,21 @@ box-jump: BW 8x5
 @session
 2024-03-11 * 5/3/1 Squat Day
 note: "Cycle 1 Week 4 - Deload"
-squat: 105lbs/120lbs/135lbs 3x5
+squat: 105lb/120lb/135lb 3x5
 box-jump: BW 3x3
 @end
 
 @session
 2024-03-12 * 5/3/1 Bench Day
 note: "Cycle 1 Week 4 - Deload"
-bench-press: 85lbs/95lbs/110lbs 3x5
+bench-press: 85lb/95lb/110lb 3x5
 pullup: BW 3x5
 @end
 
 @session
 2024-03-13 * 5/3/1 Deadlift Day
 note: "Cycle 1 Week 4 - Deload"
-deadlift: 135lbs/155lbs/175lbs 3x5
+deadlift: 135lb/155lb/175lb 3x5
 @end
 
 2024-03-14 * run: 25min "recovery pace"
@@ -380,21 +380,21 @@ kb-turkish-getup: 24kg 5x1 "each arm"
 @session
 2024-03-18 * 5/3/1 Squat Day
 note: "Cycle 2 Week 1"
-squat: 160lbs/180lbs/200lbs 5/5/10
+squat: 160lb/180lb/200lb 5/5/10
 pullup: BW 5x5
 @end
 
 @session
 2024-03-19 * 5/3/1 Bench Day
 note: "Cycle 2 Week 1"
-bench-press: 130lbs/145lbs/160lbs 5/5/12
-overhead-press: 90lbs 5x8
+bench-press: 130lb/145lb/160lb 5/5/12
+overhead-press: 90lb 5x8
 @end
 
 @session
 2024-03-20 * 5/3/1 Deadlift Day
 note: "Cycle 2 Week 1"
-deadlift: 195lbs/220lbs/245lbs 5/5/10
+deadlift: 195lb/220lb/245lb 5/5/10
 kb-swing: 32kg 5x20
 @end
 
@@ -412,28 +412,28 @@ burpee: BW 5x12
 @session
 2024-03-25 * 5/3/1 Squat Day
 note: "Cycle 2 Week 2"
-squat: 170lbs/190lbs/210lbs 3/3/8
+squat: 170lb/190lb/210lb 3/3/8
 box-jump: BW 5x3
 @end
 
 @session
 2024-03-26 * 5/3/1 Bench Day
 note: "Cycle 2 Week 2"
-bench-press: 140lbs/155lbs/170lbs 3/3/10
+bench-press: 140lb/155lb/170lb 3/3/10
 pullup: BW 5x8
 @end
 
 @session
 2024-03-27 * 5/3/1 Deadlift Day
 note: "Cycle 2 Week 2"
-deadlift: 210lbs/235lbs/260lbs 3/3/9
+deadlift: 210lb/235lb/260lb 3/3/9
 @end
 
 2024-03-28 * run: 40min
 
 @session
 2024-03-29 * Full Body Circuit
-squat: 135lbs 5x10
+squat: 135lb 5x10
 kb-swing: 32kg 5x20
 burpee: BW 5x15
 box-jump: BW 5x5
@@ -443,21 +443,21 @@ box-jump: BW 5x5
 @session
 2024-04-01 * 5/3/1 Squat Day
 note: "Cycle 2 Week 3"
-squat: 180lbs/200lbs/220lbs 5/3/10 "felt heavy but good"
+squat: 180lb/200lb/220lb 5/3/10 "felt heavy but good"
 pullup: BW 5x8
 @end
 
 @session
 2024-04-02 * 5/3/1 Bench Day
 note: "Cycle 2 Week 3"
-bench-press: 150lbs/165lbs/180lbs 5/3/11
-overhead-press: 100lbs 4x8
+bench-press: 150lb/165lb/180lb 5/3/11
+overhead-press: 100lb 4x8
 @end
 
 @session
 2024-04-03 * 5/3/1 Deadlift Day
 note: "Cycle 2 Week 3"
-deadlift: 225lbs/250lbs/275lbs 5/3/10 "new rep PR!"
+deadlift: 225lb/250lb/275lb 5/3/10 "new rep PR!"
 kb-swing: 32kg 5x20
 @end
 
@@ -475,9 +475,9 @@ box-jump: BW 5x5
 @session
 2024-04-08 * Bodyweight Upper
 pullup: BW 8x5
-pullup: BW+25lbs 5x3
-bench-press: 135lbs 3x8
-overhead-press: 85lbs 3x8
+pullup: BW+25lb 5x3
+bench-press: 135lb 3x8
+overhead-press: 85lb 3x8
 @end
 
 @session
@@ -499,23 +499,23 @@ kb-turkish-getup: 24kg 8x1 "each arm"
 
 @session
 2024-04-12 * Power Work
-squat: 185lbs 6x3
-deadlift: 225lbs 6x3
+squat: 185lb 6x3
+deadlift: 225lb 6x3
 box-jump: BW 6x3
 @end
 
 # Week 15 - Mixed Training
 @session
 2024-04-15 * Upper Power
-bench-press: 175lbs 5x3
-overhead-press: 105lbs 5x3
-pullup: BW+30lbs 5x3
+bench-press: 175lb 5x3
+overhead-press: 105lb 5x3
+pullup: BW+30lb 5x3
 @end
 
 @session
 2024-04-16 * Lower Power
-squat: 205lbs 5x3
-deadlift: 245lbs 5x3
+squat: 205lb 5x3
+deadlift: 245lb 5x3
 box-jump: BW 5x3
 @end
 
@@ -539,15 +539,15 @@ box-jump: BW 10x5
 # Week 16 - Volume Block
 @session
 2024-04-22 * Lower Volume
-squat: 165lbs 5x10
-deadlift: 205lbs 5x8
+squat: 165lb 5x10
+deadlift: 205lb 5x8
 kb-swing: 32kg 5x20
 @end
 
 @session
 2024-04-23 * Upper Volume
-bench-press: 145lbs 5x10
-overhead-press: 95lbs 5x10
+bench-press: 145lb 5x10
+overhead-press: 95lb 5x10
 pullup: BW 5x10
 @end
 
@@ -563,29 +563,29 @@ burpee: BW 5x15
 
 @session
 2024-04-26 * Full Body
-squat: 175lbs 4x8
-bench-press: 155lbs 4x8
-deadlift: 215lbs 4x5
+squat: 175lb 4x8
+bench-press: 155lb 4x8
+deadlift: 215lb 4x5
 pullup: BW 4x8
 @end
 
 # Week 17 - Strength Testing
 @session
 2024-04-29 * Squat Test
-squat: 135lbs/165lbs/185lbs/205lbs/225lbs/235lbs 5/5/3/3/1/1 "new 1RM: 235lbs"
+squat: 135lb/165lb/185lb/205lb/225lb/235lb 5/5/3/3/1/1 "new 1RM: 235lb"
 box-jump: BW 3x3
 @end
 
 @session
 2024-04-30 * Bench Test
-bench-press: 115lbs/135lbs/155lbs/175lbs/185lbs/190lbs 5/5/3/3/1/1 "new 1RM: 190lbs"
-overhead-press: 95lbs 3x5
+bench-press: 115lb/135lb/155lb/175lb/185lb/190lb 5/5/3/3/1/1 "new 1RM: 190lb"
+overhead-press: 95lb 3x5
 pullup: BW 5x5
 @end
 
 @session
 2024-05-01 * Deadlift Test
-deadlift: 155lbs/185lbs/215lbs/245lbs/275lbs/285lbs 5/5/3/3/1/1 "new 1RM: 285lbs"
+deadlift: 155lb/185lb/215lb/245lb/275lb/285lb 5/5/3/3/1/1 "new 1RM: 285lb"
 kb-swing: 32kg 5x15
 @end
 
