@@ -166,13 +166,18 @@ def show_query(conn: sqlite3.Connection, sql: str):
         console.print(f"[red]SQL error: {e}[/red]\n")
 
 
-def show_tables(conn: sqlite3.Connection):
+def show_tables(conn: sqlite3.Connection, headers: bool = False):
     """Show available tables and views."""
     rows = conn.execute(
         "SELECT type, name FROM sqlite_master WHERE type IN ('table', 'view') ORDER BY type, name"
     ).fetchall()
     for type_, name in rows:
         console.print(f"  [green]{name}[/green] ({type_})")
+        if headers:
+            cols = conn.execute(f"PRAGMA table_info({name})").fetchall()
+            for col in cols:
+                # col: (cid, name, type, notnull, dflt_value, pk)
+                console.print(f"    [dim]{col[1]}[/dim]  {col[2]}")
     console.print()
 
 
@@ -367,7 +372,7 @@ def cli(file):
                     show_query(db, args)
 
             elif command == "tables":
-                show_tables(db)
+                show_tables(db, headers="-h" in args.split())
 
             elif command == "reload":
                 try:
