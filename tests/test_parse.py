@@ -137,6 +137,31 @@ class TestProcessWeights:
         assert result[0] == (24 + 32) * ureg.kilogram
         assert result[1] == (48 + 56) * ureg.kilogram
 
+    def test_mixed_bw_weight_progressive(self):
+        """Test mixed BW and weighted progressive sequence.
+
+        Example: BW/BW/25lb/50lb means 4 sets: two bodyweight, then 25lb, 50lb.
+        BW segments become None (no weight value).
+        """
+        result = process_weights("BW/BW/25lb/50lb")
+
+        assert len(result) == 4
+        assert result[0] is None
+        assert result[1] is None
+        assert result[2] == 25 * ureg.pound
+        assert result[3] == 50 * ureg.pound
+
+    def test_mixed_bw_weight_two_segments(self):
+        """Test minimal mixed BW/weight progressive (two segments).
+
+        Example: BW/25lb means one bodyweight set then one weighted set.
+        """
+        result = process_weights("BW/25lb")
+
+        assert len(result) == 2
+        assert result[0] is None
+        assert result[1] == 25 * ureg.pound
+
 
 class TestRepSchemes:
     """Test parsing rep schemes.

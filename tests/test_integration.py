@@ -113,6 +113,57 @@ class TestParseFile:
         assert all(hasattr(s, "movements") for s in log.sessions)
 
 
+class TestMixedBWWeightProgressive:
+    """Test that mixed BW/weight progressive sequences parse without errors."""
+
+    def test_grammar_accepts_bw_weight_progressive(self, tmp_path):
+        """Grammar should produce no ERROR nodes for BW/weight mixed progressive.
+
+        Example: pullup: BW/BW/25lb/50lb 1/1/1/1 — warmup BW sets then weighted.
+        """
+        import tree_sitter_ox
+        from tree_sitter import Language, Parser
+        from ox.lint import collect_diagnostics
+
+        ox_content = "2025-01-10 * pullup: BW/BW/25lb/50lb 1/1/1/1\n"
+        language = Language(tree_sitter_ox.language())
+        parser = Parser(language)
+        tree = parser.parse(bytes(ox_content, encoding="utf-8"))
+
+        diagnostics = collect_diagnostics(tree)
+        assert len(diagnostics) == 0, f"Expected no diagnostics, got: {diagnostics}"
+
+    def test_grammar_accepts_bw_then_weight(self, tmp_path):
+        """Grammar should accept a two-segment BW/weight progressive."""
+        import tree_sitter_ox
+        from tree_sitter import Language, Parser
+        from ox.lint import collect_diagnostics
+
+        ox_content = "2025-01-10 * pullup: BW/25lb 1/1\n"
+        language = Language(tree_sitter_ox.language())
+        parser = Parser(language)
+        tree = parser.parse(bytes(ox_content, encoding="utf-8"))
+
+        diagnostics = collect_diagnostics(tree)
+        assert len(diagnostics) == 0, f"Expected no diagnostics, got: {diagnostics}"
+
+    def test_parse_file_with_mixed_bw_weight(self, tmp_path):
+        """End-to-end: file with mixed BW/weight progressive parses correctly."""
+        from ox.cli import parse_file
+
+        ox_file = tmp_path / "mixed_bw.ox"
+        ox_file.write_text("2025-01-10 * pullup: BW/BW/25lb/50lb 1/1/1/1\n")
+
+        log = parse_file(ox_file)
+
+        assert len(log.sessions) == 1
+        session = log.sessions[0]
+        assert len(session.movements) == 1
+        movement = session.movements[0]
+        assert movement.name == "pullup"
+        assert len(movement.sets) == 4
+
+
 class TestEndToEndScenarios:
     """Test complete user workflows."""
 
