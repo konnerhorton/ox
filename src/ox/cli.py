@@ -13,7 +13,7 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 
 from ox.parse import process_node
-from ox.data import Note, TrainingLog, TrainingSession
+from ox.data import Note, StoredQuery, TrainingLog, TrainingSession
 from ox.db import create_db
 from ox.lint import collect_diagnostics
 from ox.plugins import GENERATOR_PLUGINS, load_plugins
@@ -44,15 +44,18 @@ def parse_file(file_path: Path) -> TrainingLog:
 
     entries = []
     log_notes = []
+    log_queries = []
     for child in root_node.children:
         result = process_node(child)
         if isinstance(result, TrainingSession):
             entries.append(result)
         elif isinstance(result, Note):
             log_notes.append(result)
+        elif isinstance(result, StoredQuery):
+            log_queries.append(result)
 
     diagnostics = collect_diagnostics(tree)
-    return TrainingLog(tuple(entries), tuple(log_notes), diagnostics)
+    return TrainingLog(tuple(entries), tuple(log_notes), diagnostics, tuple(log_queries))
 
 
 def show_help():
@@ -71,7 +74,7 @@ def show_help():
         "  [green]generate[/green]           - List available generators (or run one)"
     )
     console.print(
-        "  [green]query[/green] SQL          - Run a SQL query against your training data"
+        "  [green]query[/green] SQL          - Run a SQL query or a stored query by name"
     )
     console.print(
         "  [green]tables[/green]             - Show available tables and views"
@@ -367,7 +370,17 @@ def cli(file):
 
             elif command == "query":
                 if not args:
-                    console.print("[yellow]Usage: query SELECT ...[/yellow]")
+                    console.print("[yellow]Usage: query <name> | query SELECT ...[/yellow]")
+                elif " " not in args.strip():
+                    rows = db.execute("SELECT sql FROM queries WHERE name = ?", (args.strip(),)).fetchall()
+                    if rows:
+                        show_query(db, rows[0][0])
+                    else:
+                        available = [r[0] for r in db.execute("SELECT name FROM queries ORDER BY name").fetchall()]
+                        if available:
+                            console.print(f"[red]Unknown query '{args.strip()}'. Available: {', '.join(available)}[/red]")
+                        else:
+                            console.print("[red]No stored queries found in log file.[/red]")
                 else:
                     show_query(db, args)
 

@@ -259,3 +259,35 @@ class TestUserQueries:
         results = {r[0]: r[1] for r in rows}
         assert results["bench-press"] == 135.0 * 25  # 135 * 5reps * 5sets
         assert results["kb-oh-press"] == 24.0 * 15  # 24 * (5+5+5)
+
+
+class TestQueriesTable:
+    """Verify the queries table is populated from StoredQuery objects."""
+
+    def test_queries_table_exists(self, simple_db):
+        rows = simple_db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='queries'"
+        ).fetchall()
+        assert len(rows) == 1
+
+    def test_stored_query_inserted(self, log_with_query_file):
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_query_file)
+        conn = create_db(log)
+        rows = conn.execute("SELECT name, sql FROM queries").fetchall()
+        assert len(rows) == 1
+        assert rows[0][0] == "max-pullups"
+        assert "pullups" in rows[0][1]
+        conn.close()
+
+    def test_stored_query_lookup_by_name(self, log_with_query_file):
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_query_file)
+        conn = create_db(log)
+        row = conn.execute(
+            "SELECT sql FROM queries WHERE name = ?", ("max-pullups",)
+        ).fetchone()
+        assert row is not None
+        conn.close()

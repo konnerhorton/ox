@@ -164,6 +164,25 @@ class TestMixedBWWeightProgressive:
         assert len(movement.sets) == 4
 
 
+class TestStoredQueryRoundTrip:
+    """End-to-end: parse a query_entry, load into DB, retrieve by name."""
+
+    def test_stored_query_round_trip(self, log_with_query_file):
+        from ox.cli import parse_file
+        from ox.db import create_db
+
+        log = parse_file(log_with_query_file)
+        assert len(log.queries) == 1
+
+        conn = create_db(log)
+        row = conn.execute(
+            "SELECT sql FROM queries WHERE name = ?", ("max-pullups",)
+        ).fetchone()
+        assert row is not None
+        assert "pullups" in row[0]
+        conn.close()
+
+
 class TestEndToEndScenarios:
     """Test complete user workflows."""
 

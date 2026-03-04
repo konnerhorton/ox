@@ -65,6 +65,23 @@ def weight_edge_cases():
 
 
 @pytest.fixture
+def log_with_query_content():
+    """Training log content containing a query_entry."""
+    return (
+        "2025-01-10 * pullups: BW 5x10\n"
+        '2025-01-15 query "max-pullups" "SELECT MAX(reps) FROM training WHERE movement_name=\'pullups\'"\n'
+    )
+
+
+@pytest.fixture
+def log_with_query_file(log_with_query_content, tmp_path):
+    """Temporary file containing a training log with a stored query."""
+    file_path = tmp_path / "query_log.ox"
+    file_path.write_text(log_with_query_content)
+    return file_path
+
+
+@pytest.fixture
 def simple_db(simple_log_file):
     """In-memory SQLite database loaded from the simple test log."""
     log = parse_file(simple_log_file)

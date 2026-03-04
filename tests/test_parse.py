@@ -176,4 +176,28 @@ class TestRepSchemes:
     # parsing function. Skipping for now since the main pain point is weights.
     # Can add if needed.
 
+
+class TestQueryEntryParsing:
+    """Test that query_entry nodes are parsed into StoredQuery objects."""
+
+    def test_stored_query_name(self, log_with_query_file):
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_query_file)
+        assert len(log.queries) == 1
+        assert log.queries[0].name == "max-pullups"
+
+    def test_stored_query_sql(self, log_with_query_file):
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_query_file)
+        assert "pullups" in log.queries[0].sql
+
+    def test_stored_query_date(self, log_with_query_file):
+        from datetime import date
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_query_file)
+        assert log.queries[0].date == date(2025, 1, 15)
+
     pass

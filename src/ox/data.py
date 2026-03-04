@@ -30,6 +30,13 @@ class Note:
         return f'{self.date.strftime(DATE_FORMAT)} note "{self.text}"'
 
 
+@dataclass(frozen=True, slots=True)
+class StoredQuery:
+    name: str
+    sql: str
+    date: date
+
+
 def _format_weight(weight: Quantity) -> str:
     """Format a Quantity as an ox weight string like '24kg' or '135lb'."""
     unit_map = {"kilogram": "kg", "pound": "lb"}
@@ -189,6 +196,7 @@ class TrainingLog:
     sessions: tuple[TrainingSession, ...]
     notes: tuple[Note, ...] = field(default_factory=tuple)
     diagnostics: tuple[Diagnostic, ...] = field(default_factory=tuple)
+    queries: tuple[StoredQuery, ...] = field(default_factory=tuple)
 
     @property
     def completed_sessions(self) -> tuple[TrainingSession, ...]:
