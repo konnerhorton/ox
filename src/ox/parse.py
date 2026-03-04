@@ -2,7 +2,14 @@
 
 from tree_sitter import Node
 from datetime import datetime
-from ox.data import DATE_FORMAT, Movement, Note, TrainingSession, TrainingSet
+from ox.data import (
+    DATE_FORMAT,
+    Movement,
+    Note,
+    StoredQuery,
+    TrainingSession,
+    TrainingSet,
+)
 import re
 from pint import Quantity
 from ox.units import ureg
@@ -210,14 +217,22 @@ def process_note_entry(node: Node) -> Note:
     return Note(text=get_note_text(node), date=get_date(node))
 
 
-def process_node(node: Node) -> TrainingSession | Note | None:
+def process_query_entry(node: Node) -> StoredQuery:
+    """Process a query_entry node."""
+    date = get_date(node)
+    name = node.child_by_field_name("name").text.decode("utf-8").strip('"')
+    sql = node.child_by_field_name("sql").text.decode("utf-8").strip('"')
+    return StoredQuery(name=name, sql=sql, date=date)
+
+
+def process_node(node: Node) -> TrainingSession | Note | StoredQuery | None:
     """Process any node type and return appropriate data structure.
 
     Args:
         node: Tree-sitter node to process
 
     Returns:
-        TrainingSession, Note, or None
+        TrainingSession, Note, StoredQuery, or None
     """
     if node.type == "singleline_entry":
         return process_singleline_entry(node)
@@ -225,5 +240,7 @@ def process_node(node: Node) -> TrainingSession | Note | None:
         return process_session_block(node)
     if node.type == "note_entry":
         return process_note_entry(node)
+    if node.type == "query_entry":
+        return process_query_entry(node)
     # Skip comments, exercise_block, template_block for now
     return None

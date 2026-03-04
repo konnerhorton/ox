@@ -45,6 +45,13 @@ CREATE TABLE notes (
     text TEXT NOT NULL
 );
 
+CREATE TABLE queries (
+    id   INTEGER PRIMARY KEY,
+    date TEXT NOT NULL,
+    name TEXT NOT NULL UNIQUE,
+    sql  TEXT NOT NULL
+);
+
 CREATE VIEW training AS
 SELECT
     s.id AS session_id,
@@ -121,6 +128,12 @@ def create_db(log: TrainingLog) -> sqlite3.Connection:
         conn.execute(
             "INSERT INTO notes (date, text) VALUES (?, ?)",
             (note.date.isoformat(), note.text),
+        )
+
+    for q in log.queries:
+        conn.execute(
+            "INSERT INTO queries (date, name, sql) VALUES (?, ?, ?)",
+            (q.date.isoformat(), q.name, q.sql),
         )
 
     conn.commit()
