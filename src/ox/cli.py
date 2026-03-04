@@ -55,7 +55,9 @@ def parse_file(file_path: Path) -> TrainingLog:
             log_queries.append(result)
 
     diagnostics = collect_diagnostics(tree)
-    return TrainingLog(tuple(entries), tuple(log_notes), diagnostics, tuple(log_queries))
+    return TrainingLog(
+        tuple(entries), tuple(log_notes), diagnostics, tuple(log_queries)
+    )
 
 
 def show_help():
@@ -370,17 +372,30 @@ def cli(file):
 
             elif command == "query":
                 if not args:
-                    console.print("[yellow]Usage: query <name> | query SELECT ...[/yellow]")
+                    console.print(
+                        "[yellow]Usage: query <name> | query SELECT ...[/yellow]"
+                    )
                 elif " " not in args.strip():
-                    rows = db.execute("SELECT sql FROM queries WHERE name = ?", (args.strip(),)).fetchall()
+                    rows = db.execute(
+                        "SELECT sql FROM queries WHERE name = ?", (args.strip(),)
+                    ).fetchall()
                     if rows:
                         show_query(db, rows[0][0])
                     else:
-                        available = [r[0] for r in db.execute("SELECT name FROM queries ORDER BY name").fetchall()]
+                        available = [
+                            r[0]
+                            for r in db.execute(
+                                "SELECT name FROM queries ORDER BY name"
+                            ).fetchall()
+                        ]
                         if available:
-                            console.print(f"[red]Unknown query '{args.strip()}'. Available: {', '.join(available)}[/red]")
+                            console.print(
+                                f"[red]Unknown query '{args.strip()}'. Available: {', '.join(available)}[/red]"
+                            )
                         else:
-                            console.print("[red]No stored queries found in log file.[/red]")
+                            console.print(
+                                "[red]No stored queries found in log file.[/red]"
+                            )
                 else:
                     show_query(db, args)
 

@@ -2,7 +2,14 @@
 
 from tree_sitter import Node
 from datetime import datetime
-from ox.data import DATE_FORMAT, Movement, Note, StoredQuery, TrainingSession, TrainingSet
+from ox.data import (
+    DATE_FORMAT,
+    Movement,
+    Note,
+    StoredQuery,
+    TrainingSession,
+    TrainingSet,
+)
 import re
 from pint import Quantity
 from ox.units import ureg
