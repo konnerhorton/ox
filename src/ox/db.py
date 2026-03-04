@@ -1,5 +1,6 @@
 """In-memory SQLite database for training log queries."""
 
+import re
 import sqlite3
 from typing import Optional
 
@@ -85,6 +86,7 @@ def create_db(log: TrainingLog) -> sqlite3.Connection:
         sqlite3.Connection to the in-memory database
     """
     conn = sqlite3.connect(":memory:")
+    conn.create_function("regexp", 2, lambda pat, val: bool(re.search(pat, val or "")))
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA)
 
