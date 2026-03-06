@@ -7,12 +7,18 @@ Only considers sets tagged with "^rm" in the movement note
 Usage:
     report e1rm -m deadlift
     report e1rm -m squat -f epley
+    report e1rm -m deadlift -o plot
 
 Example .ox line:
     deadlift: 315lbs 1x3 "^rm top set felt good"
 """
 
+from datetime import date as _date
+
 from ox.units import Q_
+
+_PLOT_WIDTH = 60
+_PLOT_HEIGHT = 15
 
 
 def _brzycki(weight, reps):
@@ -33,7 +39,80 @@ FORMULAS = {
 }
 
 
-def estimated_1rm(conn, movement, formula="brzycki", unit="lb"):
+def _render_plot(data, unit):
+    """Render data as a transparent ASCII line plot.
+
+    Args:
+        data: List of (date, e1rm, weight, reps) tuples sorted by date
+        unit: Weight unit string for the Y axis label
+
+    Returns:
+        List of strings, one per plot row
+    """
+    dates = [row[0] for row in data]
+    values = [row[1] for row in data]
+
+    min_v = min(values)
+    max_v = max(values)
+    v_range = max_v - min_v or 1.0
+
+    width = _PLOT_WIDTH
+    height = _PLOT_HEIGHT
+
+    grid = [[" "] * width for _ in range(height)]
+
+    parsed = [_date.fromisoformat(d) for d in dates]
+    day_offsets = [(d - parsed[0]).days for d in parsed]
+    total_days = day_offsets[-1] or 1
+
+    def to_y(v):
+        return int((max_v - v) / v_range * (height - 1) + 0.5)
+
+    def to_x(i):
+        if total_days == 0:
+            return width // 2
+        return int(day_offsets[i] / total_days * (width - 1))
+
+    coords = [(to_x(i), to_y(v)) for i, v in enumerate(values)]
+
+    for x, y in coords:
+        if 0 <= y < height and 0 <= x < width:
+            grid[y][x] = "●"
+
+    tick_interval = max(1, height // 4)
+    lines = []
+    for row_idx in range(height):
+        v = max_v - v_range * row_idx / (height - 1) if height > 1 else max_v
+        if row_idx % tick_interval == 0 or row_idx == height - 1:
+            label = f"{v:6.1f} │"
+        else:
+            label = "       │"
+        lines.append(label + "".join(grid[row_idx]))
+
+    lines.append("       └" + "─" * width)
+
+    n = len(dates)
+    num_labels = min(5, n)
+    if num_labels > 1:
+        label_indices = [int(i * (n - 1) / (num_labels - 1)) for i in range(num_labels)]
+    else:
+        label_indices = [0]
+
+    x_label_chars = [" "] * (8 + width)
+    for idx in label_indices:
+        x = 8 + to_x(idx)
+        label = dates[idx][-5:] if len(dates[idx]) >= 5 else dates[idx]
+        start = x - len(label) // 2
+        for j, ch in enumerate(label):
+            pos = start + j
+            if 0 <= pos < len(x_label_chars):
+                x_label_chars[pos] = ch
+
+    lines.append("".join(x_label_chars))
+    return lines
+
+
+def estimated_1rm(conn, movement, formula="brzycki", unit="lb", output="table"):
     """Estimated 1RM progression for a movement.
 
     Finds sets where the movement note contains "^rm", takes the
@@ -44,6 +123,7 @@ def estimated_1rm(conn, movement, formula="brzycki", unit="lb"):
         movement: Movement name to filter by
         formula: 1RM formula to use ("brzycki" or "epley")
         unit: Weight unit for output values (default "lb")
+        output: Output format ("table" or "plot")
 
     Returns:
         (columns, rows) tuple
@@ -52,10 +132,11 @@ def estimated_1rm(conn, movement, formula="brzycki", unit="lb"):
         raise ValueError(
             f"Unknown formula '{formula}'. Choose from: {', '.join(FORMULAS)}"
         )
+    if output not in ("table", "plot"):
+        raise ValueError("output must be 'table' or 'plot'")
 
     calc = FORMULAS[formula]
 
-    # Find the heaviest set per movement_id where note contains ^rm
     rows = conn.execute(
         """
         SELECT
@@ -75,11 +156,12 @@ def estimated_1rm(conn, movement, formula="brzycki", unit="lb"):
 
     if not rows:
         return (
-            ["date", f"estimated_1rm ({unit})", f"weight ({unit})", "reps"],
+            [f"estimated_1rm ({unit})"]
+            if output == "plot"
+            else ["date", f"estimated_1rm ({unit})", f"weight ({unit})", "reps"],
             [],
         )
 
-    # Group by date, take the heaviest set per date
     seen_dates = {}
     for date, raw_weight, reps, raw_unit in rows:
         if date not in seen_dates or raw_weight > seen_dates[date][0]:
@@ -91,6 +173,10 @@ def estimated_1rm(conn, movement, formula="brzycki", unit="lb"):
         converted = round(float(Q_(raw_weight, raw_unit).to(unit).magnitude), 1)
         e1rm = round(calc(converted, reps), 1)
         result.append((date, e1rm, converted, reps))
+
+    if output == "plot":
+        plot_lines = _render_plot(result, unit)
+        return ([f"e1rm ({unit})"], [(line,) for line in plot_lines])
 
     columns = ["date", f"estimated_1rm ({unit})", f"weight ({unit})", "reps"]
     return columns, result
@@ -118,6 +204,13 @@ def register():
                     "default": "lb",
                     "required": False,
                     "short": "u",
+                },
+                {
+                    "name": "output",
+                    "type": str,
+                    "default": "table",
+                    "required": False,
+                    "short": "o",
                 },
             ],
         }
