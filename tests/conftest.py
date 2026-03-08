@@ -100,6 +100,35 @@ def log_with_weigh_ins_file(log_with_weigh_ins_content, tmp_path):
 
 
 @pytest.fixture
+def weigh_in_multi_scale_content():
+    """Weigh-in log with two scales and enough points for rolling avg and stats."""
+    return (
+        "2025-01-01 W 185.0lb\n"
+        "2025-01-02 W 184.5lb\n"
+        '2025-01-03 W 184.8lb "home scale"\n'
+        '2025-01-04 W 185.2lb "home scale"\n'
+        "2025-01-05 W 184.0lb\n"
+        '2025-01-06 W 184.6lb "home scale"\n'
+        "2025-01-08 W 183.5lb\n"
+        '2025-01-09 W 183.9lb "home scale"\n'
+    )
+
+
+@pytest.fixture
+def weigh_in_multi_scale_db(weigh_in_multi_scale_content, tmp_path):
+    """In-memory SQLite DB loaded from multi-scale weigh-in log."""
+    from ox.cli import parse_file
+    from ox.db import create_db
+
+    f = tmp_path / "multi_scale.ox"
+    f.write_text(weigh_in_multi_scale_content)
+    log = parse_file(f)
+    conn = create_db(log)
+    yield conn
+    conn.close()
+
+
+@pytest.fixture
 def simple_db(simple_log_file):
     """In-memory SQLite database loaded from the simple test log."""
     log = parse_file(simple_log_file)
