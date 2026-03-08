@@ -52,6 +52,15 @@ CREATE TABLE queries (
     sql  TEXT NOT NULL
 );
 
+CREATE TABLE weigh_ins (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    date             TEXT NOT NULL,
+    weight_magnitude REAL NOT NULL,
+    weight_unit      TEXT NOT NULL,
+    time_of_day      TEXT,
+    scale            TEXT
+);
+
 CREATE VIEW training AS
 SELECT
     s.id AS session_id,
@@ -134,6 +143,19 @@ def create_db(log: TrainingLog) -> sqlite3.Connection:
         conn.execute(
             "INSERT INTO queries (date, name, sql) VALUES (?, ?, ?)",
             (q.date.isoformat(), q.name, q.sql),
+        )
+
+    for w in log.weigh_ins:
+        mag, unit = _decompose_weight(w.weight)
+        conn.execute(
+            "INSERT INTO weigh_ins (date, weight_magnitude, weight_unit, time_of_day, scale) VALUES (?, ?, ?, ?, ?)",
+            (
+                w.date.isoformat(),
+                mag,
+                unit,
+                w.time_of_day.strftime("%H:%M") if w.time_of_day else None,
+                w.scale,
+            ),
         )
 
     conn.commit()

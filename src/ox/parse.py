@@ -9,6 +9,7 @@ from ox.data import (
     StoredQuery,
     TrainingSession,
     TrainingSet,
+    WeighIn,
 )
 import re
 from pint import Quantity
@@ -176,9 +177,6 @@ def process_singleline_entry(raw_entry: Node) -> TrainingSession | None:
     """
     flag = get_flag(raw_entry)
 
-    if flag == "W":
-        # TODO: implement weigh-in processing
-        return None
     if flag in ["*", "!"]:
         date, movement = process_singleline_completed_session(raw_entry)
         return TrainingSession(name=None, date=date, flag=flag, movements=movement)
@@ -217,6 +215,22 @@ def process_note_entry(node: Node) -> Note:
     return Note(text=get_note_text(node), date=get_date(node))
 
 
+def process_weigh_in_entry(node: Node) -> WeighIn:
+    """Process a weigh_in_entry node."""
+    from datetime import time
+
+    entry_date = get_date(node)
+    weight_text = node.child_by_field_name("weight").text.decode("utf-8")
+    weight = weight_text_to_quantity(weight_text)
+    tod_node = node.child_by_field_name("time_of_day")
+    time_of_day = None
+    if tod_node:
+        time_of_day = time.fromisoformat(tod_node.text.decode("utf-8")[1:])  # strip T
+    scale_node = node.child_by_field_name("scale")
+    scale = scale_node.text.decode("utf-8").strip('"') if scale_node else None
+    return WeighIn(date=entry_date, weight=weight, time_of_day=time_of_day, scale=scale)
+
+
 def process_query_entry(node: Node) -> StoredQuery:
     """Process a query_entry node."""
     date = get_date(node)
@@ -242,5 +256,7 @@ def process_node(node: Node) -> TrainingSession | Note | StoredQuery | None:
         return process_note_entry(node)
     if node.type == "query_entry":
         return process_query_entry(node)
+    if node.type == "weigh_in_entry":
+        return process_weigh_in_entry(node)
     # Skip comments, exercise_block, template_block for now
     return None

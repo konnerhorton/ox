@@ -249,6 +249,54 @@ class TestWeighInEntry:
         assert not diags
 
 
+class TestProcessWeighInEntry:
+    """Test process_weigh_in_entry via parse_file."""
+
+    def test_date(self, log_with_weigh_ins_file):
+        from datetime import date
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_weigh_ins_file)
+        assert log.weigh_ins[0].date == date(2025, 1, 10)
+
+    def test_weight_magnitude_and_unit(self, log_with_weigh_ins_file):
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_weigh_ins_file)
+        assert log.weigh_ins[0].weight == 185 * ureg.pound
+
+    def test_time_of_day_absent(self, log_with_weigh_ins_file):
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_weigh_ins_file)
+        assert log.weigh_ins[0].time_of_day is None
+
+    def test_time_of_day_present(self, log_with_weigh_ins_file):
+        from datetime import time
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_weigh_ins_file)
+        assert log.weigh_ins[1].time_of_day == time(6, 30)
+
+    def test_scale_absent(self, log_with_weigh_ins_file):
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_weigh_ins_file)
+        assert log.weigh_ins[0].scale is None
+
+    def test_scale_present(self, log_with_weigh_ins_file):
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_weigh_ins_file)
+        assert log.weigh_ins[2].scale == "gym scale"
+
+    def test_kg_weight(self, log_with_weigh_ins_file):
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_weigh_ins_file)
+        assert log.weigh_ins[2].weight == 84 * ureg.kilogram
+
+
 class TestQueryEntryParsing:
     """Test that query_entry nodes are parsed into StoredQuery objects."""
 

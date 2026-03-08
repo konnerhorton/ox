@@ -164,6 +164,34 @@ class TestMixedBWWeightProgressive:
         assert len(movement.sets) == 4
 
 
+class TestWeighInIntegration:
+    """End-to-end weigh-in parsing tests."""
+
+    def test_weigh_ins_parsed(self, log_with_weigh_ins_file):
+        log = parse_file(log_with_weigh_ins_file)
+        assert len(log.weigh_ins) == 3
+
+    def test_weigh_in_fields(self, log_with_weigh_ins_file):
+        from datetime import date, time
+        from ox.units import ureg
+
+        log = parse_file(log_with_weigh_ins_file)
+        w0, w1, w2 = log.weigh_ins
+
+        assert w0.date == date(2025, 1, 10)
+        assert w0.weight == 185 * ureg.pound
+        assert w0.time_of_day is None
+        assert w0.scale is None
+
+        assert w1.date == date(2025, 1, 11)
+        assert w1.time_of_day == time(6, 30)
+        assert w1.scale is None
+
+        assert w2.date == date(2025, 1, 12)
+        assert w2.time_of_day == time(7, 0)
+        assert w2.scale == "gym scale"
+
+
 class TestStoredQueryRoundTrip:
     """End-to-end: parse a query_entry, load into DB, retrieve by name."""
 

@@ -7,9 +7,38 @@ Testing philosophy:
 """
 
 import pytest
-from datetime import date
-from ox.data import TrainingSet, Movement, TrainingSession, TrainingLog
+from datetime import date, time
+from ox.data import TrainingSet, Movement, TrainingSession, TrainingLog, WeighIn
 from ox.units import ureg
+
+
+class TestWeighIn:
+    """Test WeighIn dataclass and to_ox() round-trips."""
+
+    def test_weight_only(self):
+        w = WeighIn(date=date(2025, 1, 10), weight=185 * ureg.pound)
+        assert w.to_ox() == "2025-01-10 W 185lb"
+
+    def test_with_timestamp(self):
+        w = WeighIn(
+            date=date(2025, 1, 10), weight=185 * ureg.pound, time_of_day=time(6, 30)
+        )
+        assert w.to_ox() == "2025-01-10 W 185lb T06:30"
+
+    def test_with_scale(self):
+        w = WeighIn(
+            date=date(2025, 1, 10), weight=185 * ureg.pound, scale="bathroom scale"
+        )
+        assert w.to_ox() == '2025-01-10 W 185lb "bathroom scale"'
+
+    def test_with_timestamp_and_scale(self):
+        w = WeighIn(
+            date=date(2025, 1, 10),
+            weight=83.5 * ureg.kilogram,
+            time_of_day=time(6, 30),
+            scale="home scale",
+        )
+        assert w.to_ox() == '2025-01-10 W 83.5kg T06:30 "home scale"'
 
 
 class TestTrainingSet:

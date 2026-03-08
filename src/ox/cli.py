@@ -13,7 +13,7 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 
 from ox.parse import process_node
-from ox.data import Note, StoredQuery, TrainingLog, TrainingSession
+from ox.data import Note, StoredQuery, TrainingLog, TrainingSession, WeighIn
 from ox.db import create_db
 from ox.lint import collect_diagnostics
 from ox.plugins import GENERATOR_PLUGINS, load_plugins
@@ -45,6 +45,7 @@ def parse_file(file_path: Path) -> TrainingLog:
     entries = []
     log_notes = []
     log_queries = []
+    log_weigh_ins = []
     for child in root_node.children:
         result = process_node(child)
         if isinstance(result, TrainingSession):
@@ -53,10 +54,16 @@ def parse_file(file_path: Path) -> TrainingLog:
             log_notes.append(result)
         elif isinstance(result, StoredQuery):
             log_queries.append(result)
+        elif isinstance(result, WeighIn):
+            log_weigh_ins.append(result)
 
     diagnostics = collect_diagnostics(tree)
     return TrainingLog(
-        tuple(entries), tuple(log_notes), diagnostics, tuple(log_queries)
+        tuple(entries),
+        tuple(log_notes),
+        diagnostics,
+        tuple(log_queries),
+        tuple(log_weigh_ins),
     )
 
 
@@ -290,7 +297,8 @@ def cli(file):
         load_plugins()
         console.print(
             f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
-            f"{len(log.planned_sessions)} planned sessions\n"
+            f"{len(log.planned_sessions)} planned sessions, "
+            f"{len(log.weigh_ins)} weigh-in(s)\n"
         )
         if log.diagnostics:
             console.print(
@@ -410,7 +418,8 @@ def cli(file):
                     db = create_db(log)
                     console.print(
                         f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
-                        f"{len(log.planned_sessions)} planned sessions\n"
+                        f"{len(log.planned_sessions)} planned sessions, "
+                        f"{len(log.weigh_ins)} weigh-in(s)\n"
                     )
                     if log.diagnostics:
                         console.print(

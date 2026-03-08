@@ -93,9 +93,10 @@ def _load_from_entry_points() -> None:
 
 def _load_builtins() -> None:
     """Load plugins that ship with ox."""
-    from ox.builtins import e1rm
+    from ox.builtins import e1rm, weighin
 
     _register_descriptors(e1rm.register(), "builtin:e1rm")
+    _register_descriptors(weighin.register(), "builtin:weighin")
 
 
 def load_plugins() -> None:
