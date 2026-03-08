@@ -21,7 +21,8 @@ module.exports = grammar({
       $.exercise_block,
       $.template_block,
       $.note_entry,
-      $.query_entry
+      $.query_entry,
+      $.weigh_in_entry,
     ),
 
     comment: ($) => /#[^\n]*/,
@@ -43,6 +44,17 @@ module.exports = grammar({
         field("date", $.date),
         "note",
         field("text", $.quoted_string),
+        "\n"
+      ),
+
+    // Weigh-in entry: date W weight optional(T06:30) optional("scale name")
+    weigh_in_entry: ($) =>
+      seq(
+        field("date", $.date),
+        "W",
+        field("weight", $.weight),
+        optional(field("time_of_day", $.time_of_day)),
+        optional(field("scale", $.quoted_string)),
         "\n"
       ),
 
@@ -120,7 +132,7 @@ module.exports = grammar({
 
     date: ($) => /\d{4}-\d{2}-\d{2}/,
 
-    flag: ($) => choice("*", "!", "W"),
+    flag: ($) => choice("*", "!"),
 
     // Item name (before colon)
     item: ($) => /[^\s:]+/,
@@ -134,13 +146,13 @@ module.exports = grammar({
     // Text until newline (for metadata values, standalone notes)
     text_until_newline: ($) => /[^\n]+/,
 
-    // Details: combination of weights, reps, time, distance, quoted notes
+    // Details: combination of weights, reps, duration, distance, quoted notes
     details: ($) =>
       repeat1(
         choice(
           field("weight", $.weight),
           field("rep_scheme", $.rep_scheme),
-          field("time", $.time),
+          field("duration", $.duration),
           field("distance", $.distance),
           field("note", $.quoted_string)
         )
@@ -158,8 +170,12 @@ module.exports = grammar({
 
     rep_scheme: ($) => /(\d+x\d+)|(\d+(\/\d+)+)/,  // 4x4 or 5/5/5
 
-    // Time units: curated from pint's default_en.txt
-    time: ($) => /\d+(\.\d+)?(s|sec|second|min|minute|h|hr|hour|d|day|week|month|yr|year)/,
+    // ISO 8601 duration: PT followed by at least one component
+    // Examples: PT30M, PT30M15S, PT1H, PT1H30M, PT1H30M15S, PT30M15.5S
+    duration: ($) => /PT(\d+H(\d+M(\d+(\.\d+)?S)?)?|\d+M(\d+(\.\d+)?S)?|\d+(\.\d+)?S)/,
+
+    // 24-hour time of day with T prefix: T06:30
+    time_of_day: ($) => /T\d{2}:\d{2}/,
 
     // Distance units: curated from pint's default_en.txt
     distance: ($) => /\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)/,

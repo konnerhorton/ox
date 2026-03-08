@@ -177,6 +177,78 @@ class TestRepSchemes:
     # Can add if needed.
 
 
+def _parse_str(content: str):
+    """Parse a raw .ox string and return (tree, diagnostics)."""
+    import tree_sitter_ox
+    from tree_sitter import Language, Parser
+    from ox.lint import collect_diagnostics
+
+    language = Language(tree_sitter_ox.language())
+    parser = Parser(language)
+    tree = parser.parse(bytes(content, encoding="utf-8"))
+    return tree, collect_diagnostics(tree)
+
+
+class TestDurationToken:
+    """Test that ISO 8601 PT duration strings are accepted by the grammar."""
+
+    def test_minutes_only(self):
+        _, diags = _parse_str("2025-01-10 * run: PT30M\n")
+        assert not diags
+
+    def test_minutes_and_seconds(self):
+        _, diags = _parse_str("2025-01-10 * run: PT30M15S\n")
+        assert not diags
+
+    def test_hours_only(self):
+        _, diags = _parse_str("2025-01-10 * run: PT1H\n")
+        assert not diags
+
+    def test_hours_and_minutes(self):
+        _, diags = _parse_str("2025-01-10 * run: PT1H30M\n")
+        assert not diags
+
+    def test_hours_minutes_seconds(self):
+        _, diags = _parse_str("2025-01-10 * run: PT1H30M15S\n")
+        assert not diags
+
+    def test_fractional_seconds(self):
+        _, diags = _parse_str("2025-01-10 * run: PT30M15.5S\n")
+        assert not diags
+
+    def test_seconds_only(self):
+        _, diags = _parse_str("2025-01-10 * run: PT45S\n")
+        assert not diags
+
+    def test_old_time_format_rejected(self):
+        _, diags = _parse_str("2025-01-10 * run: 30min\n")
+        assert len(diags) > 0
+
+
+class TestWeighInEntry:
+    """Test that weigh_in_entry nodes parse correctly."""
+
+    def test_weight_only(self):
+        _, diags = _parse_str("2025-01-10 W 185lb\n")
+        assert not diags
+
+    def test_weight_with_timestamp(self):
+        _, diags = _parse_str("2025-01-10 W 185lb T06:30\n")
+        assert not diags
+
+    def test_weight_with_scale(self):
+        _, diags = _parse_str('2025-01-10 W 185lb "bathroom scale"\n')
+        assert not diags
+
+    def test_weight_with_timestamp_and_scale(self):
+        _, diags = _parse_str('2025-01-10 W 83.5kg T06:30 "home scale"\n')
+        assert not diags
+
+    def test_kg_weight(self):
+        _, diags = _parse_str("2025-01-10 W 83.5kg\n")
+        assert not diags
+
+
 class TestQueryEntryParsing:
     """Test that query_entry nodes are parsed into StoredQuery objects."""
 

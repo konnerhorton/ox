@@ -110,7 +110,7 @@ kb-clean-and-press: 24kg 5x3 "each arm"
 kb-turkish-getup: 24kg 5x1 "each arm"
 @end
 
-2024-01-18 * run: 30min "easy pace"
+2024-01-18 * run: PT30M "easy pace"
 
 @session
 2024-01-19 * Full Body
@@ -120,7 +120,7 @@ pullup: BW 4x8
 kb-swing: 24kg 4x20
 @end
 
-2024-01-20 * run: 45min "long slow distance"
+2024-01-20 * run: PT45M "long slow distance"
 
 # Week 2 - Volume Phase
 @session
@@ -144,7 +144,7 @@ kb-swing: 32kg 10x15
 box-jump: BW 10x5
 @end
 
-2024-01-25 * run: 25min
+2024-01-25 * run: PT25M
 
 @session
 2024-01-26 * KB Focus
@@ -177,7 +177,7 @@ burpee: BW 5x15
 box-jump: BW 5x5
 @end
 
-2024-02-01 * run: 35min
+2024-02-01 * run: PT35M
 
 # Week 4 - Mixed Work
 @session
@@ -196,7 +196,7 @@ kb-turkish-getup: 32kg 5x1 "each arm"
 kb-snatch: 32kg 5x3 "each arm"
 @end
 
-2024-02-04 * run: 40min "tempo run"
+2024-02-04 * run: PT40M "tempo run"
 
 @session
 2024-02-05 * Circuit Training
@@ -227,7 +227,7 @@ kb-snatch: 24kg 8x6 "each arm"
 kb-clean-and-press: 24kg 6x5 "each arm"
 @end
 
-2024-02-10 * run: 30min
+2024-02-10 * run: PT30M
 
 # Week 6 - Deload
 @session
@@ -250,7 +250,7 @@ kb-swing: 24kg 5x15
 kb-turkish-getup: 24kg 5x1 "each arm"
 @end
 
-2024-02-15 * run: 20min "easy"
+2024-02-15 * run: PT20M "easy"
 
 # Week 7 - 5/3/1 Cycle 1 Week 1
 @session
@@ -275,7 +275,7 @@ deadlift: 185lb/210lb/235lb 5/5/8
 kb-swing: 32kg 5x15
 @end
 
-2024-02-22 * run: 35min
+2024-02-22 * run: PT35M
 
 @session
 2024-02-23 * KB & Plyometrics
@@ -307,7 +307,7 @@ deadlift: 200lb/225lb/250lb 3/3/7
 kb-swing: 32kg 5x15
 @end
 
-2024-02-29 * run: 40min
+2024-02-29 * run: PT40M
 
 @session
 2024-03-01 * KB Heavy
@@ -338,7 +338,7 @@ note: "Cycle 1 Week 3"
 deadlift: 215lb/240lb/265lb 5/3/8 "grip was tough on the last set"
 @end
 
-2024-03-07 * run: 45min "felt strong"
+2024-03-07 * run: PT45M "felt strong"
 
 @session
 2024-03-08 * Conditioning
@@ -368,7 +368,7 @@ note: "Cycle 1 Week 4 - Deload"
 deadlift: 135lb/155lb/175lb 3x5
 @end
 
-2024-03-14 * run: 25min "recovery pace"
+2024-03-14 * run: PT25M "recovery pace"
 
 @session
 2024-03-15 * Light KB
@@ -398,7 +398,7 @@ deadlift: 195lb/220lb/245lb 5/5/10
 kb-swing: 32kg 5x20
 @end
 
-2024-03-21 * run: 30min
+2024-03-21 * run: PT30M
 
 @session
 2024-03-22 * KB Workout
@@ -429,7 +429,7 @@ note: "Cycle 2 Week 2"
 deadlift: 210lb/235lb/260lb 3/3/9
 @end
 
-2024-03-28 * run: 40min
+2024-03-28 * run: PT40M
 
 @session
 2024-03-29 * Full Body Circuit
@@ -461,7 +461,7 @@ deadlift: 225lb/250lb/275lb 5/3/10 "new rep PR!"
 kb-swing: 32kg 5x20
 @end
 
-2024-04-04 * run: 35min
+2024-04-04 * run: PT35M
 
 @session
 2024-04-05 * KB & Plyometrics
@@ -487,7 +487,7 @@ box-jump: BW 8x5
 burpee: BW 5x20
 @end
 
-2024-04-10 * run: 50min "long run"
+2024-04-10 * run: PT50M "long run"
 
 @session
 2024-04-11 * KB Intensive
@@ -519,7 +519,7 @@ deadlift: 245lb 5x3
 box-jump: BW 5x3
 @end
 
-2024-04-17 * run: 30min
+2024-04-17 * run: PT30M
 
 @session
 2024-04-18 * KB Complex
@@ -551,7 +551,7 @@ overhead-press: 95lb 5x10
 pullup: BW 5x10
 @end
 
-2024-04-24 * run: 45min
+2024-04-24 * run: PT45M
 
 @session
 2024-04-25 * KB & Bodyweight
@@ -589,7 +589,7 @@ deadlift: 155lb/185lb/215lb/245lb/275lb/285lb 5/5/3/3/1/1 "new 1RM: 285lb"
 kb-swing: 32kg 5x15
 @end
 
-2024-05-02 * run: 30min "recovery"
+2024-05-02 * run: PT30M "recovery"
 
 @session
 2024-05-03 * KB Celebration

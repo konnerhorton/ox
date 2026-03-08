@@ -13,6 +13,16 @@
           }
         ]
       },
+      "duration": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "duration",
+            "named": true
+          }
+        ]
+      },
       "note": {
         "multiple": true,
         "required": false,
@@ -29,16 +39,6 @@
         "types": [
           {
             "type": "rep_scheme",
-            "named": true
-          }
-        ]
-      },
-      "time": {
-        "multiple": true,
-        "required": false,
-        "types": [
-          {
-            "type": "time",
             "named": true
           }
         ]
@@ -363,6 +363,10 @@
         {
           "type": "template_block",
           "named": true
+        },
+        {
+          "type": "weigh_in_entry",
+          "named": true
         }
       ]
     }
@@ -401,6 +405,52 @@
     "type": "text_until_newline",
     "named": true,
     "fields": {}
+  },
+  {
+    "type": "weigh_in_entry",
+    "named": true,
+    "fields": {
+      "date": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "date",
+            "named": true
+          }
+        ]
+      },
+      "scale": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "quoted_string",
+            "named": true
+          }
+        ]
+      },
+      "time_of_day": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "time_of_day",
+            "named": true
+          }
+        ]
+      },
+      "weight": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "weight",
+            "named": true
+          }
+        ]
+      }
+    }
   },
   {
     "type": "\n",
@@ -451,6 +501,10 @@
     "named": true
   },
   {
+    "type": "duration",
+    "named": true
+  },
+  {
     "type": "note",
     "named": false
   },
@@ -471,7 +525,7 @@
     "named": true
   },
   {
-    "type": "time",
+    "type": "time_of_day",
     "named": true
   },
   {
