@@ -48,6 +48,10 @@
         {
           "type": "SYMBOL",
           "name": "query_entry"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "weigh_in_entry"
         }
       ]
     },
@@ -130,6 +134,67 @@
             "type": "SYMBOL",
             "name": "quoted_string"
           }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "weigh_in_entry": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "date",
+          "content": {
+            "type": "SYMBOL",
+            "name": "date"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "W"
+        },
+        {
+          "type": "FIELD",
+          "name": "weight",
+          "content": {
+            "type": "SYMBOL",
+            "name": "weight"
+          }
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "time_of_day",
+              "content": {
+                "type": "SYMBOL",
+                "name": "time_of_day"
+              }
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "scale",
+              "content": {
+                "type": "SYMBOL",
+                "name": "quoted_string"
+              }
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
         },
         {
           "type": "STRING",
@@ -421,10 +486,6 @@
         {
           "type": "STRING",
           "value": "!"
-        },
-        {
-          "type": "STRING",
-          "value": "W"
         }
       ]
     },
@@ -467,10 +528,10 @@
           },
           {
             "type": "FIELD",
-            "name": "time",
+            "name": "duration",
             "content": {
               "type": "SYMBOL",
-              "name": "time"
+              "name": "duration"
             }
           },
           {
@@ -520,9 +581,13 @@
       "type": "PATTERN",
       "value": "(\\d+x\\d+)|(\\d+(\\/\\d+)+)"
     },
-    "time": {
+    "duration": {
       "type": "PATTERN",
-      "value": "\\d+(\\.\\d+)?(s|sec|second|min|minute|h|hr|hour|d|day|week|month|yr|year)"
+      "value": "PT(\\d+H(\\d+M(\\d+(\\.\\d+)?S)?)?|\\d+M(\\d+(\\.\\d+)?S)?|\\d+(\\.\\d+)?S)"
+    },
+    "time_of_day": {
+      "type": "PATTERN",
+      "value": "T\\d{2}:\\d{2}"
     },
     "distance": {
       "type": "PATTERN",
