@@ -1,7 +1,7 @@
 """Data structures for training logs."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, date
+from datetime import datetime, date, time
 from typing import Optional, List, Iterator
 from pint import Quantity
 
@@ -47,6 +47,21 @@ def _format_weight(weight: Quantity) -> str:
         else weight.magnitude
     )
     return f"{mag}{unit_str}"
+
+
+@dataclass(frozen=True, slots=True)
+class WeighIn:
+    date: date
+    weight: Quantity
+    time_of_day: Optional[time] = None
+    scale: Optional[str] = None
+
+    def to_ox(self) -> str:
+        date_str = self.date.strftime(DATE_FORMAT)
+        w = _format_weight(self.weight)
+        ts = f" T{self.time_of_day.strftime('%H:%M')}" if self.time_of_day else ""
+        sc = f' "{self.scale}"' if self.scale else ""
+        return f"{date_str} W {w}{ts}{sc}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -197,6 +212,7 @@ class TrainingLog:
     notes: tuple[Note, ...] = field(default_factory=tuple)
     diagnostics: tuple[Diagnostic, ...] = field(default_factory=tuple)
     queries: tuple[StoredQuery, ...] = field(default_factory=tuple)
+    weigh_ins: tuple[WeighIn, ...] = field(default_factory=tuple)
 
     @property
     def completed_sessions(self) -> tuple[TrainingSession, ...]:

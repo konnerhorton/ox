@@ -261,6 +261,61 @@ class TestUserQueries:
         assert results["kb-oh-press"] == 24.0 * 15  # 24 * (5+5+5)
 
 
+class TestWeighInsTable:
+    """Verify the weigh_ins table is created and populated correctly."""
+
+    def test_weigh_ins_table_exists(self, simple_db):
+        rows = simple_db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='weigh_ins'"
+        ).fetchall()
+        assert len(rows) == 1
+
+    def test_row_count(self, log_with_weigh_ins_file):
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_weigh_ins_file)
+        conn = create_db(log)
+        count = conn.execute("SELECT COUNT(*) FROM weigh_ins").fetchone()[0]
+        assert count == 3
+        conn.close()
+
+    def test_time_of_day_null_when_absent(self, log_with_weigh_ins_file):
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_weigh_ins_file)
+        conn = create_db(log)
+        row = conn.execute(
+            "SELECT time_of_day FROM weigh_ins WHERE date = '2025-01-10'"
+        ).fetchone()
+        assert row[0] is None
+        conn.close()
+
+    def test_scale_null_when_absent(self, log_with_weigh_ins_file):
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_weigh_ins_file)
+        conn = create_db(log)
+        row = conn.execute(
+            "SELECT scale FROM weigh_ins WHERE date = '2025-01-10'"
+        ).fetchone()
+        assert row[0] is None
+        conn.close()
+
+    def test_values_stored_correctly(self, log_with_weigh_ins_file):
+        from ox.cli import parse_file
+
+        log = parse_file(log_with_weigh_ins_file)
+        conn = create_db(log)
+        row = conn.execute(
+            "SELECT weight_magnitude, weight_unit, time_of_day, scale FROM weigh_ins WHERE date = '2025-01-12'"
+        ).fetchone()
+        assert row[0] == 84.0
+        assert row[1] == "kilogram"
+        assert row[2] == "07:00"
+        assert row[3] == "gym scale"
+        conn.close()
+
+
 class TestQueriesTable:
     """Verify the queries table is populated from StoredQuery objects."""
 

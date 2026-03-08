@@ -82,6 +82,24 @@ def log_with_query_file(log_with_query_content, tmp_path):
 
 
 @pytest.fixture
+def log_with_weigh_ins_content():
+    """Training log content containing weigh_in entries."""
+    return (
+        "2025-01-10 W 185lb\n"
+        "2025-01-11 W 185.5lb T06:30\n"
+        '2025-01-12 W 84kg T07:00 "gym scale"\n'
+    )
+
+
+@pytest.fixture
+def log_with_weigh_ins_file(log_with_weigh_ins_content, tmp_path):
+    """Temporary file containing a training log with weigh-in entries."""
+    f = tmp_path / "weigh_ins.ox"
+    f.write_text(log_with_weigh_ins_content)
+    return f
+
+
+@pytest.fixture
 def simple_db(simple_log_file):
     """In-memory SQLite database loaded from the simple test log."""
     log = parse_file(simple_log_file)
