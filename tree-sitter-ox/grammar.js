@@ -29,48 +29,48 @@ module.exports = grammar({
 
     // Single-line entry: date flag item: details
     singleline_entry: ($) =>
-      seq(
+      prec.right(seq(
         field("date", $.date),
         field("flag", $.flag),
         field("item", $.item),
         ":",
         optional(field("details", $.details)),
-        "\n"
-      ),
+        optional("\n")
+      )),
 
     // Standalone note entry: date note "text"
     note_entry: ($) =>
-      seq(
+      prec.right(seq(
         field("date", $.date),
         "note",
         field("text", $.quoted_string),
-        "\n"
-      ),
+        optional("\n")
+      )),
 
     // Weigh-in entry: date W weight optional(T06:30) optional("scale name")
     weigh_in_entry: ($) =>
-      seq(
+      prec.right(seq(
         field("date", $.date),
         "W",
         field("weight", $.weight),
         optional(field("time_of_day", $.time_of_day)),
         optional(field("scale", $.quoted_string)),
-        "\n"
-      ),
+        optional("\n")
+      )),
 
     // Query entry: date query "name" "SQL"
     query_entry: ($) =>
-      seq(
+      prec.right(seq(
         field("date", $.date),
         "query",
         field("name", $.quoted_string),
         field("sql", $.quoted_string),
-        "\n"
-      ),
+        optional("\n")
+      )),
 
     // @session block
     session_block: ($) =>
-      seq(
+      prec.right(seq(
         "@session",
         "\n",
         field("date", $.date),
@@ -79,30 +79,30 @@ module.exports = grammar({
         "\n",
         repeat(choice($.item_line, $.note_line)),
         "@end",
-        "\n"
-      ),
+        optional("\n")
+      )),
 
     // @exercise block
     exercise_block: ($) =>
-      seq(
+      prec.right(seq(
         "@exercise",
         field("name", $.identifier),
         "\n",
         repeat($.metadata_line),
         "@end",
-        "\n"
-      ),
+        optional("\n")
+      )),
 
     // @template block
     template_block: ($) =>
-      seq(
+      prec.right(seq(
         "@template",
         field("name", $.name),
         "\n",
         repeat(choice($.item_line, $.note_line)),
         "@end",
-        "\n"
-      ),
+        optional("\n")
+      )),
 
     // Item line within a block: item: details
     item_line: ($) =>

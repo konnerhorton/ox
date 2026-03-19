@@ -5,6 +5,8 @@
   "patterns": [
     { "include": "#comment" },
     { "include": "#block-keyword" },
+    { "include": "#singleline-entry" },
+    { "include": "#weigh-in-entry" },
     { "include": "#session-header" },
     { "include": "#item-line" },
     { "include": "#metadata-line" }
@@ -17,6 +19,23 @@
     "block-keyword": {
       "match": "^(@session|@exercise|@template|@end)\\b",
       "name": "keyword.control.block.ox"
+    },
+    "singleline-entry": {
+      "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+([*!])\\s+([^#@:\\s][^:]*):\\s*(.*)$",
+      "captures": {
+        "1": { "name": "constant.numeric.date.ox" },
+        "2": { "name": "keyword.operator.flag.ox" },
+        "3": { "name": "entity.name.function.ox" },
+        "4": { "patterns": [{ "include": "#details" }] }
+      }
+    },
+    "weigh-in-entry": {
+      "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+(W)\\s+(.*)$",
+      "captures": {
+        "1": { "name": "constant.numeric.date.ox" },
+        "2": { "name": "keyword.operator.flag.ox" },
+        "3": { "patterns": [{ "include": "#details" }] }
+      }
     },
     "session-header": {
       "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+([*!W])\\s+(.+)$",
@@ -54,7 +73,7 @@
       "name": "string.quoted.double.ox"
     },
     "weight": {
-      "match": "\\b(BW|\\d+(kg|lbs)([+/]\\d+(kg|lbs))*)\\b",
+      "match": "\\b(BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)([+/]\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))*)\\b",
       "name": "constant.numeric.weight.ox"
     },
     "rep-scheme": {
@@ -62,11 +81,11 @@
       "name": "constant.numeric.reps.ox"
     },
     "time": {
-      "match": "\\b\\d+(sec|min|hr)\\b",
+      "match": "PT(\\d+H(\\d+M(\\d+(\\.\\d+)?S)?)?|\\d+M(\\d+(\\.\\d+)?S)?|\\d+(\\.\\d+)?S)",
       "name": "constant.numeric.time.ox"
     },
     "distance": {
-      "match": "\\b\\d+(km|mi|m|ft|in)\\b",
+      "match": "\\b\\d+(\\.\\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)\\b",
       "name": "constant.numeric.distance.ox"
     }
   }
