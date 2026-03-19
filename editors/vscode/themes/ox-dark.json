@@ -77,21 +77,21 @@
       "name": "Time",
       "scope": "constant.numeric.time.ox",
       "settings": {
-        "foreground": "#D7BA7D"
+        "foreground": "#DCDCAA"
       }
     },
     {
       "name": "Distance",
       "scope": "constant.numeric.distance.ox",
       "settings": {
-        "foreground": "#D7BA7D"
+        "foreground": "#D4A5FF"
       }
     },
     {
       "name": "Quoted strings",
       "scope": "string.quoted.double.ox",
       "settings": {
-        "foreground": "#CE9178",
+        "foreground": "#E8B87A",
         "fontStyle": "italic"
       }
     },
