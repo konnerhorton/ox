@@ -31,10 +31,10 @@
       }
     },
     {
-      "name": "Flags",
-      "scope": "keyword.operator.flag.ox",
+      "name": "Flags, notes, and weigh-ins",
+      "scope": "keyword.operator.flag.ox, keyword.other.note.ox",
       "settings": {
-        "foreground": "#FF6B6B",
+        "foreground": "#D4878F",
         "fontStyle": "bold"
       }
     },

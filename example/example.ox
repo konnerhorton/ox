@@ -598,3 +598,7 @@ kb-clean-and-press: 32kg 5x5 "each arm"
 kb-turkish-getup: 32kg 5x1 "each arm"
 burpee: BW 5x10
 @end
+
+2024-05-03 note "started daily creatine ~5g"
+
+2024-05-03 W 120lb "gym"

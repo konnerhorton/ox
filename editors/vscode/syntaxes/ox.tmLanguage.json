@@ -6,6 +6,7 @@
     { "include": "#comment" },
     { "include": "#block-keyword" },
     { "include": "#singleline-entry" },
+    { "include": "#note-entry" },
     { "include": "#weigh-in-entry" },
     { "include": "#session-header" },
     { "include": "#item-line" },
@@ -13,7 +14,7 @@
   ],
   "repository": {
     "comment": {
-      "match": "#.*$",
+      "match": "^#.*$",
       "name": "comment.line.number-sign.ox"
     },
     "block-keyword": {
@@ -29,6 +30,14 @@
         "4": { "patterns": [{ "include": "#details" }] }
       }
     },
+    "note-entry": {
+      "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+(note)\\s+(\"[^\"]*\")$",
+      "captures": {
+        "1": { "name": "constant.numeric.date.ox" },
+        "2": { "name": "keyword.other.note.ox" },
+        "3": { "name": "string.quoted.double.ox" }
+      }
+    },
     "weigh-in-entry": {
       "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+(W)\\s+(.*)$",
       "captures": {
@@ -38,7 +47,7 @@
       }
     },
     "session-header": {
-      "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+([*!W])\\s+(.+)$",
+      "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+([*!])\\s+(.+)$",
       "captures": {
         "1": { "name": "constant.numeric.date.ox" },
         "2": { "name": "keyword.operator.flag.ox" },
@@ -46,7 +55,7 @@
       }
     },
     "item-line": {
-      "match": "^\\s*([^#@:\\s][^:]*):\\s*(.*)$",
+      "match": "^\\s*(?!\\d{4}-\\d{2}-\\d{2}\\s)([^#@:\\s][^:]*):\\s*(.*)$",
       "captures": {
         "1": { "name": "entity.name.function.ox" },
         "2": { "patterns": [{ "include": "#details" }] }
