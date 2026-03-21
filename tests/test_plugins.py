@@ -218,6 +218,13 @@ class TestLoadPlugins:
         assert "e1rm" in REPORT_PLUGINS
         assert REPORT_PLUGINS["e1rm"]["type"] == "report"
 
+    def test_builtin_wendler531_registered(self, tmp_path, monkeypatch):
+        """load_plugins() registers the built-in wendler531 generator."""
+        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+        load_plugins()
+        assert "wendler531" in GENERATOR_PLUGINS
+        assert GENERATOR_PLUGINS["wendler531"]["type"] == "generator"
+
     def test_clears_previous(self, tmp_path, monkeypatch):
         """After removing a plugin file, reload should not keep stale entries."""
         plugin_code = textwrap.dedent("""\
