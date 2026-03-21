@@ -1,0 +1,60 @@
+==================
+Single include
+==================
+
+@include "other.ox"
+
+---
+
+(source_file
+  (include_directive
+    path: (file_path)))
+
+==================
+Multiple includes
+==================
+
+@include "week1.ox"
+@include "week2.ox"
+
+---
+
+(source_file
+  (include_directive
+    path: (file_path))
+  (include_directive
+    path: (file_path)))
+
+==================
+Include mixed with entries
+==================
+
+# Week 1
+@include "week1.ox"
+2025-01-10 * pullups: BW 5x10
+
+---
+
+(source_file
+  (comment)
+  (include_directive
+    path: (file_path))
+  (singleline_entry
+    date: (date)
+    flag: (flag)
+    item: (item)
+    details: (details
+      weight: (weight)
+      rep_scheme: (rep_scheme))))
+
+==================
+Include with path containing directories
+==================
+
+@include "logs/2025/january.ox"
+
+---
+
+(source_file
+  (include_directive
+    path: (file_path)))

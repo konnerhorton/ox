@@ -113,6 +113,84 @@ class TestParseFile:
         assert all(hasattr(s, "movements") for s in log.sessions)
 
 
+class TestIncludeDirective:
+    """Test @include directive for splitting logs across files."""
+
+    def test_single_include_merges_sessions(self, tmp_path):
+        """Including another file merges its sessions into the result."""
+        child = tmp_path / "child.ox"
+        child.write_text("2025-01-11 * bench-press: 135lb 5x5\n")
+
+        main = tmp_path / "main.ox"
+        main.write_text('2025-01-10 * pullups: BW 5x10\n@include "child.ox"\n')
+
+        log = parse_file(main)
+        assert len(log.sessions) == 2
+        names = {s.movements[0].name for s in log.sessions}
+        assert names == {"pullups", "bench-press"}
+
+    def test_nested_includes(self, tmp_path):
+        """Nested includes (a -> b -> c) all merge."""
+        c = tmp_path / "c.ox"
+        c.write_text("2025-01-12 * squat: 185lb 3x5\n")
+
+        b = tmp_path / "b.ox"
+        b.write_text('2025-01-11 * bench-press: 135lb 5x5\n@include "c.ox"\n')
+
+        a = tmp_path / "a.ox"
+        a.write_text('2025-01-10 * pullups: BW 5x10\n@include "b.ox"\n')
+
+        log = parse_file(a)
+        assert len(log.sessions) == 3
+
+    def test_cycle_detection(self, tmp_path):
+        """Circular includes emit diagnostic, no infinite loop."""
+        a = tmp_path / "a.ox"
+        b = tmp_path / "b.ox"
+        a.write_text('2025-01-10 * pullups: BW 5x10\n@include "b.ox"\n')
+        b.write_text('2025-01-11 * bench-press: 135lb 5x5\n@include "a.ox"\n')
+
+        log = parse_file(a)
+        # Both files' sessions should be present
+        assert len(log.sessions) == 2
+        # Should have a circular include diagnostic
+        cycle_diags = [d for d in log.diagnostics if "Circular" in d.message]
+        assert len(cycle_diags) == 1
+
+    def test_self_include(self, tmp_path):
+        """Self-include detected and reported."""
+        f = tmp_path / "self.ox"
+        f.write_text('2025-01-10 * pullups: BW 5x10\n@include "self.ox"\n')
+
+        log = parse_file(f)
+        assert len(log.sessions) == 1
+        cycle_diags = [d for d in log.diagnostics if "Circular" in d.message]
+        assert len(cycle_diags) == 1
+
+    def test_missing_include(self, tmp_path):
+        """Missing include file emits diagnostic, other entries still parse."""
+        main = tmp_path / "main.ox"
+        main.write_text('2025-01-10 * pullups: BW 5x10\n@include "nonexistent.ox"\n')
+
+        log = parse_file(main)
+        assert len(log.sessions) == 1
+        missing_diags = [d for d in log.diagnostics if "not found" in d.message]
+        assert len(missing_diags) == 1
+
+    def test_relative_path_resolution(self, tmp_path):
+        """Include paths resolve relative to the including file's directory."""
+        subdir = tmp_path / "sub"
+        subdir.mkdir()
+        child = subdir / "child.ox"
+        child.write_text("2025-01-11 * bench-press: 135lb 5x5\n")
+
+        main = tmp_path / "main.ox"
+        main.write_text('@include "sub/child.ox"\n2025-01-10 * pullups: BW 5x10\n')
+
+        log = parse_file(main)
+        assert len(log.sessions) == 2
+
+
 class TestMixedBWWeightProgressive:
     """Test that mixed BW/weight progressive sequences parse without errors."""
 
