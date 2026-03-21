@@ -9,10 +9,5 @@
   "surroundingPairs": [
     { "open": "\"", "close": "\"" }
   ],
-  "folding": {
-    "markers": {
-      "start": "^\\s*#",
-      "end": "^\\s*[^#\\s]"
-    }
-  }
+  "folding": {}
 }

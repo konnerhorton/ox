@@ -159,6 +159,33 @@ def _cursor_wants_movement(text: str, line: int, col: int, tree) -> bool:
     return False
 
 
+@server.feature(lsp.TEXT_DOCUMENT_FOLDING_RANGE)
+def folding_range(params: lsp.FoldingRangeParams) -> list[lsp.FoldingRange]:
+    """Provide folding ranges between comment lines."""
+    document = server.workspace.get_text_document(params.text_document.uri)
+    lines = document.source.split("\n")
+    comment_lines = [i for i, line in enumerate(lines) if line.lstrip().startswith("#")]
+
+    ranges: list[lsp.FoldingRange] = []
+    for idx, start in enumerate(comment_lines):
+        if idx + 1 < len(comment_lines):
+            end = comment_lines[idx + 1] - 1
+        else:
+            end = len(lines) - 1
+        # Skip trailing blank lines
+        while end > start and not lines[end].strip():
+            end -= 1
+        if end > start:
+            ranges.append(
+                lsp.FoldingRange(
+                    start_line=start,
+                    end_line=end,
+                    kind=lsp.FoldingRangeKind.Region,
+                )
+            )
+    return ranges
+
+
 @server.feature(
     lsp.TEXT_DOCUMENT_COMPLETION,
     lsp.CompletionOptions(trigger_characters=[" "]),
