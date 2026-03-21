@@ -101,6 +101,22 @@
       "settings": {
         "foreground": "#D4D4D4"
       }
+    },
+    {
+      "name": "Include keyword",
+      "scope": "keyword.control.include.ox",
+      "settings": {
+        "foreground": "#C586C0",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Query keyword",
+      "scope": "keyword.other.query.ox",
+      "settings": {
+        "foreground": "#C586C0",
+        "fontStyle": "bold"
+      }
     }
   ]
 }

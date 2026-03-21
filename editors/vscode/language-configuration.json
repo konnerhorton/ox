@@ -11,8 +11,8 @@
   ],
   "folding": {
     "markers": {
-      "start": "^@(session|exercise|template)",
-      "end": "^@end"
+      "start": "^\\s*#",
+      "end": "^\\s*[^#\\s]"
     }
   }
 }

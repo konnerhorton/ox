@@ -13,6 +13,10 @@
           },
           {
             "type": "SYMBOL",
+            "name": "include_directive"
+          },
+          {
+            "type": "SYMBOL",
             "name": "comment"
           },
           {
@@ -52,6 +56,56 @@
         {
           "type": "SYMBOL",
           "name": "weigh_in_entry"
+        }
+      ]
+    },
+    "include_directive": {
+      "type": "PREC_RIGHT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "@include"
+          },
+          {
+            "type": "FIELD",
+            "name": "path",
+            "content": {
+              "type": "SYMBOL",
+              "name": "file_path"
+            }
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "\n"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "file_path": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "\""
+        },
+        {
+          "type": "PATTERN",
+          "value": "[^\"\\n]+"
+        },
+        {
+          "type": "STRING",
+          "value": "\""
         }
       ]
     },

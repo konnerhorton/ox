@@ -239,6 +239,12 @@ def process_query_entry(node: Node) -> StoredQuery:
     return StoredQuery(name=name, sql=sql, date=date)
 
 
+def process_include_directive(node: Node) -> str:
+    """Extract file path from an include_directive node."""
+    raw = node.child_by_field_name("path").text.decode("utf-8")
+    return raw.strip('"')
+
+
 def process_node(node: Node) -> TrainingSession | Note | StoredQuery | None:
     """Process any node type and return appropriate data structure.
 

@@ -82,6 +82,11 @@
     }
   },
   {
+    "type": "file_path",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "flag",
     "named": true,
     "fields": {}
@@ -90,6 +95,22 @@
     "type": "identifier",
     "named": true,
     "fields": {}
+  },
+  {
+    "type": "include_directive",
+    "named": true,
+    "fields": {
+      "path": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "file_path",
+            "named": true
+          }
+        ]
+      }
+    }
   },
   {
     "type": "item",
@@ -345,6 +366,10 @@
           "named": true
         },
         {
+          "type": "include_directive",
+          "named": true
+        },
+        {
           "type": "note_entry",
           "named": true
         },
@@ -461,6 +486,10 @@
     "named": false
   },
   {
+    "type": "\"",
+    "named": false
+  },
+  {
     "type": "*",
     "named": false
   },
@@ -474,6 +503,10 @@
   },
   {
     "type": "@exercise",
+    "named": false
+  },
+  {
+    "type": "@include",
     "named": false
   },
   {

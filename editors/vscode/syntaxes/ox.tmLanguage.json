@@ -5,6 +5,8 @@
   "patterns": [
     { "include": "#comment" },
     { "include": "#block-keyword" },
+    { "include": "#include-directive" },
+    { "include": "#query-entry" },
     { "include": "#singleline-entry" },
     { "include": "#note-entry" },
     { "include": "#weigh-in-entry" },
@@ -20,6 +22,22 @@
     "block-keyword": {
       "match": "^(@session|@exercise|@template|@end)\\b",
       "name": "keyword.control.block.ox"
+    },
+    "include-directive": {
+      "match": "^(@include)\\s+(\"[^\"]+\")",
+      "captures": {
+        "1": { "name": "keyword.control.include.ox" },
+        "2": { "name": "string.quoted.double.ox" }
+      }
+    },
+    "query-entry": {
+      "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+(query)\\s+(\"[^\"]*\")\\s+(\"[^\"]*\")$",
+      "captures": {
+        "1": { "name": "constant.numeric.date.ox" },
+        "2": { "name": "keyword.other.query.ox" },
+        "3": { "name": "string.quoted.double.ox" },
+        "4": { "name": "string.quoted.double.ox" }
+      }
     },
     "singleline-entry": {
       "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+([*!])\\s+([^#@:\\s][^:]*):\\s*(.*)$",

@@ -12,8 +12,8 @@ from rich.table import Table
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 
-from ox.parse import process_node
-from ox.data import Note, StoredQuery, TrainingLog, TrainingSession, WeighIn
+from ox.parse import process_include_directive, process_node
+from ox.data import Diagnostic, Note, StoredQuery, TrainingLog, TrainingSession, WeighIn
 from ox.db import create_db
 from ox.lint import collect_diagnostics
 from ox.plugins import GENERATOR_PLUGINS, load_plugins
@@ -24,18 +24,14 @@ console = Console()
 DEFAULT_TABLE_BOX = box.SIMPLE
 
 
-def parse_file(file_path: Path) -> TrainingLog:
-    """Parse a training log file and return TrainingLog object.
-
-    Args:
-        file_path: Path to the training log file
+def _parse_single_file(
+    file_path: Path, parser: Parser
+) -> tuple[list, list, list, list, list, list[str]]:
+    """Parse a single .ox file without resolving includes.
 
     Returns:
-        TrainingLog object with parsed sessions
+        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, include_paths)
     """
-    language = Language(tree_sitter_ox.language())
-    parser = Parser(language)
-
     with open(file_path, "r") as f:
         data = bytes(f.read(), encoding="utf-8")
 
@@ -46,7 +42,11 @@ def parse_file(file_path: Path) -> TrainingLog:
     log_notes = []
     log_queries = []
     log_weigh_ins = []
+    include_paths = []
     for child in root_node.children:
+        if child.type == "include_directive":
+            include_paths.append(process_include_directive(child))
+            continue
         result = process_node(child)
         if isinstance(result, TrainingSession):
             entries.append(result)
@@ -57,13 +57,88 @@ def parse_file(file_path: Path) -> TrainingLog:
         elif isinstance(result, WeighIn):
             log_weigh_ins.append(result)
 
-    diagnostics = collect_diagnostics(tree)
+    diagnostics = list(collect_diagnostics(tree))
+    return entries, log_notes, log_queries, log_weigh_ins, diagnostics, include_paths
+
+
+def _load_recursive(
+    file_path: Path,
+    parser: Parser,
+    visited: set[Path],
+) -> tuple[list, list, list, list, list]:
+    """Recursively load a file and its includes with cycle detection.
+
+    Returns:
+        Tuple of (sessions, notes, queries, weigh_ins, diagnostics)
+    """
+    abs_path = file_path.resolve()
+
+    if abs_path in visited:
+        diag = Diagnostic(
+            line=1,
+            col=0,
+            end_line=1,
+            end_col=0,
+            message=f"Circular include detected: {file_path}",
+            severity="warning",
+        )
+        return [], [], [], [], [diag]
+
+    visited.add(abs_path)
+
+    if not abs_path.exists():
+        diag = Diagnostic(
+            line=1,
+            col=0,
+            end_line=1,
+            end_col=0,
+            message=f"Included file not found: {file_path}",
+            severity="warning",
+        )
+        return [], [], [], [], [diag]
+
+    entries, notes, queries, weigh_ins, diagnostics, include_paths = _parse_single_file(
+        abs_path, parser
+    )
+
+    for inc_path in include_paths:
+        resolved = (abs_path.parent / inc_path).resolve()
+        inc_entries, inc_notes, inc_queries, inc_weigh_ins, inc_diagnostics = (
+            _load_recursive(Path(resolved), parser, visited)
+        )
+        entries.extend(inc_entries)
+        notes.extend(inc_notes)
+        queries.extend(inc_queries)
+        weigh_ins.extend(inc_weigh_ins)
+        diagnostics.extend(inc_diagnostics)
+
+    return entries, notes, queries, weigh_ins, diagnostics
+
+
+def parse_file(file_path: Path) -> TrainingLog:
+    """Parse a training log file and return TrainingLog object.
+
+    Resolves @include directives recursively with cycle detection.
+
+    Args:
+        file_path: Path to the training log file
+
+    Returns:
+        TrainingLog object with parsed sessions
+    """
+    language = Language(tree_sitter_ox.language())
+    parser = Parser(language)
+
+    entries, notes, queries, weigh_ins, diagnostics = _load_recursive(
+        file_path, parser, visited=set()
+    )
+
     return TrainingLog(
         tuple(entries),
-        tuple(log_notes),
-        diagnostics,
-        tuple(log_queries),
-        tuple(log_weigh_ins),
+        tuple(notes),
+        tuple(diagnostics),
+        tuple(queries),
+        tuple(weigh_ins),
     )
 
 

@@ -60,7 +60,9 @@
         { "scope": "constant.numeric.time.ox", "settings": { "foreground": "#DCDCAA" } },
         { "scope": "constant.numeric.distance.ox", "settings": { "foreground": "#D4A5FF" } },
         { "scope": "string.quoted.double.ox", "settings": { "foreground": "#E8B87A", "fontStyle": "italic" } },
-        { "scope": "string.unquoted.ox", "settings": { "foreground": "#D4D4D4" } }
+        { "scope": "string.unquoted.ox", "settings": { "foreground": "#D4D4D4" } },
+        { "scope": "keyword.control.include.ox", "settings": { "foreground": "#C586C0", "fontStyle": "bold" } },
+        { "scope": "string.unquoted.include-path.ox", "settings": { "foreground": "#D4D4D4" } }
       ]
     }
   },

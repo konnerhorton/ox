@@ -1,6 +1,7 @@
 """Language Server Protocol implementation for ox."""
 
 import re
+from pathlib import Path
 
 from lsprotocol import types as lsp
 from pygls.lsp.server import LanguageServer
@@ -34,6 +35,37 @@ def get_diagnostics(text: str) -> list[lsp.Diagnostic]:
     ]
 
 
+def _validate_includes(tree, doc_uri: str) -> list[lsp.Diagnostic]:
+    """Check include_directive nodes for missing files."""
+    diagnostics = []
+    doc_path = Path(doc_uri.replace("file://", ""))
+    for node in tree.root_node.children:
+        if node.type == "include_directive":
+            path_node = node.child_by_field_name("path")
+            if path_node:
+                inc_path = path_node.text.decode("utf-8").strip('"')
+                resolved = (doc_path.parent / inc_path).resolve()
+                if not resolved.exists():
+                    diagnostics.append(
+                        lsp.Diagnostic(
+                            range=lsp.Range(
+                                start=lsp.Position(
+                                    line=node.start_point[0],
+                                    character=path_node.start_point[1],
+                                ),
+                                end=lsp.Position(
+                                    line=node.end_point[0],
+                                    character=path_node.end_point[1],
+                                ),
+                            ),
+                            message=f"Included file not found: {inc_path}",
+                            severity=lsp.DiagnosticSeverity.Warning,
+                            source="ox",
+                        )
+                    )
+    return diagnostics
+
+
 def publish_diagnostics(uri: str, diagnostics: list[lsp.Diagnostic]):
     """Publish diagnostics to the client."""
     server.text_document_publish_diagnostics(
@@ -41,11 +73,19 @@ def publish_diagnostics(uri: str, diagnostics: list[lsp.Diagnostic]):
     )
 
 
+def _get_all_diagnostics(text: str, uri: str) -> list[lsp.Diagnostic]:
+    """Get parse diagnostics and include validation diagnostics."""
+    tree = _parser.parse(bytes(text, encoding="utf-8"))
+    diagnostics = get_diagnostics(text)
+    diagnostics.extend(_validate_includes(tree, uri))
+    return diagnostics
+
+
 @server.feature(lsp.TEXT_DOCUMENT_DID_OPEN)
 def did_open(params: lsp.DidOpenTextDocumentParams):
     """Handle document open - publish initial diagnostics."""
     text = params.text_document.text
-    diagnostics = get_diagnostics(text)
+    diagnostics = _get_all_diagnostics(text, params.text_document.uri)
     publish_diagnostics(params.text_document.uri, diagnostics)
 
 
@@ -53,7 +93,7 @@ def did_open(params: lsp.DidOpenTextDocumentParams):
 def did_change(params: lsp.DidChangeTextDocumentParams):
     """Handle document change - update diagnostics."""
     document = server.workspace.get_text_document(params.text_document.uri)
-    diagnostics = get_diagnostics(document.source)
+    diagnostics = _get_all_diagnostics(document.source, params.text_document.uri)
     publish_diagnostics(params.text_document.uri, diagnostics)
 
 
@@ -61,7 +101,7 @@ def did_change(params: lsp.DidChangeTextDocumentParams):
 def did_save(params: lsp.DidSaveTextDocumentParams):
     """Handle document save - refresh diagnostics."""
     document = server.workspace.get_text_document(params.text_document.uri)
-    diagnostics = get_diagnostics(document.source)
+    diagnostics = _get_all_diagnostics(document.source, params.text_document.uri)
     publish_diagnostics(params.text_document.uri, diagnostics)
 
 
