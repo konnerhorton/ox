@@ -35,7 +35,6 @@ def get_diagnostics(text: str) -> list[lsp.Diagnostic]:
     ]
 
 
-
 def _validate_includes(tree, doc_uri: str) -> list[lsp.Diagnostic]:
     """Check include_directive nodes for missing files."""
     diagnostics = []
@@ -104,7 +103,6 @@ def did_save(params: lsp.DidSaveTextDocumentParams):
     document = server.workspace.get_text_document(params.text_document.uri)
     diagnostics = _get_all_diagnostics(document.source, params.text_document.uri)
     publish_diagnostics(params.text_document.uri, diagnostics)
-
 
 
 def _collect_movement_names(tree) -> set[str]:

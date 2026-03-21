@@ -97,8 +97,8 @@ def _load_recursive(
         )
         return [], [], [], [], [diag]
 
-    entries, notes, queries, weigh_ins, diagnostics, include_paths = (
-        _parse_single_file(abs_path, parser)
+    entries, notes, queries, weigh_ins, diagnostics, include_paths = _parse_single_file(
+        abs_path, parser
     )
 
     for inc_path in include_paths:
