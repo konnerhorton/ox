@@ -4,157 +4,114 @@ icon: material/puzzle-edit
 
 # Reports & Plugins
 
-Ox has a plugin system for extending analysis and training plan generation. Plugins come in two types:
-
-- **Reports** — query the SQLite database and return tabular results
-- **Generators** — accept parameters and return `.ox` formatted text for planning
+Two plugin types: **reports** (query DB, return tables) and **generators** (produce `.ox` text).
 
 ## Built-in Reports
 
-These reports are included with ox and available immediately.
-
 ### `volume`
 
-Volume over time for a single movement.
+Volume over time for a movement.
 
-**CLI usage:**
-```
-ox> report volume -m MOVEMENT [-b BIN]
-```
-
-**Parameters:**
-- `-m` / `--movement` *(required)* — exercise name to filter by
-- `-b` / `--bin` *(default: `weekly`)* — time bin: `daily`, `weekly`, `weekly-num`, or `monthly`
-
-**Examples:**
 ```
 ox> report volume -m squat
-ox> report volume --movement deadlift --bin monthly
+ox> report volume -m deadlift --bin monthly --unit kg
 ```
 
-**Output columns:** `period`, `total_volume`, `total_reps`, `avg_weight_per_rep`
+| Param | Default | Options |
+|---|---|---|
+| `-m/--movement` | *required* | exercise name |
+| `-b/--bin` | `weekly` | `daily`, `weekly`, `weekly-num`, `monthly` |
+| `-u/--unit` | `lb` | any mass unit |
 
 ### `matrix`
 
-Session count per movement per time period. Rows are time periods; columns are movement names sorted by frequency.
+Session count per movement per time period.
 
-**CLI usage:**
-```
-ox> report matrix [-b BIN]
-```
-
-**Parameters:**
-- `-b` / `--bin` *(default: `weekly`)* — time bin: `daily`, `weekly`, `weekly-num`, or `monthly`
-
-**Examples:**
 ```
 ox> report matrix
 ox> report matrix --bin monthly
 ```
 
-**Output columns:** `period`, then one column per movement name
+| Param | Default | Options |
+|---|---|---|
+| `-b/--bin` | `weekly` | `daily`, `weekly`, `weekly-num`, `monthly` |
 
 ### `e1rm`
 
-Estimated one-rep max (1RM) progression for a movement over time.
+Estimated 1RM progression. Only uses sets with `^rm` in the note.
 
-Only considers sets where the movement note contains `^rm` — this is the convention for marking max-effort sets.
-
-**CLI usage:**
-```
-ox> report e1rm -m MOVEMENT [-f FORMULA]
-```
-
-**Parameters:**
-- `-m` / `--movement` *(required)* — exercise name
-- `-f` / `--formula` *(default: `brzycki`)* — formula to use: `brzycki` or `epley`
-
-**Examples:**
 ```
 ox> report e1rm -m deadlift
-ox> report e1rm --movement squat --formula epley
+ox> report e1rm -m squat --formula epley --output plot
 ```
 
-**Output columns:** `date`, `estimated_1rm`, `weight`, `reps`, `unit`
+| Param | Default | Options |
+|---|---|---|
+| `-m/--movement` | *required* | exercise name |
+| `-f/--formula` | `brzycki` | `brzycki`, `epley` |
+| `-u/--unit` | `lb` | any mass unit |
+| `-o/--output` | `table` | `table`, `plot` |
 
-**Marking max-effort sets in your log:**
-
-Add `^rm` anywhere in the movement note:
+Mark max-effort sets in your log with `^rm`:
 
 ```
 deadlift: 315lb 1x3 "^rm top set"
-squat: 225lb 5x1 "^rm — new training max"
 ```
 
-## Example Generator
+### `weighin`
 
-An example generator plugin for Wendler 5/3/1 cycles is included in `examples/plugins/wendler531.py`. It is not installed by default — see [Installing Plugins](#installing-plugins) below.
+Body weight tracking with statistics and trend analysis.
+
+```
+ox> report weighin
+ox> report weighin --output plot --window 14
+ox> report weighin --output stats
+```
+
+| Param | Default | Options |
+|---|---|---|
+| `-u/--unit` | `lb` | any mass unit |
+| `-o/--output` | `table` | `table`, `plot`, `stats` |
+| `-w/--window` | `7` | rolling average window (days) |
+
+Supports multiple scales — `stats` output shows per-scale breakdowns.
+
+## Built-in Generator
 
 ### `wendler531`
 
-Generates a 4-week Wendler 5/3/1 cycle as `.ox` planned sessions.
-
-**CLI usage (after installing):**
-```
-ox> generate wendler531 -m MOVEMENT -t TRAINING_MAX [-u UNIT] [-d START_DATE]
-```
-
-**Parameters:**
-- `-m` / `--movement` *(required)* — movement name (e.g., `squat`)
-- `-t` / `--training_max` *(required)* — training max weight (numeric)
-- `-u` / `--unit` *(default: `lbs`)* — weight unit: `lbs` or `kg`
-- `-d` / `--start_date` *(default: today)* — start date as `YYYY-MM-DD`
-
-**Example:**
-```
-ox> generate wendler531 -m squat -t 315
-ox> generate wendler531 -m bench-press -t 200 -u lbs -d 2026-03-01
-```
-
-**Output:** Valid `.ox` text with `!` (planned) sessions that you can paste into your log:
+Generates a 4-week Wendler 5/3/1 cycle as planned sessions.
 
 ```
-# Wendler 5/3/1 — squat (TM: 315lbs)
-
-@session
-2026-03-01 ! 5s Week
-squat: 205lbs 1x5
-squat: 235lbs 1x5
-squat: 270lbs 1x5
-@end
-
-@session
-2026-03-08 ! 3s Week
-...
+ox> generate wendler531 -m squat:315,bench:225
+ox> generate wendler531 -m deadlift:405 --unit kg --start-date 2026-03-01
 ```
+
+| Param | Default | Options |
+|---|---|---|
+| `-m/--movements` | *required* | `name:max` pairs, comma-separated |
+| `-u/--unit` | `lb` | `lb`, `kg` |
+| `-d/--start-date` | today | `YYYY-MM-DD` |
+| `-r/--rm` | `true` | `true`, `false` — tag sets with `^rm` |
 
 ## Installing Plugins
 
-### Personal scripts (`~/.ox/plugins/`)
+### Personal scripts
 
-Place any `.py` file in `~/.ox/plugins/`. It will be loaded automatically on startup.
+Place `.py` files in `~/.ox/plugins/` — loaded automatically.
 
-To install the bundled Wendler 5/3/1 example:
+### Entry points
 
-```bash
-mkdir -p ~/.ox/plugins
-cp /path/to/ox/examples/plugins/wendler531.py ~/.ox/plugins/
-```
-
-### Installable packages (entry points)
-
-Plugins can also be distributed as Python packages that register via the `ox.plugins` entry point group. In your `pyproject.toml`:
+Distribute as a Python package with an `ox.plugins` entry point:
 
 ```toml
 [project.entry-points."ox.plugins"]
 my_plugin = "my_package.my_module"
 ```
 
-The referenced module must export a `register()` function (see below).
-
 ## Writing a Plugin
 
-A plugin is a Python module that exports a `register()` function returning a list of plugin descriptors.
+Export a `register()` function returning a list of descriptors.
 
 ### Report plugin
 
@@ -168,19 +125,16 @@ def my_report(conn: sqlite3.Connection, movement: str) -> tuple[list[str], list[
     ).fetchall()
     return ["date", "total_reps"], rows
 
-
 def register():
-    return [
-        {
-            "type": "report",
-            "name": "my-report",
-            "fn": my_report,
-            "description": "Total reps per day for a movement",
-            "params": [
-                {"name": "movement", "type": str, "required": True, "short": "m"},
-            ],
-        }
-    ]
+    return [{
+        "type": "report",
+        "name": "my-report",
+        "fn": my_report,
+        "description": "Total reps per day",
+        "params": [
+            {"name": "movement", "type": str, "required": True, "short": "m"},
+        ],
+    }]
 ```
 
 ### Generator plugin
@@ -190,44 +144,42 @@ def my_generator(movement: str, sets: int = 5) -> str:
     from datetime import date
     today = date.today().strftime("%Y-%m-%d")
     lines = ["@session", f"{today} ! Generated Session"]
-    for _ in range(sets):
-        lines.append(f"{movement}: BW 1x10")
+    lines += [f"{movement}: BW 1x10" for _ in range(sets)]
     lines.append("@end")
     return "\n".join(lines)
 
-
 def register():
-    return [
-        {
-            "type": "generator",
-            "name": "my-generator",
-            "fn": my_generator,
-            "description": "Generate a bodyweight session",
-            "params": [
-                {"name": "movement", "type": str, "required": True, "short": "m"},
-                {"name": "sets", "type": int, "required": False, "default": 5, "short": "s"},
-            ],
-        }
-    ]
+    return [{
+        "type": "generator",
+        "name": "my-generator",
+        "fn": my_generator,
+        "description": "Bodyweight session generator",
+        "params": [
+            {"name": "movement", "type": str, "required": True, "short": "m"},
+            {"name": "sets", "type": int, "required": False, "default": 5, "short": "s"},
+        ],
+    }]
 ```
 
-### Plugin descriptor fields
+### Descriptor fields
+
+**Plugin:**
 
 | Field | Required | Description |
 |---|---|---|
 | `type` | yes | `"report"` or `"generator"` |
-| `name` | yes | Name used in the CLI (`report NAME` or `generate NAME`) |
-| `fn` | yes | Callable that implements the plugin |
-| `description` | yes | Short description shown in listings |
-| `params` | yes | List of parameter descriptors (see below) |
+| `name` | yes | CLI name |
+| `fn` | yes | Callable |
+| `description` | yes | Short description |
+| `params` | yes | Parameter descriptors |
 | `needs_db` | no | If `True`, generator receives `conn` as first arg |
 
-### Parameter descriptor fields
+**Parameter:**
 
 | Field | Required | Description |
 |---|---|---|
-| `name` | yes | Parameter name (used as `--name` flag) |
-| `type` | yes | Python type to cast the value to (e.g., `str`, `int`) |
-| `required` | yes | Whether the parameter is required |
-| `default` | no | Default value if not provided |
-| `short` | no | Single-character short flag (e.g., `"m"` → `-m`) |
+| `name` | yes | `--name` flag |
+| `type` | yes | Python type (`str`, `int`, etc.) |
+| `required` | yes | Whether required |
+| `default` | no | Default value |
+| `short` | no | Single-char short flag |

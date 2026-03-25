@@ -4,137 +4,122 @@ icon: material/rocket-launch
 
 # Getting Started
 
-This guide will help you start tracking your training with ox.
-
 ## Installation
-
-Install via pip:
 
 ```bash
 pip install ox
 ```
 
-## Your First Training Log
+## Your First Log
 
-Create a file called `training.ox` and add your first workout:
+Create `training.ox`:
 
 ```
-2024-01-15 * squat: 135lbs 5x5
+2024-01-15 * squat: 135lb 5x5
 ```
 
-That's it! You've logged your first exercise.
+Run it:
 
-## Adding More Detail
+```bash
+ox training.ox
+ox> stats
+ox> history squat
+```
+
+## Syntax
 
 ### Single-line entries
 
-Log quick workouts or single exercises:
-
 ```
-2024-01-15 * squat: 135lbs 5x5  
-2024-01-15 * bench-press: 135lbs 5x5  
-2024-01-15 * run: 5km 25min  
+2024-01-15 * squat: 135lb 5x5
+2024-01-15 * run: 5km PT25M
+2024-01-15 W 185lb T06:30 "home"
+2024-01-15 note "deload week"
 ```
 
-### Multi-exercise sessions
-
-Group related exercises together:
+### Session blocks
 
 ```
 @session
 2024-01-16 * Upper Body
-bench-press: 135lbs 5x5
-overhead-press: 95lbs 3x8
+bench-press: 135lb 5x5
+overhead-press: 95lb 3x8
 pullup: BW 4x10
-note: felt strong today
+note: "felt strong today"
 @end
 ```
 
-## Understanding the Syntax
+### Entry types
 
-### Date Format
-Always use `YYYY-MM-DD` format:
-```
-2024-01-15    ✓ correct
-01/15/2024    ✗ wrong
-15-01-2024    ✗ wrong
-```
+- `*` — completed
+- `!` — planned
+- `W` — weigh-in
+- `note` — freeform note
+- `query` — stored SQL query
 
-### Flags
-- `*` = Completed (what you actually did)
-- `!` = Planned (what you intend to do)
-- `W` = Weigh-in (body weight measurement)
-
-### Exercise Names
-Use descriptive names with no spaces:
-```
-squat           ✓
-bench-press     ✓
-kb-swing        ✓ (kettlebell swing)
-bb-deadlift     ✓ (barbell deadlift)
-bench press     ✗ (has space)
-```
-
-### Weight Formats
-```
-135lbs          pounds
-24kg            kilograms
-BW              bodyweight
-24kg+32kg       combined weights (two bells)
-135lbs/155lbs/175lbs    progressive weights
-```
-
-### Rep Schemes
-```
-5x5             5 sets of 5 reps
-5/5/5           3 sets of 5 reps
-10/8/6/4/2      descending reps (pyramid)
-```
-
-## Complete Example
-
-Here's a week of training:
+### Weights
 
 ```
-# Week 1 - Starting Strength
+135lb             pounds
+24kg              kilograms
+BW                bodyweight
+24kg+32kg         combined (two bells)
+135lb/155lb/175lb progressive (per-set)
+```
+
+### Reps
+
+```
+5x5               5 sets of 5 reps
+5/3/1             3 sets with different reps
+10/8/6/4/2        pyramid
+```
+
+### Exercise names
+
+No spaces — hyphens are common but any non-space format works:
+
+```
+squat             kb-swing          bb-deadlift
+bench-press       kb-oh-press       bb-back-squat
+```
+
+### Includes
+
+Split logs across files:
+
+```
+@include "upper.ox"
+@include "lower.ox"
+```
+
+## Example
+
+```
+# Week 1
 
 @session
 2024-01-15 * Lower Body
-squat: 135lbs 5x5
-deadlift: 185lbs 3x5
-box-jump: BW 3x5
+squat: 135lb 5x5
+deadlift: 185lb 3x5
 @end
 
-2024-01-16 * run: 5km 28min "felt good"
+2024-01-16 * run: 5km PT28M "felt good"
 
 @session
 2024-01-17 * Upper Body
-bench-press: 135lbs 5x5
-overhead-press: 95lbs 3x8
+bench-press: 135lb 5x5
+overhead-press: 95lb 3x8
 pullup: BW 4x10
 @end
 
-@session
-2024-01-18 * KB Workout
-kb-swing: 32kg 5x15
-kb-snatch: 24kg 5x5 "each arm"
-kb-clean-and-press: 24kg 5x3 "each arm"
-@end
-
-@session
-2024-01-19 * Lower Body
-squat: 140lbs 5x5 "felt heavier than Monday"
-deadlift: 190lbs 3x5
-box-jump: BW 3x5
-@end
-
-2024-01-20 * rest-day: "active recovery walk"
+2024-01-17 W 185lb T06:30 "home"
 ```
 
 ## Next Steps
 
-- Check out the [full syntax documentation](index.md) for all features
-- See [example.ox](https://github.com/konnerhorton/ox/blob/master/example/example.ox) for a complete training log
-- Explore [CLI commands](cli-reference.md) for working with logs
-- Learn about [built-in reports and the plugin system](plugins.md)
-- Use the [Python API](api-reference.md) for custom analysis
+- [CLI Reference](cli-reference.md) — commands and usage
+- [Reports & Plugins](plugins.md) — built-in analysis and extending ox
+- [API Reference](api-reference.md) — Python library
+- [Editor Support](editor-support.md) — syntax highlighting and LSP
+- [example.ox](https://github.com/konnerhorton/ox/blob/main/example/example.ox) — full reference log
