@@ -2,6 +2,12 @@ site_name: ox
 site_url: https://konnerhorton.github.io/ox
 theme:
   name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: amber
+  icon:
+    logo: material/dumbbell
 
 nav:
   - Home: index.md
