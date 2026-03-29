@@ -207,6 +207,7 @@ class TrainingLog:
         sessions: Tuple of TrainingSession objects
         diagnostics: Tuple of parse diagnostics (errors/warnings)
     """
+
     # TODO: Add attributes to docstring and improve description
     sessions: tuple[TrainingSession, ...]
     notes: tuple[Note, ...] = field(default_factory=tuple)
