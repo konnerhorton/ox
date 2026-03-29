@@ -20,28 +20,31 @@ uv run ruff format src/ tests/ # format
 
 ```
 src/ox/
-  parse.py    - Tree-sitter node → data structures (the core parser)
-  data.py     - Dataclasses: TrainingSet, Movement, TrainingSession, TrainingLog, Note, WeighIn, StoredQuery, Diagnostic
-  db.py       - In-memory SQLite layer: create_db(log) → Connection
-  reports.py  - Reports: volume, matrix; get_all_reports() merges builtin + plugin reports
-  plugins.py  - Plugin discovery and registry (report + generator types)
-  units.py    - Pint unit registry (shared instance)
-  cli.py      - Click CLI with interactive REPL (stats, history, report, generate, query, tables, lint, reload)
-  lsp.py      - LSP server: diagnostics, movement completion, comment folding
-  lint.py     - Parse error collection for CLI lint command and LSP
+  parse.py      - Tree-sitter node → data structures (the core parser)
+  data.py       - Dataclasses: TrainingSet, Movement, TrainingSession, TrainingLog, Note, WeighIn, StoredQuery, Diagnostic
+  db.py         - In-memory SQLite layer: create_db(log) → Connection
+  plugins.py    - Plugin discovery, registry, PluginContext, result types (TableResult, TextResult, PlotResult)
+  sql_utils.py  - SQL helper utilities for plugins (parse_plugin_args, plugin_usage, _weight_sql_expr, _time_bin_expr)
+  units.py      - Pint unit registry (shared instance)
+  cli.py        - Click CLI with interactive REPL (run, query, tables, lint, reload)
+  lsp.py        - LSP server: diagnostics, movement completion, comment folding
+  lint.py       - Parse error collection for CLI lint command and LSP
   builtins/
-    e1rm.py        - Estimated 1RM report (Brzycki/Epley)
-    weighin.py     - Weigh-in stats/plot report (rolling average, trend, multi-scale)
-    wendler531.py  - Wendler 5/3/1 cycle generator
+    volume.py      - Volume over time plugin
+    stats.py       - Summary statistics plugin
+    history.py     - Movement history plugin
+    e1rm.py        - Estimated 1RM plugin (Brzycki/Epley)
+    weighin.py     - Weigh-in stats/plot plugin (rolling average, trend, multi-scale)
+    wendler531.py  - Wendler 5/3/1 cycle generator plugin
 tests/
   conftest.py        - Shared fixtures (simple_log_*, weight_edge_cases, log_with_query_*, log_with_weigh_ins_*, weigh_in_multi_scale_*, simple_db, example_db)
   test_parse.py      - Weight/rep parsing
   test_data.py       - Data structures
   test_db.py         - SQLite schema, loading, views, queries
-  test_reports.py    - Reports, arg parsing, registry
+  test_reports.py    - SQL utils, volume plugin, arg parsing, plugin registry
   test_plugins.py    - Plugin registration, loading, builtins
   test_integration.py - End-to-end parsing
-  test_weighin.py    - Weigh-in report (rolling avg, trend, table/plot/stats)
+  test_weighin.py    - Weigh-in plugin (rolling avg, trend, table/plot/stats)
   test_notes.py      - Note parsing, session notes, DB population
   test_lint.py       - Diagnostic collection
 tree-sitter-ox/
@@ -49,7 +52,8 @@ tree-sitter-ox/
 editors/
   vscode/     - VSCode extension for .ox syntax highlighting
 examples/
-  plugins/    - Example plugin scripts (wendler531.py)
+  plugins/            - Example plugin scripts (wendler531.py)
+  plugin_template.py  - Template for writing user plugins
 docs/         - MkDocs documentation source
 example/
   example.ox  - Reference training log with all supported formats
@@ -82,6 +86,9 @@ kb-oh-press: 24kg 5/5/5
 # Include another file
 @include "other.ox"
 
+# Load a plugin
+@plugin "my_plugin.py"
+
 # Flags: * = completed, ! = planned, W = weigh-in
 # Weight units: kg, lb, g, oz, stone, grain, and more (any pint-compatible mass unit)
 # Weight formats: 24kg, BW, 24kg+32kg (combined), 24kg/32kg/48kg (progressive)
@@ -98,6 +105,8 @@ kb-oh-press: 24kg 5/5/5
 - Exercise names are hyphenated lowercase (e.g. `kb-oh-press`, `bench-press`)
 - `to_ox()` methods serialize back to .ox format (round-trip support)
 - Tree-sitter nodes are processed in `parse.py`; data structures live in `data.py` — keep this separation
+- All analysis features are plugins (builtins or user-defined). Plugins receive `PluginContext(db, log)` and return `TableResult`, `TextResult`, or `PlotResult`
+- CLI commands: `run NAME [ARGS]` for plugins, `query` for raw SQL. Plugin names also work directly (e.g. `stats` instead of `run stats`)
 
 ## Known Issues
 - Progressive weights for the same movement require explicit units, this is a known bug and applicable tests are skipped.
