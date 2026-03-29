@@ -5,9 +5,9 @@ Only considers sets tagged with "^rm" in the movement note
 (convention for marking max-effort sets).
 
 Usage:
-    report e1rm -m deadlift
-    report e1rm -m squat -f epley
-    report e1rm -m deadlift -o plot
+    run e1rm -m deadlift
+    run e1rm -m squat -f epley
+    run e1rm -m deadlift -o plot
 
 Example .ox line:
     deadlift: 315lbs 1x3 "^rm top set felt good"
@@ -15,6 +15,7 @@ Example .ox line:
 
 from datetime import date as _date
 
+from ox.plugins import PlotResult, PluginContext, TableResult
 from ox.units import Q_
 
 _PLOT_WIDTH = 60
@@ -112,21 +113,13 @@ def _render_plot(data, unit):
     return lines
 
 
-def estimated_1rm(conn, movement, formula="brzycki", unit="lb", output="table"):
+def estimated_1rm(
+    ctx: PluginContext, movement, formula="brzycki", unit="lb", output="table"
+):
     """Estimated 1RM progression for a movement.
 
     Finds sets where the movement note contains "^rm", takes the
     heaviest set per movement line, and calculates estimated 1RM.
-
-    Args:
-        conn: SQLite connection
-        movement: Movement name to filter by
-        formula: 1RM formula to use ("brzycki" or "epley")
-        unit: Weight unit for output values (default "lb")
-        output: Output format ("table" or "plot")
-
-    Returns:
-        (columns, rows) tuple
     """
     if formula not in FORMULAS:
         raise ValueError(
@@ -137,7 +130,7 @@ def estimated_1rm(conn, movement, formula="brzycki", unit="lb", output="table"):
 
     calc = FORMULAS[formula]
 
-    rows = conn.execute(
+    rows = ctx.db.execute(
         """
         SELECT
             t.date,
@@ -155,11 +148,10 @@ def estimated_1rm(conn, movement, formula="brzycki", unit="lb", output="table"):
     ).fetchall()
 
     if not rows:
-        return (
-            [f"estimated_1rm ({unit})"]
-            if output == "plot"
-            else ["date", f"estimated_1rm ({unit})", f"weight ({unit})", "reps"],
-            [],
+        if output == "plot":
+            return PlotResult([])
+        return TableResult(
+            ["date", f"estimated_1rm ({unit})", f"weight ({unit})", "reps"], []
         )
 
     seen_dates = {}
@@ -175,17 +167,15 @@ def estimated_1rm(conn, movement, formula="brzycki", unit="lb", output="table"):
         result.append((date, e1rm, converted, reps))
 
     if output == "plot":
-        plot_lines = _render_plot(result, unit)
-        return ([f"e1rm ({unit})"], [(line,) for line in plot_lines])
+        return PlotResult(_render_plot(result, unit))
 
     columns = ["date", f"estimated_1rm ({unit})", f"weight ({unit})", "reps"]
-    return columns, result
+    return TableResult(columns, result)
 
 
 def register():
     return [
         {
-            "type": "report",
             "name": "e1rm",
             "fn": estimated_1rm,
             "description": "Estimated 1RM progression for a movement",

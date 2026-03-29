@@ -128,26 +128,10 @@ def _load_from_entry_points() -> None:
 
 def _load_builtins() -> None:
     """Load plugins that ship with ox."""
-    from ox.builtins import e1rm, weighin, wendler531
-    from ox.reports import REPORTS
+    from ox.builtins import e1rm, history, stats, volume, weighin, wendler531
 
-    # Register builtin reports from REPORTS dict
-    for name, entry in REPORTS.items():
-        _register_descriptors(
-            [
-                {
-                    "name": name,
-                    "fn": entry["fn"],
-                    "description": entry["description"],
-                    "params": entry["params"],
-                }
-            ],
-            f"builtin:{name}",
-        )
-
-    _register_descriptors(e1rm.register(), "builtin:e1rm")
-    _register_descriptors(weighin.register(), "builtin:weighin")
-    _register_descriptors(wendler531.register(), "builtin:wendler531")
+    for mod in (volume, stats, history, e1rm, weighin, wendler531):
+        _register_descriptors(mod.register(), f"builtin:{mod.__name__}")
 
 
 def load_plugins(log: TrainingLog | None = None, base_path: Path | None = None) -> None:

@@ -3,11 +3,11 @@
 Tracks body weight over time, with support for multiple scales.
 
 Usage:
-    report weighin
-    report weighin -o plot
-    report weighin -o stats
-    report weighin -u kg
-    report weighin -o plot -w 14
+    run weighin
+    run weighin -o plot
+    run weighin -o stats
+    run weighin -u kg
+    run weighin -o plot -w 14
 
 Example .ox lines:
     2025-01-10 W 185lb
@@ -18,6 +18,7 @@ Example .ox lines:
 from collections import defaultdict
 from datetime import date as _date, timedelta as _timedelta
 
+from ox.plugins import PlotResult, PluginContext, TableResult
 from ox.units import Q_
 
 _PLOT_WIDTH = 60
@@ -162,22 +163,12 @@ def _render_plot(data, avg_data, scale_markers, unit, window_days):
     return lines
 
 
-def weigh_in_report(conn, unit="lb", output="table", window=7):
-    """Weigh-in statistics over time.
-
-    Args:
-        conn: SQLite connection
-        unit: Weight unit for output values (default "lb")
-        output: Output format ("table", "plot", or "stats")
-        window: Rolling average window in calendar days (default 7)
-
-    Returns:
-        (columns, rows) tuple
-    """
+def weigh_in_report(ctx: PluginContext, unit="lb", output="table", window=7):
+    """Weigh-in statistics over time."""
     if output not in ("table", "plot", "stats"):
         raise ValueError("output must be 'table', 'plot', or 'stats'")
 
-    rows = conn.execute(
+    rows = ctx.db.execute(
         """
         SELECT date, weight_magnitude, weight_unit, scale
         FROM weigh_ins
@@ -187,18 +178,21 @@ def weigh_in_report(conn, unit="lb", output="table", window=7):
 
     if not rows:
         if output == "plot":
-            return ["plot"], [("No weigh-in data found.",)]
+            return PlotResult(["No weigh-in data found."])
         if output == "stats":
-            return [
-                "scale",
-                "count",
-                f"current ({unit})",
-                f"min ({unit})",
-                f"max ({unit})",
-                f"avg ({unit})",
-                f"trend ({unit}/wk)",
-            ], []
-        return ["date", f"weight ({unit})", "scale"], []
+            return TableResult(
+                [
+                    "scale",
+                    "count",
+                    f"current ({unit})",
+                    f"min ({unit})",
+                    f"max ({unit})",
+                    f"avg ({unit})",
+                    f"trend ({unit}/wk)",
+                ],
+                [],
+            )
+        return TableResult(["date", f"weight ({unit})", "scale"], [])
 
     data = []
     for date_str, mag, raw_unit, scale in rows:
@@ -206,19 +200,19 @@ def weigh_in_report(conn, unit="lb", output="table", window=7):
         data.append((date_str, converted, scale))
 
     if output == "table":
-        return (
+        return TableResult(
             ["date", f"weight ({unit})", "scale"],
             [(d, w, s or "") for d, w, s in data],
         )
 
     if output == "plot":
         if len(data) < 2:
-            return (["plot"], [("Not enough data to plot.",)])
+            return PlotResult(["Not enough data to plot."])
         scales = list(dict.fromkeys(s for _, _, s in data))
         scale_markers = {s: _MARKERS[i % len(_MARKERS)] for i, s in enumerate(scales)}
         avg_data = _rolling_avg(data, window)
         plot_lines = _render_plot(data, avg_data, scale_markers, unit, window)
-        return (["plot"], [(line,) for line in plot_lines])
+        return PlotResult(plot_lines)
 
     # stats
     by_scale = defaultdict(list)
@@ -257,13 +251,12 @@ def weigh_in_report(conn, unit="lb", output="table", window=7):
         f"avg ({unit})",
         f"trend ({unit}/wk)",
     ]
-    return columns, stats_rows
+    return TableResult(columns, stats_rows)
 
 
 def register():
     return [
         {
-            "type": "report",
             "name": "weighin",
             "fn": weigh_in_report,
             "description": "Weigh-in statistics over time",

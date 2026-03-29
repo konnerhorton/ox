@@ -8,7 +8,7 @@ from ox.plugins import (
     _register_descriptors,
     load_plugins,
 )
-from ox.reports import report_usage
+from ox.sql_utils import plugin_usage
 
 
 def _dummy_fn(ctx, movement="x"):
@@ -213,14 +213,14 @@ class TestLoadPlugins:
 
 
 class TestPluginUsageCommand:
-    """Test that report_usage respects the command parameter."""
+    """Test that plugin_usage respects the command parameter."""
 
     def test_default_command(self):
         entry = {"params": [{"name": "x", "type": str, "required": True}]}
-        usage = report_usage("test", entry)
-        assert usage.startswith("report test")
+        usage = plugin_usage("test", entry)
+        assert usage.startswith("run test")
 
-    def test_generate_command(self):
+    def test_custom_command(self):
         entry = {"params": [{"name": "x", "type": str, "required": True}]}
-        usage = report_usage("test", entry, command="generate")
-        assert usage.startswith("generate test")
+        usage = plugin_usage("test", entry, command="custom")
+        assert usage.startswith("custom test")

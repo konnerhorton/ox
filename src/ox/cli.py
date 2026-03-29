@@ -17,7 +17,7 @@ from ox.data import Diagnostic, Note, StoredQuery, TrainingLog, TrainingSession,
 from ox.db import create_db
 from ox.lint import collect_diagnostics
 from ox.plugins import PLUGINS, load_plugins
-from ox.reports import parse_report_args, report_usage
+from ox.sql_utils import parse_plugin_args, plugin_usage
 
 console = Console()
 
@@ -291,7 +291,7 @@ def show_report_list():
     """Show available reports with descriptions and usage."""
     console.print("\n[bold cyan]Available Reports:[/bold cyan]")
     for name, entry in PLUGINS.items():
-        usage = report_usage(name, entry)
+        usage = plugin_usage(name, entry)
         console.print(f"  [green]{name}[/green] - {entry['description']}")
         console.print(f"    Usage: {usage}")
     console.print()
@@ -324,12 +324,12 @@ def run_report(conn: sqlite3.Connection, report_name: str, arg_string: str):
     entry = PLUGINS[report_name]
 
     if not arg_string.strip() and any(p.get("required") for p in entry["params"]):
-        usage = report_usage(report_name, entry)
+        usage = plugin_usage(report_name, entry)
         console.print(f"[yellow]Usage: {usage}[/yellow]\n")
         return
 
     try:
-        kwargs = parse_report_args(entry["params"], arg_string)
+        kwargs = parse_plugin_args(entry["params"], arg_string)
         columns, rows = entry["fn"](conn, **kwargs)
         render_report(columns, rows)
     except ValueError as e:
@@ -344,7 +344,7 @@ def show_generator_list():
         return
     console.print("\n[bold cyan]Available Generators:[/bold cyan]")
     for name, entry in generators.items():
-        usage = report_usage(name, entry, command="generate")
+        usage = plugin_usage(name, entry, command="generate")
         console.print(f"  [green]{name}[/green] - {entry['description']}")
         console.print(f"    Usage: {usage}")
     console.print()
@@ -360,12 +360,12 @@ def run_generator(conn: sqlite3.Connection, gen_name: str, arg_string: str):
     entry = PLUGINS[gen_name]
 
     if not arg_string.strip() and any(p.get("required") for p in entry["params"]):
-        usage = report_usage(gen_name, entry, command="generate")
+        usage = plugin_usage(gen_name, entry, command="generate")
         console.print(f"[yellow]Usage: {usage}[/yellow]\n")
         return
 
     try:
-        kwargs = parse_report_args(entry["params"], arg_string)
+        kwargs = parse_plugin_args(entry["params"], arg_string)
         if entry.get("needs_db"):
             output = entry["fn"](conn, **kwargs)
         else:
