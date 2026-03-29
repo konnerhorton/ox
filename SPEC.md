@@ -30,7 +30,7 @@ Developers and power users comfortable with text files and CLIs.
 - **Plugin system** (`src/ox/plugins.py`) — discovery from `~/.ox/plugins/`, entry points, and builtins; report and generator types
 - **Built-in reports** (`src/ox/reports.py`) — `volume` (volume over time) and `matrix` (session count per movement)
 - **Built-in plugins** — `e1rm` (estimated 1RM via Brzycki/Epley), `weighin` (weight tracking with stats/plot/rolling average), `wendler531` (5/3/1 cycle generator)
-- **CLI** (`src/ox/cli.py`) — interactive REPL with `stats`, `history`, `report`, `generate`, `query`, `tables`, `lint`, `reload` commands and tab completion
+- **CLI** (`src/ox/cli.py`) — interactive REPL with `report`, `generate`, `query`, `tables`, `lint`, `reload` commands and tab completion
 - **LSP** (`src/ox/lsp.py`) — diagnostics (syntax errors + include validation), movement name completion, comment folding ranges
 - **Weigh-in tracking** — full pipeline: parse → `WeighIn` dataclass → DB → builtin report with table/plot/stats output
 - **Notes** — standalone and session-level notes, parse → `Note` dataclass → DB, `to_ox()` round-trip

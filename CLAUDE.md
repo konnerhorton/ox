@@ -31,8 +31,6 @@ src/ox/
   lint.py       - Parse error collection for CLI lint command and LSP
   builtins/
     volume.py      - Volume over time plugin
-    stats.py       - Summary statistics plugin
-    history.py     - Movement history plugin
     e1rm.py        - Estimated 1RM plugin (Brzycki/Epley)
     weighin.py     - Weigh-in stats/plot plugin (rolling average, trend, multi-scale)
     wendler531.py  - Wendler 5/3/1 cycle generator plugin

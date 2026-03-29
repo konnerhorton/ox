@@ -14,22 +14,6 @@ Opens an interactive REPL. Parse errors are summarized on load — run `lint` fo
 
 ## Commands
 
-### `stats`
-
-Summary table of all exercises: session count, total reps, last session date.
-
-```
-ox> stats
-```
-
-### `history EXERCISE`
-
-Per-exercise history: date, sets/reps, top weight, volume.
-
-```
-ox> history squat
-```
-
 ### `report [NAME [OPTIONS]]`
 
 List or run reports. Reports query the SQLite database and return tables.

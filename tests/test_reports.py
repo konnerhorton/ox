@@ -249,7 +249,7 @@ class TestRegistry:
     def test_all_builtins_registered(self, tmp_path, monkeypatch):
         monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
         load_plugins()
-        for name in ("volume", "stats", "history", "e1rm", "weighin", "wendler531"):
+        for name in ("volume", "e1rm", "weighin", "wendler531"):
             assert name in PLUGINS, f"Builtin '{name}' not registered"
 
     def test_all_plugins_have_fn(self, tmp_path, monkeypatch):

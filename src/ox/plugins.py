@@ -5,7 +5,7 @@ a list of plugin descriptors (dicts). Each plugin receives a PluginContext
 and returns a TableResult, TextResult, or PlotResult.
 
 Discovery sources (loaded in order):
-1. Built-in plugins (stats, history, volume, e1rm, weighin, wendler531)
+1. Built-in plugins (volume, e1rm, weighin, wendler531)
 2. @plugin directives in .ox files
 3. ~/.ox/plugins/*.py (personal scripts)
 4. Entry points in the "ox.plugins" group (installable packages)
@@ -128,9 +128,9 @@ def _load_from_entry_points() -> None:
 
 def _load_builtins() -> None:
     """Load plugins that ship with ox."""
-    from ox.builtins import e1rm, history, stats, volume, weighin, wendler531
+    from ox.builtins import e1rm, volume, weighin, wendler531
 
-    for mod in (volume, stats, history, e1rm, weighin, wendler531):
+    for mod in (volume, e1rm, weighin, wendler531):
         _register_descriptors(mod.register(), f"builtin:{mod.__name__}")
 
 

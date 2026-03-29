@@ -22,8 +22,7 @@ Run it:
 
 ```bash
 ox training.ox
-ox> stats
-ox> history squat
+ox> query SELECT * FROM training LIMIT 10
 ```
 
 ## Syntax
