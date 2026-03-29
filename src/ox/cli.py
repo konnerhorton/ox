@@ -12,12 +12,12 @@ from rich.table import Table
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 
-from ox.parse import process_include_directive, process_node
+from ox.parse import process_include_directive, process_plugin_directive, process_node
 from ox.data import Diagnostic, Note, StoredQuery, TrainingLog, TrainingSession, WeighIn
 from ox.db import create_db
 from ox.lint import collect_diagnostics
-from ox.plugins import GENERATOR_PLUGINS, load_plugins
-from ox.reports import get_all_reports, parse_report_args, report_usage
+from ox.plugins import PLUGINS, load_plugins
+from ox.reports import parse_report_args, report_usage
 
 console = Console()
 
@@ -26,11 +26,11 @@ DEFAULT_TABLE_BOX = box.SIMPLE
 
 def _parse_single_file(
     file_path: Path, parser: Parser
-) -> tuple[list, list, list, list, list, list[str]]:
+) -> tuple[list, list, list, list, list, list[str], list[str]]:
     """Parse a single .ox file without resolving includes.
 
     Returns:
-        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, include_paths)
+        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, include_paths, plugin_paths)
     """
     with open(file_path, "r") as f:
         data = bytes(f.read(), encoding="utf-8")
@@ -43,9 +43,13 @@ def _parse_single_file(
     log_queries = []
     log_weigh_ins = []
     include_paths = []
+    plugin_paths = []
     for child in root_node.children:
         if child.type == "include_directive":
             include_paths.append(process_include_directive(child))
+            continue
+        if child.type == "plugin_directive":
+            plugin_paths.append(process_plugin_directive(child))
             continue
         result = process_node(child)
         if isinstance(result, TrainingSession):
@@ -58,18 +62,26 @@ def _parse_single_file(
             log_weigh_ins.append(result)
 
     diagnostics = list(collect_diagnostics(tree))
-    return entries, log_notes, log_queries, log_weigh_ins, diagnostics, include_paths
+    return (
+        entries,
+        log_notes,
+        log_queries,
+        log_weigh_ins,
+        diagnostics,
+        include_paths,
+        plugin_paths,
+    )
 
 
 def _load_recursive(
     file_path: Path,
     parser: Parser,
     visited: set[Path],
-) -> tuple[list, list, list, list, list]:
+) -> tuple[list, list, list, list, list, list]:
     """Recursively load a file and its includes with cycle detection.
 
     Returns:
-        Tuple of (sessions, notes, queries, weigh_ins, diagnostics)
+        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, plugin_paths)
     """
     abs_path = file_path.resolve()
 
@@ -82,7 +94,7 @@ def _load_recursive(
             message=f"Circular include detected: {file_path}",
             severity="warning",
         )
-        return [], [], [], [], [diag]
+        return [], [], [], [], [diag], []
 
     visited.add(abs_path)
 
@@ -95,24 +107,30 @@ def _load_recursive(
             message=f"Included file not found: {file_path}",
             severity="warning",
         )
-        return [], [], [], [], [diag]
+        return [], [], [], [], [diag], []
 
-    entries, notes, queries, weigh_ins, diagnostics, include_paths = _parse_single_file(
-        abs_path, parser
+    entries, notes, queries, weigh_ins, diagnostics, include_paths, plugin_paths = (
+        _parse_single_file(abs_path, parser)
     )
 
     for inc_path in include_paths:
         resolved = (abs_path.parent / inc_path).resolve()
-        inc_entries, inc_notes, inc_queries, inc_weigh_ins, inc_diagnostics = (
-            _load_recursive(Path(resolved), parser, visited)
-        )
+        (
+            inc_entries,
+            inc_notes,
+            inc_queries,
+            inc_weigh_ins,
+            inc_diagnostics,
+            inc_plugins,
+        ) = _load_recursive(Path(resolved), parser, visited)
         entries.extend(inc_entries)
         notes.extend(inc_notes)
         queries.extend(inc_queries)
         weigh_ins.extend(inc_weigh_ins)
         diagnostics.extend(inc_diagnostics)
+        plugin_paths.extend(inc_plugins)
 
-    return entries, notes, queries, weigh_ins, diagnostics
+    return entries, notes, queries, weigh_ins, diagnostics, plugin_paths
 
 
 def parse_file(file_path: Path) -> TrainingLog:
@@ -129,7 +147,7 @@ def parse_file(file_path: Path) -> TrainingLog:
     language = Language(tree_sitter_ox.language())
     parser = Parser(language)
 
-    entries, notes, queries, weigh_ins, diagnostics = _load_recursive(
+    entries, notes, queries, weigh_ins, diagnostics, plugin_paths = _load_recursive(
         file_path, parser, visited=set()
     )
 
@@ -139,6 +157,7 @@ def parse_file(file_path: Path) -> TrainingLog:
         tuple(diagnostics),
         tuple(queries),
         tuple(weigh_ins),
+        tuple(plugin_paths),
     )
 
 
@@ -271,7 +290,7 @@ def show_tables(conn: sqlite3.Connection, headers: bool = False):
 def show_report_list():
     """Show available reports with descriptions and usage."""
     console.print("\n[bold cyan]Available Reports:[/bold cyan]")
-    for name, entry in get_all_reports().items():
+    for name, entry in PLUGINS.items():
         usage = report_usage(name, entry)
         console.print(f"  [green]{name}[/green] - {entry['description']}")
         console.print(f"    Usage: {usage}")
@@ -297,13 +316,12 @@ def render_report(columns: list[str], rows: list[tuple]):
 
 def run_report(conn: sqlite3.Connection, report_name: str, arg_string: str):
     """Look up and execute a report by name."""
-    all_reports = get_all_reports()
-    if report_name not in all_reports:
+    if report_name not in PLUGINS:
         console.print(f"[red]Unknown report: {report_name}[/red]")
         show_report_list()
         return
 
-    entry = all_reports[report_name]
+    entry = PLUGINS[report_name]
 
     if not arg_string.strip() and any(p.get("required") for p in entry["params"]):
         usage = report_usage(report_name, entry)
@@ -320,11 +338,12 @@ def run_report(conn: sqlite3.Connection, report_name: str, arg_string: str):
 
 def show_generator_list():
     """Show available generators with descriptions and usage."""
-    if not GENERATOR_PLUGINS:
+    generators = {k: v for k, v in PLUGINS.items() if v.get("type") == "generator"}
+    if not generators:
         console.print("[yellow]No generator plugins installed.[/yellow]\n")
         return
     console.print("\n[bold cyan]Available Generators:[/bold cyan]")
-    for name, entry in GENERATOR_PLUGINS.items():
+    for name, entry in generators.items():
         usage = report_usage(name, entry, command="generate")
         console.print(f"  [green]{name}[/green] - {entry['description']}")
         console.print(f"    Usage: {usage}")
@@ -333,12 +352,12 @@ def show_generator_list():
 
 def run_generator(conn: sqlite3.Connection, gen_name: str, arg_string: str):
     """Look up and execute a generator by name."""
-    if gen_name not in GENERATOR_PLUGINS:
+    if gen_name not in PLUGINS:
         console.print(f"[red]Unknown generator: {gen_name}[/red]")
         show_generator_list()
         return
 
-    entry = GENERATOR_PLUGINS[gen_name]
+    entry = PLUGINS[gen_name]
 
     if not arg_string.strip() and any(p.get("required") for p in entry["params"]):
         usage = report_usage(gen_name, entry, command="generate")

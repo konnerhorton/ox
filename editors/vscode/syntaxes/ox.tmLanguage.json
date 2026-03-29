@@ -6,6 +6,7 @@
     { "include": "#comment" },
     { "include": "#block-keyword" },
     { "include": "#include-directive" },
+    { "include": "#plugin-directive" },
     { "include": "#query-entry" },
     { "include": "#singleline-entry" },
     { "include": "#note-entry" },
@@ -27,6 +28,13 @@
       "match": "^(@include)\\s+(\"[^\"]+\")",
       "captures": {
         "1": { "name": "keyword.control.include.ox" },
+        "2": { "name": "string.quoted.double.ox" }
+      }
+    },
+    "plugin-directive": {
+      "match": "^(@plugin)\\s+(\"[^\"]+\")",
+      "captures": {
+        "1": { "name": "keyword.control.plugin.ox" },
         "2": { "name": "string.quoted.double.ox" }
       }
     },

@@ -13,7 +13,7 @@ module.exports = grammar({
   extras: ($) => [/[ \t]/], // Only spaces and tabs, NOT newlines
 
   rules: {
-    source_file: ($) => repeat(choice($._entry, $.include_directive, $.comment, "\n")),
+    source_file: ($) => repeat(choice($._entry, $.include_directive, $.plugin_directive, $.comment, "\n")),
 
     _entry: ($) => choice(
       $.singleline_entry,
@@ -27,6 +27,12 @@ module.exports = grammar({
 
     include_directive: ($) => prec.right(seq(
       "@include",
+      field("path", $.file_path),
+      optional("\n")
+    )),
+
+    plugin_directive: ($) => prec.right(seq(
+      "@plugin",
       field("path", $.file_path),
       optional("\n")
     )),

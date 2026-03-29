@@ -17,6 +17,10 @@
           },
           {
             "type": "SYMBOL",
+            "name": "plugin_directive"
+          },
+          {
+            "type": "SYMBOL",
             "name": "comment"
           },
           {
@@ -68,6 +72,39 @@
           {
             "type": "STRING",
             "value": "@include"
+          },
+          {
+            "type": "FIELD",
+            "name": "path",
+            "content": {
+              "type": "SYMBOL",
+              "name": "file_path"
+            }
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "\n"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "plugin_directive": {
+      "type": "PREC_RIGHT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "@plugin"
           },
           {
             "type": "FIELD",

@@ -245,14 +245,14 @@ class TestWeighInReportStats:
 
 class TestWeighInPluginRegistration:
     def test_weighin_registered(self):
-        from ox.plugins import load_plugins, REPORT_PLUGINS
+        from ox.plugins import load_plugins, PLUGINS
 
         load_plugins()
-        assert "weighin" in REPORT_PLUGINS
+        assert "weighin" in PLUGINS
 
     def test_weighin_has_expected_params(self):
-        from ox.plugins import load_plugins, REPORT_PLUGINS
+        from ox.plugins import load_plugins, PLUGINS
 
         load_plugins()
-        params = {p["name"] for p in REPORT_PLUGINS["weighin"]["params"]}
+        params = {p["name"] for p in PLUGINS["weighin"]["params"]}
         assert params == {"unit", "output", "window"}

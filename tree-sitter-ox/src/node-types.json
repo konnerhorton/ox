@@ -217,6 +217,22 @@
     }
   },
   {
+    "type": "plugin_directive",
+    "named": true,
+    "fields": {
+      "path": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "file_path",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "query_entry",
     "named": true,
     "fields": {
@@ -374,6 +390,10 @@
           "named": true
         },
         {
+          "type": "plugin_directive",
+          "named": true
+        },
+        {
           "type": "query_entry",
           "named": true
         },
@@ -507,6 +527,10 @@
   },
   {
     "type": "@include",
+    "named": false
+  },
+  {
+    "type": "@plugin",
     "named": false
   },
   {

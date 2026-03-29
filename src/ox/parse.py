@@ -245,6 +245,12 @@ def process_include_directive(node: Node) -> str:
     return raw.strip('"')
 
 
+def process_plugin_directive(node: Node) -> str:
+    """Extract file path from a plugin_directive node."""
+    raw = node.child_by_field_name("path").text.decode("utf-8")
+    return raw.strip('"')
+
+
 def process_node(node: Node) -> TrainingSession | Note | StoredQuery | None:
     """Process any node type and return appropriate data structure.
 

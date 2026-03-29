@@ -1,29 +1,57 @@
 """Plugin discovery and loading for ox.
 
 Plugins are Python modules that export a register() function returning
-a list of plugin descriptors (dicts). Two plugin types are supported:
-
-- "report": query SQLite, return (columns, rows)
-- "generator": accept parameters, return .ox formatted text
+a list of plugin descriptors (dicts). Each plugin receives a PluginContext
+and returns a TableResult, TextResult, or PlotResult.
 
 Discovery sources (loaded in order):
-1. ~/.ox/plugins/*.py  (personal scripts)
-2. Entry points in the "ox.plugins" group (installable packages)
+1. Built-in plugins (stats, history, volume, e1rm, weighin, wendler531)
+2. @plugin directives in .ox files
+3. ~/.ox/plugins/*.py (personal scripts)
+4. Entry points in the "ox.plugins" group (installable packages)
 """
 
 import importlib.util
 import logging
+import sqlite3
+from dataclasses import dataclass
 from importlib.metadata import entry_points
 from pathlib import Path
 from types import ModuleType
+
+from ox.data import TrainingLog
 
 logger = logging.getLogger(__name__)
 
 PLUGIN_DIR = Path.home() / ".ox" / "plugins"
 ENTRY_POINT_GROUP = "ox.plugins"
 
-REPORT_PLUGINS: dict[str, dict] = {}
-GENERATOR_PLUGINS: dict[str, dict] = {}
+PLUGINS: dict[str, dict] = {}
+
+
+@dataclass(frozen=True, slots=True)
+class PluginContext:
+    db: sqlite3.Connection
+    log: TrainingLog
+
+
+@dataclass(frozen=True, slots=True)
+class TableResult:
+    columns: list[str]
+    rows: list[tuple]
+
+
+@dataclass(frozen=True, slots=True)
+class TextResult:
+    text: str
+
+
+@dataclass(frozen=True, slots=True)
+class PlotResult:
+    lines: list[str]
+
+
+PluginResult = TableResult | TextResult | PlotResult
 
 
 def _load_module_from_path(path: Path) -> ModuleType | None:
@@ -42,27 +70,34 @@ def _load_module_from_path(path: Path) -> ModuleType | None:
 
 
 def _register_descriptors(descriptors: list[dict], source: str) -> None:
-    """Register plugin descriptors into the appropriate registry."""
+    """Register plugin descriptors into the unified registry."""
     for desc in descriptors:
-        plugin_type = desc.get("type")
         name = desc.get("name")
 
-        if not plugin_type or not name or "fn" not in desc:
+        if not name or "fn" not in desc:
             logger.warning(
                 "Skipping malformed plugin descriptor from %s: %s", source, desc
             )
             continue
 
-        if plugin_type == "report":
-            if name in REPORT_PLUGINS:
-                logger.warning("Report plugin '%s' redefined by %s", name, source)
-            REPORT_PLUGINS[name] = desc
-        elif plugin_type == "generator":
-            if name in GENERATOR_PLUGINS:
-                logger.warning("Generator plugin '%s' redefined by %s", name, source)
-            GENERATOR_PLUGINS[name] = desc
-        else:
-            logger.warning("Unknown plugin type '%s' from %s", plugin_type, source)
+        if name in PLUGINS:
+            logger.warning("Plugin '%s' redefined by %s", name, source)
+        PLUGINS[name] = desc
+
+
+def _load_from_log_directives(log: TrainingLog, base_path: Path) -> None:
+    """Load plugins declared via @plugin directives in the .ox file."""
+    for rel_path in log.plugin_paths:
+        resolved = (base_path.parent / rel_path).resolve()
+        module = _load_module_from_path(resolved)
+        if module and hasattr(module, "register"):
+            try:
+                descriptors = module.register()
+                _register_descriptors(descriptors, str(resolved))
+            except Exception:
+                logger.warning(
+                    "Error calling register() in %s", resolved, exc_info=True
+                )
 
 
 def _load_from_directory() -> None:
@@ -94,16 +129,32 @@ def _load_from_entry_points() -> None:
 def _load_builtins() -> None:
     """Load plugins that ship with ox."""
     from ox.builtins import e1rm, weighin, wendler531
+    from ox.reports import REPORTS
+
+    # Register builtin reports from REPORTS dict
+    for name, entry in REPORTS.items():
+        _register_descriptors(
+            [
+                {
+                    "name": name,
+                    "fn": entry["fn"],
+                    "description": entry["description"],
+                    "params": entry["params"],
+                }
+            ],
+            f"builtin:{name}",
+        )
 
     _register_descriptors(e1rm.register(), "builtin:e1rm")
     _register_descriptors(weighin.register(), "builtin:weighin")
     _register_descriptors(wendler531.register(), "builtin:wendler531")
 
 
-def load_plugins() -> None:
+def load_plugins(log: TrainingLog | None = None, base_path: Path | None = None) -> None:
     """Discover and load all plugins. Call once at startup."""
-    REPORT_PLUGINS.clear()
-    GENERATOR_PLUGINS.clear()
+    PLUGINS.clear()
     _load_builtins()
+    if log is not None and base_path is not None:
+        _load_from_log_directives(log, base_path)
     _load_from_directory()
     _load_from_entry_points()
