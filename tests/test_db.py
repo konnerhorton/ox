@@ -110,12 +110,12 @@ class TestDataLoading:
         )
         assert names == ["bench-press", "kb-oh-press", "pullups", "squat"]
 
-    def test_session_name_nullable(self, simple_db):
-        """Single-line entries have no session name."""
+    def test_session_name_from_movement(self, simple_db):
+        """Single-line entries use movement name as session name."""
         row = simple_db.execute(
             "SELECT name FROM sessions WHERE date = '2025-01-10'"
         ).fetchone()
-        assert row[0] is None
+        assert row[0] == "pullups"
 
     def test_session_name_present(self, simple_db):
         row = simple_db.execute(

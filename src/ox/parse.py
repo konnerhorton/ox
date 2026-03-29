@@ -179,7 +179,9 @@ def process_singleline_entry(raw_entry: Node) -> TrainingSession | None:
 
     if flag in ["*", "!"]:
         date, movement = process_singleline_completed_session(raw_entry)
-        return TrainingSession(name=None, date=date, flag=flag, movements=movement)
+        return TrainingSession(
+            name=movement[0].name, date=date, flag=flag, movements=movement
+        )
     return None
 
 
