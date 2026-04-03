@@ -140,7 +140,7 @@ def simple_db(simple_log_file):
 @pytest.fixture
 def example_db():
     """In-memory SQLite database loaded from the example training log."""
-    log = parse_file(Path(__file__).parent.parent / "example" / "example.ox")
+    log = parse_file(Path(__file__).parent.parent / "examples" / "example.ox")
     conn = create_db(log)
     yield conn
     conn.close()

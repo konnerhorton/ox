@@ -99,7 +99,7 @@ class TestParseFile:
         """
         from pathlib import Path
 
-        example_file = Path(__file__).parent.parent / "example" / "example.ox"
+        example_file = Path(__file__).parent.parent / "examples" / "example.ox"
 
         if not example_file.exists():
             pytest.skip("Example file not found")

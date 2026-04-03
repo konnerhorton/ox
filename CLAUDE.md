@@ -53,7 +53,7 @@ examples/
   plugins/            - Example plugin scripts (wendler531.py)
   plugin_template.py  - Template for writing user plugins
 docs/         - MkDocs documentation source
-example/
+examples/
   example.ox  - Reference training log with all supported formats
 ```
 

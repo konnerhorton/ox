@@ -121,4 +121,4 @@ pullup: BW 4x10
 - [Reports & Plugins](plugins.md) — built-in analysis and extending ox
 - [API Reference](api-reference.md) — Python library
 - [Editor Support](editor-support.md) — syntax highlighting and LSP
-- [example.ox](https://github.com/konnerhorton/ox/blob/main/example/example.ox) — full reference log
+- [example.ox](https://github.com/konnerhorton/ox/blob/main/examples/example.ox) — full reference log
