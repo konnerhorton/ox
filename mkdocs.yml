@@ -16,6 +16,7 @@ nav:
   - Reports & Plugins: plugins.md
   - API Reference: api-reference.md
   - Editor Support: editor-support.md
+  - Future Improvements: future.md
 
 markdown_extensions:
   - pymdownx.highlight:
