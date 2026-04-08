@@ -33,6 +33,7 @@ src/ox/
     volume.py      - Volume over time plugin
     e1rm.py        - Estimated 1RM plugin (Brzycki/Epley)
     weighin.py     - Weigh-in stats/plot plugin (rolling average, trend, multi-scale)
+    srpe.py        - Session RPE training load plugin (ACWR, monotony, strain)
     wendler531.py  - Wendler 5/3/1 cycle generator plugin
 tests/
   conftest.py        - Shared fixtures (simple_log_*, weight_edge_cases, log_with_query_*, log_with_weigh_ins_*, weigh_in_multi_scale_*, simple_db, example_db)
@@ -44,6 +45,7 @@ tests/
   test_integration.py - End-to-end parsing
   test_weighin.py    - Weigh-in plugin (rolling avg, trend, table/plot/stats)
   test_notes.py      - Note parsing, session notes, DB population
+  test_srpe.py       - sRPE plugin (training load, ACWR, monotony, strain)
   test_lint.py       - Diagnostic collection
 tree-sitter-ox/
   grammar.js  - Tree-sitter grammar definition for .ox format
@@ -54,7 +56,8 @@ examples/
   plugin_template.py  - Template for writing user plugins
 docs/         - MkDocs documentation source
 examples/
-  example.ox  - Reference training log with all supported formats
+  example.ox   - Reference training log with all supported formats
+  advanced.ox  - sRPE tracking example with 8 weeks of training data
 ```
 
 ## .ox File Format
@@ -83,6 +86,18 @@ kb-oh-press: 24kg 5/5/5
 
 # Include another file
 @include "other.ox"
+
+# Exercise definition
+@exercise squat
+equipment: barbell
+tags: squat, lower
+note: back squat
+@end
+
+# Template block
+@template "my-template"
+movement: details
+@end
 
 # Load a plugin
 @plugin "my_plugin.py"

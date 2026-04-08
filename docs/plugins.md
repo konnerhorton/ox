@@ -2,19 +2,19 @@
 icon: material/puzzle-edit
 ---
 
-# Reports & Plugins
+# Plugins
 
-Two plugin types: **reports** (query DB, return tables) and **generators** (produce `.ox` text).
+Plugins extend ox with custom analysis and generation. Each plugin receives a `PluginContext` (with `db` and `log`) and returns a `TableResult`, `TextResult`, or `PlotResult`.
 
-## Built-in Reports
+## Built-in Plugins
 
 ### `volume`
 
 Volume over time for a movement.
 
 ```
-ox> report volume -m squat
-ox> report volume -m deadlift --bin monthly --unit kg
+ox> run volume -m squat
+ox> run volume -m deadlift --bin monthly --unit kg
 ```
 
 | Param | Default | Options |
@@ -23,26 +23,13 @@ ox> report volume -m deadlift --bin monthly --unit kg
 | `-b/--bin` | `weekly` | `daily`, `weekly`, `weekly-num`, `monthly` |
 | `-u/--unit` | `lb` | any mass unit |
 
-### `matrix`
-
-Session count per movement per time period.
-
-```
-ox> report matrix
-ox> report matrix --bin monthly
-```
-
-| Param | Default | Options |
-|---|---|---|
-| `-b/--bin` | `weekly` | `daily`, `weekly`, `weekly-num`, `monthly` |
-
 ### `e1rm`
 
 Estimated 1RM progression. Only uses sets with `^rm` in the note.
 
 ```
-ox> report e1rm -m deadlift
-ox> report e1rm -m squat --formula epley --output plot
+ox> run e1rm -m deadlift
+ox> run e1rm -m squat --formula epley --output plot
 ```
 
 | Param | Default | Options |
@@ -63,9 +50,9 @@ deadlift: 315lb 1x3 "^rm top set"
 Body weight tracking with statistics and trend analysis.
 
 ```
-ox> report weighin
-ox> report weighin --output plot --window 14
-ox> report weighin --output stats
+ox> run weighin
+ox> run weighin --output plot --window 14
+ox> run weighin --output stats
 ```
 
 | Param | Default | Options |
@@ -76,15 +63,53 @@ ox> report weighin --output stats
 
 Supports multiple scales — `stats` output shows per-scale breakdowns.
 
-## Built-in Generator
+### `srpe`
+
+Training load analysis from session RPE (sRPE). Computes arbitrary units (AU = rating × duration in minutes) from sRPE entries recorded as session metadata or movement notes.
+
+```
+ox> run srpe
+ox> run srpe -b monthly
+ox> run srpe -o plot
+ox> run srpe -o acwr
+ox> run srpe -o monotony
+ox> run srpe -o strain
+```
+
+| Param | Default | Options |
+|---|---|---|
+| `-b/--bin` | `weekly` | `daily`, `weekly`, `monthly` |
+| `-o/--output` | `table` | `table`, `plot`, `acwr`, `monotony`, `strain` |
+
+**Output modes:**
+
+- **table** — AU totals per time bin (sessions, total/avg/max AU)
+- **plot** — ASCII chart of AU over time
+- **acwr** — Acute:Chronic Workload Ratio (7-day acute / 28-day chronic). Zones: undertraining (<0.8), sweet spot (0.8–1.3), caution (1.3–1.5), danger (>1.5)
+- **monotony** — Weekly training monotony (mean daily AU / SD). High monotony (>2.0) with high load predicts overtraining
+- **strain** — Weekly strain (AU × monotony). Risk levels: low, moderate, HIGH
+
+**Recording sRPE in your log:**
+
+```
+# As session metadata (movement named "srpe")
+@session
+2025-01-06 * Lower Strength
+srpe: "5; PT45M"
+squat: 155lb 4x5
+@end
+
+# Embedded in a movement note
+2025-01-08 * run: PT30M "easy pace, srpe: 3; PT30M"
+```
 
 ### `wendler531`
 
 Generates a 4-week Wendler 5/3/1 cycle as planned sessions.
 
 ```
-ox> generate wendler531 -m squat:315,bench:225
-ox> generate wendler531 -m deadlift:405 --unit kg --start-date 2026-03-01
+ox> run wendler531 -m squat:315,bench:225
+ox> run wendler531 -m deadlift:405 --unit kg --start-date 2026-03-01
 ```
 
 | Param | Default | Options |
@@ -111,52 +136,30 @@ my_plugin = "my_package.my_module"
 
 ## Writing a Plugin
 
-Export a `register()` function returning a list of descriptors.
-
-### Report plugin
+Export a `register()` function returning a list of descriptors. Each plugin function receives a `PluginContext` as its first argument and returns a `TableResult`, `TextResult`, or `PlotResult`.
 
 ```python
-import sqlite3
+from ox.plugins import PluginContext, TableResult, TextResult, PlotResult
 
-def my_report(conn: sqlite3.Connection, movement: str) -> tuple[list[str], list[tuple]]:
-    rows = conn.execute(
+def my_plugin(ctx: PluginContext, movement: str, unit: str = "lb"):
+    """ctx.db is a sqlite3.Connection; ctx.log is the parsed TrainingLog."""
+    rows = ctx.db.execute(
         "SELECT date, SUM(reps) FROM training WHERE movement_name = ? GROUP BY date",
         (movement,),
     ).fetchall()
-    return ["date", "total_reps"], rows
+    return TableResult(["date", "total_reps"], rows)
+
+    # Or return TextResult("generated .ox content")
+    # Or return PlotResult(["line1", "line2", ...])
 
 def register():
     return [{
-        "type": "report",
-        "name": "my-report",
-        "fn": my_report,
+        "name": "my-plugin",
+        "fn": my_plugin,
         "description": "Total reps per day",
         "params": [
             {"name": "movement", "type": str, "required": True, "short": "m"},
-        ],
-    }]
-```
-
-### Generator plugin
-
-```python
-def my_generator(movement: str, sets: int = 5) -> str:
-    from datetime import date
-    today = date.today().strftime("%Y-%m-%d")
-    lines = ["@session", f"{today} ! Generated Session"]
-    lines += [f"{movement}: BW 1x10" for _ in range(sets)]
-    lines.append("@end")
-    return "\n".join(lines)
-
-def register():
-    return [{
-        "type": "generator",
-        "name": "my-generator",
-        "fn": my_generator,
-        "description": "Bodyweight session generator",
-        "params": [
-            {"name": "movement", "type": str, "required": True, "short": "m"},
-            {"name": "sets", "type": int, "required": False, "default": 5, "short": "s"},
+            {"name": "unit", "type": str, "required": False, "default": "lb", "short": "u"},
         ],
     }]
 ```
@@ -167,12 +170,10 @@ def register():
 
 | Field | Required | Description |
 |---|---|---|
-| `type` | yes | `"report"` or `"generator"` |
 | `name` | yes | CLI name |
-| `fn` | yes | Callable |
+| `fn` | yes | Callable (receives `PluginContext` + params) |
 | `description` | yes | Short description |
 | `params` | yes | Parameter descriptors |
-| `needs_db` | no | If `True`, generator receives `conn` as first arg |
 
 **Parameter:**
 

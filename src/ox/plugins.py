@@ -5,7 +5,7 @@ a list of plugin descriptors (dicts). Each plugin receives a PluginContext
 and returns a TableResult, TextResult, or PlotResult.
 
 Discovery sources (loaded in order):
-1. Built-in plugins (volume, e1rm, weighin, wendler531)
+1. Built-in plugins (volume, e1rm, weighin, wendler531, srpe)
 2. @plugin directives in .ox files
 3. ~/.ox/plugins/*.py (personal scripts)
 4. Entry points in the "ox.plugins" group (installable packages)
