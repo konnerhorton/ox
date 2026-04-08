@@ -166,7 +166,7 @@ pullup: BW 4x8
 2024-01-30 * Upper Heavy
 bench-press: 165lb 5x5
 overhead-press: 105lb 3x8
-pullup: BW+25lb 4x5
+pullup: 25lb 4x5
 @end
 
 @session
@@ -185,7 +185,7 @@ box-jump: BW 5x5
 squat: 185lb 5x3
 bench-press: 155lb 5x3
 deadlift: 225lb 5x3
-pullup: BW+20lb 4x5
+pullup: 20lb 4x5
 @end
 
 @session
@@ -475,7 +475,7 @@ box-jump: BW 5x5
 @session
 2024-04-08 * Bodyweight Upper
 pullup: BW 8x5
-pullup: BW+25lb 5x3
+pullup: 25lb 5x3
 bench-press: 135lb 3x8
 overhead-press: 85lb 3x8
 @end
@@ -509,7 +509,7 @@ box-jump: BW 6x3
 2024-04-15 * Upper Power
 bench-press: 175lb 5x3
 overhead-press: 105lb 5x3
-pullup: BW+30lb 5x3
+pullup: 30lb 5x3
 @end
 
 @session

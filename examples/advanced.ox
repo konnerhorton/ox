@@ -211,7 +211,7 @@ goblet-squat: 32kg 5x10
 2025-01-24 * Upper Strength + Conditioning
 srpe: "6; PT50M"
 bench-press: 150lb 4x5
-pullup: BW+10lb 4x5
+pullup: 10lb 4x5
 burpee: BW 5x10
 @end
 
@@ -232,7 +232,7 @@ goblet-squat: 32kg 4x10
 srpe: "7; PT50M"
 kb-oh-press: 32kg 5x5
 kb-snatch: 32kg 5x4
-pullup: BW+15lb 5x5
+pullup: 15lb 5x5
 kb-tgu: 32kg 4x1
 @end
 
@@ -251,7 +251,7 @@ goblet-squat: 32kg 5x10
 srpe: "7; PT55M"
 bench-press: 155lb 5x3
 squat: 175lb 5x3
-pullup: BW+20lb 4x3
+pullup: 20lb 4x3
 @end
 
 # ============================================================================
@@ -271,7 +271,7 @@ goblet-squat: 32kg 3x8
 srpe: "7; PT55M"
 kb-oh-press: 32kg 6x5
 kb-snatch: 32kg 6x4
-pullup: BW+20lb 5x5
+pullup: 20lb 5x5
 kb-tgu: 32kg 5x1
 @end
 
@@ -289,7 +289,7 @@ burpee: BW 5x12
 2025-02-07 * Upper Heavy
 srpe: "8; PT60M"
 bench-press: 165lb 5x5
-pullup: BW+25lb 5x3
+pullup: 25lb 5x3
 kb-oh-press: 32kg 5x5
 @end
 
@@ -310,7 +310,7 @@ goblet-squat: 32kg 3x8
 srpe: "8; PT55M"
 kb-oh-press: 32kg 7x5
 kb-snatch: 32kg 6x5
-pullup: BW+25lb 5x4
+pullup: 25lb 5x4
 kb-tgu: 32kg 5x1
 @end
 
@@ -328,7 +328,7 @@ burpee: BW 8x10
 2025-02-14 * Upper Heavy + Test
 srpe: "9; PT60M"
 bench-press: 175lb 5x3
-pullup: BW+30lb 4x3
+pullup: 30lb 4x3
 kb-oh-press: 32kg 6x5
 @end
 
@@ -379,7 +379,7 @@ goblet-squat: 32kg 4x10
 srpe: "7; PT50M"
 kb-oh-press: 32kg 6x5
 kb-snatch: 32kg 5x5
-pullup: BW+15lb 5x5
+pullup: 15lb 5x5
 kb-tgu: 32kg 4x1
 @end
 
@@ -397,6 +397,6 @@ burpee: BW 5x10
 2025-02-28 * Upper Heavy
 srpe: "8; PT55M"
 bench-press: 165lb 5x5
-pullup: BW+25lb 4x4
+pullup: 25lb 4x4
 kb-oh-press: 32kg 5x5
 @end
