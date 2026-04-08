@@ -2,13 +2,11 @@
 
 ## Exercise definitions
 
-I have many exercises list in the files, but none with real definitions.
-This needs to be updated.
 One thing that should be built in, unilateral exercises should implicitly mean both sides when reps are stated.
 For example, `pistol-squat: 3x4` means I did 3 sets of 4 reps on _each_ leg.
 For now, this will be captured with the work 'unilateral' in a `tag` in the definition
 
-Id also like a way to query these meaningfully, maybe a plugin to pull up exercises with certain tags. Yeah thats it.
+Id also like a way to query these (exercises) meaningfully, maybe a plugin to pull up exercises with certain tags.
 
 Plugin features:
 
@@ -20,7 +18,7 @@ Plugin features:
 ## Named sessions
 
 A feature I would like eventually is to be able to track progression within a session (and provide the tooling for that tracking).
-By that, I mean if I have a specific circuit I do, I want to see how my total volume or top weights have changed over time for that session.
+By that, I mean if I have a specific circuit, I want to see how my total volume or top weights have changed over time for that session.
 To do that, we need named sessions, which we have.
 And, some way to track exertion, which we can use [sRPE](#session-rate-of-perceived-scertion).
 It would also be good to be able to categorize sessions based on their specific protocol ([protocol metadata](#protocol-metadata)), like emom, tababta, amrap, etc.
@@ -31,8 +29,8 @@ For a given alt-emom, I want to see how I have progressed over time, mainly base
 
 ## Session rate of perceived exertion
 
-One of the goals of ox is simplicity and self awareness.
-To that end, this is based around not really using devices like heart rate monitors etc.
+The goals of ox include simplicity and self awareness.
+So, it is based around not using devices like heart rate monitors etc.
 All that you should need, if you need a device during your session at all, is a watch to keep the time.
 Perhaps the most well established method of tracking training load through time in the literature is the session rate of perceived exertion.
 With this tool, the individual rates their exertion over the session on some scale at some point after then session.

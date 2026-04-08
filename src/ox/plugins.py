@@ -128,9 +128,9 @@ def _load_from_entry_points() -> None:
 
 def _load_builtins() -> None:
     """Load plugins that ship with ox."""
-    from ox.builtins import e1rm, volume, weighin, wendler531
+    from ox.builtins import e1rm, srpe, volume, weighin, wendler531
 
-    for mod in (volume, e1rm, weighin, wendler531):
+    for mod in (volume, e1rm, weighin, wendler531, srpe):
         _register_descriptors(mod.register(), f"builtin:{mod.__name__}")
 
 
