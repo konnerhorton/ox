@@ -7,24 +7,18 @@ and returns a TableResult, TextResult, or PlotResult.
 Discovery sources (loaded in order):
 1. Built-in plugins (volume, e1rm, weighin, wendler531, srpe)
 2. @plugin directives in .ox files
-3. ~/.ox/plugins/*.py (personal scripts)
-4. Entry points in the "ox.plugins" group (installable packages)
 """
 
 import importlib.util
 import logging
 import sqlite3
 from dataclasses import dataclass
-from importlib.metadata import entry_points
 from pathlib import Path
 from types import ModuleType
 
 from ox.data import TrainingLog
 
 logger = logging.getLogger(__name__)
-
-PLUGIN_DIR = Path.home() / ".ox" / "plugins"
-ENTRY_POINT_GROUP = "ox.plugins"
 
 PLUGINS: dict[str, dict] = {}
 
@@ -100,32 +94,6 @@ def _load_from_log_directives(log: TrainingLog, base_path: Path) -> None:
                 )
 
 
-def _load_from_directory() -> None:
-    """Load all .py files from ~/.ox/plugins/."""
-    if not PLUGIN_DIR.is_dir():
-        return
-    for path in sorted(PLUGIN_DIR.glob("*.py")):
-        module = _load_module_from_path(path)
-        if module and hasattr(module, "register"):
-            try:
-                descriptors = module.register()
-                _register_descriptors(descriptors, str(path))
-            except Exception:
-                logger.warning("Error calling register() in %s", path, exc_info=True)
-
-
-def _load_from_entry_points() -> None:
-    """Load plugins registered via entry points."""
-    for ep in entry_points(group=ENTRY_POINT_GROUP):
-        try:
-            module = ep.load()
-            if hasattr(module, "register"):
-                descriptors = module.register()
-                _register_descriptors(descriptors, f"entry_point:{ep.name}")
-        except Exception:
-            logger.warning("Error loading entry point '%s'", ep.name, exc_info=True)
-
-
 def _load_builtins() -> None:
     """Load plugins that ship with ox."""
     from ox.builtins import e1rm, srpe, volume, weighin, wendler531
@@ -140,5 +108,3 @@ def load_plugins(log: TrainingLog | None = None, base_path: Path | None = None) 
     _load_builtins()
     if log is not None and base_path is not None:
         _load_from_log_directives(log, base_path)
-    _load_from_directory()
-    _load_from_entry_points()

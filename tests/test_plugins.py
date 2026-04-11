@@ -2,9 +2,10 @@
 
 import textwrap
 
+from ox.data import TrainingLog
 from ox.plugins import (
     PLUGINS,
-    _load_from_directory,
+    _load_from_log_directives,
     _register_descriptors,
     load_plugins,
 )
@@ -13,6 +14,17 @@ from ox.sql_utils import plugin_usage
 
 def _dummy_fn(ctx, movement="x"):
     return ["col"], [("row",)]
+
+
+def _make_log(plugin_paths: tuple[str, ...]) -> TrainingLog:
+    return TrainingLog(
+        sessions=(),
+        notes=(),
+        diagnostics=(),
+        queries=(),
+        weigh_ins=(),
+        plugin_paths=plugin_paths,
+    )
 
 
 class TestRegisterDescriptors:
@@ -85,13 +97,13 @@ class TestRegisterDescriptors:
         assert "p2" in PLUGINS
 
 
-class TestLoadFromDirectory:
-    """Test file-based plugin discovery."""
+class TestLoadFromLogDirectives:
+    """Test @plugin directive discovery."""
 
     def setup_method(self):
         PLUGINS.clear()
 
-    def test_loads_plugin_from_directory(self, tmp_path, monkeypatch):
+    def test_loads_plugin_from_directive(self, tmp_path):
         plugin_code = textwrap.dedent("""\
             def _my_fn(ctx, x="y"):
                 return ["col"], [("row",)]
@@ -99,50 +111,60 @@ class TestLoadFromDirectory:
             def register():
                 return [
                     {
-                        "name": "from-dir",
+                        "name": "from-directive",
                         "fn": _my_fn,
-                        "description": "loaded from dir",
+                        "description": "loaded from @plugin",
                         "params": [],
                     }
                 ]
         """)
         (tmp_path / "my_plugin.py").write_text(plugin_code)
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
-        _load_from_directory()
-        assert "from-dir" in PLUGINS
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("my_plugin.py",))
+        _load_from_log_directives(log, base)
+        assert "from-directive" in PLUGINS
 
-    def test_ignores_file_without_register(self, tmp_path, monkeypatch):
+    def test_ignores_file_without_register(self, tmp_path):
         (tmp_path / "no_register.py").write_text("x = 1\n")
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
-        _load_from_directory()
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("no_register.py",))
+        _load_from_log_directives(log, base)
         assert PLUGINS == {}
 
-    def test_handles_register_error(self, tmp_path, monkeypatch):
+    def test_handles_register_error(self, tmp_path):
         plugin_code = textwrap.dedent("""\
             def register():
                 raise RuntimeError("boom")
         """)
         (tmp_path / "bad_plugin.py").write_text(plugin_code)
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
-        _load_from_directory()
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("bad_plugin.py",))
+        _load_from_log_directives(log, base)
         assert PLUGINS == {}
 
-    def test_handles_import_error(self, tmp_path, monkeypatch):
+    def test_handles_import_error(self, tmp_path):
         (tmp_path / "broken.py").write_text("import nonexistent_module_xyz\n")
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
-        _load_from_directory()
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("broken.py",))
+        _load_from_log_directives(log, base)
         assert PLUGINS == {}
 
-    def test_nonexistent_directory(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path / "nope")
-        _load_from_directory()
+    def test_missing_file(self, tmp_path):
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("does_not_exist.py",))
+        _load_from_log_directives(log, base)
         assert PLUGINS == {}
 
 
 class TestLoadPlugins:
     """Test the top-level load_plugins function."""
 
-    def test_idempotent(self, tmp_path, monkeypatch):
+    def test_idempotent(self, tmp_path):
         plugin_code = textwrap.dedent("""\
             def _fn(ctx):
                 return [], []
@@ -158,33 +180,29 @@ class TestLoadPlugins:
                 ]
         """)
         (tmp_path / "idem.py").write_text(plugin_code)
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("idem.py",))
 
-        load_plugins()
+        load_plugins(log, base)
         assert "idem" in PLUGINS
 
-        load_plugins()
+        load_plugins(log, base)
         assert "idem" in PLUGINS
 
-    def test_builtin_e1rm_registered(self, tmp_path, monkeypatch):
-        """load_plugins() registers the built-in e1rm plugin."""
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+    def test_builtin_e1rm_registered(self):
         load_plugins()
         assert "e1rm" in PLUGINS
 
-    def test_builtin_wendler531_registered(self, tmp_path, monkeypatch):
-        """load_plugins() registers the built-in wendler531 plugin."""
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+    def test_builtin_wendler531_registered(self):
         load_plugins()
         assert "wendler531" in PLUGINS
 
-    def test_builtin_volume_registered(self, tmp_path, monkeypatch):
-        """load_plugins() registers the built-in volume plugin."""
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+    def test_builtin_volume_registered(self):
         load_plugins()
         assert "volume" in PLUGINS
 
-    def test_clears_previous(self, tmp_path, monkeypatch):
+    def test_clears_previous(self, tmp_path):
         """After removing a plugin file, reload should not keep stale entries."""
         plugin_code = textwrap.dedent("""\
             def _fn(ctx):
@@ -202,13 +220,15 @@ class TestLoadPlugins:
         """)
         plugin_file = tmp_path / "gone.py"
         plugin_file.write_text(plugin_code)
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("gone.py",))
 
-        load_plugins()
+        load_plugins(log, base)
         assert "gone" in PLUGINS
 
         plugin_file.unlink()
-        load_plugins()
+        load_plugins(log, base)
         assert "gone" not in PLUGINS
 
 

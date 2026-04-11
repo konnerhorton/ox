@@ -213,30 +213,26 @@ class TestParsePluginArgs:
 class TestPluginUsage:
     """Test usage string generation."""
 
-    def test_volume_usage(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+    def test_volume_usage(self):
         load_plugins()
         usage = plugin_usage("volume", PLUGINS["volume"])
         assert "--movement" in usage
         assert "--bin" in usage
         assert "run volume" in usage
 
-    def test_required_not_bracketed(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+    def test_required_not_bracketed(self):
         load_plugins()
         usage = plugin_usage("volume", PLUGINS["volume"])
         # Required params should not be in brackets
         assert "[--movement" not in usage
 
-    def test_optional_bracketed(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+    def test_optional_bracketed(self):
         load_plugins()
         usage = plugin_usage("volume", PLUGINS["volume"])
         # Optional params should be in brackets
         assert "[-b/--bin" in usage
 
-    def test_short_flags_shown(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+    def test_short_flags_shown(self):
         load_plugins()
         usage = plugin_usage("volume", PLUGINS["volume"])
         assert "-m/--movement" in usage
@@ -246,27 +242,23 @@ class TestPluginUsage:
 class TestRegistry:
     """Test that built-in plugins are well-formed."""
 
-    def test_all_builtins_registered(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+    def test_all_builtins_registered(self):
         load_plugins()
         for name in ("volume", "e1rm", "weighin", "wendler531"):
             assert name in PLUGINS, f"Builtin '{name}' not registered"
 
-    def test_all_plugins_have_fn(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+    def test_all_plugins_have_fn(self):
         load_plugins()
         for name, entry in PLUGINS.items():
             assert "fn" in entry, f"Plugin '{name}' missing 'fn'"
             assert callable(entry["fn"])
 
-    def test_all_plugins_have_description(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+    def test_all_plugins_have_description(self):
         load_plugins()
         for name, entry in PLUGINS.items():
             assert "description" in entry, f"Plugin '{name}' missing 'description'"
 
-    def test_all_plugins_have_params(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+    def test_all_plugins_have_params(self):
         load_plugins()
         for name, entry in PLUGINS.items():
             assert "params" in entry, f"Plugin '{name}' missing 'params'"

@@ -27,7 +27,7 @@ Developers and power users comfortable with text files and CLIs.
 - **Python parser** (`src/ox/parse.py`) — tree-sitter nodes → dataclasses
 - **Data model** (`src/ox/data.py`) — `TrainingSet`, `Movement`, `TrainingSession`, `TrainingLog`, `Note`, `WeighIn`, `StoredQuery`, `Diagnostic`
 - **SQLite query layer** (`src/ox/db.py`) — in-memory DB with `sessions`, `movements`, `sets`, `notes`, `session_notes`, `weigh_ins`, `queries` tables and `training` view
-- **Plugin system** (`src/ox/plugins.py`) — discovery from `~/.ox/plugins/`, entry points, and builtins; report and generator types
+- **Plugin system** (`src/ox/plugins.py`) — built-in plugins plus user plugins loaded via `@plugin` directives in `.ox` files
 - **Built-in reports** (`src/ox/reports.py`) — `volume` (volume over time) and `matrix` (session count per movement)
 - **Built-in plugins** — `e1rm` (estimated 1RM via Brzycki/Epley), `weighin` (weight tracking with stats/plot/rolling average), `wendler531` (5/3/1 cycle generator)
 - **CLI** (`src/ox/cli.py`) — interactive REPL with `report`, `generate`, `query`, `tables`, `lint`, `reload` commands and tab completion

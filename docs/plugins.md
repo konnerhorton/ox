@@ -119,20 +119,21 @@ ox> run wendler531 -m deadlift:405 --unit kg --start-date 2026-03-01
 | `-d/--start-date` | today | `YYYY-MM-DD` |
 | `-r/--rm` | `true` | `true`, `false` — tag sets with `^rm` |
 
-## Installing Plugins
+## Loading Plugins
 
-### Personal scripts
+Plugins come from two sources:
 
-Place `.py` files in `~/.ox/plugins/` — loaded automatically.
+1. **Built-ins** — shipped with ox (`volume`, `e1rm`, `weighin`, `wendler531`, `srpe`)
+2. **`@plugin` directives** — Python files referenced from your `.ox` log
 
-### Entry points
+To load a custom plugin, add an `@plugin` directive to your log file. The path is resolved relative to the `.ox` file that contains it:
 
-Distribute as a Python package with an `ox.plugins` entry point:
-
-```toml
-[project.entry-points."ox.plugins"]
-my_plugin = "my_package.my_module"
 ```
+@plugin "plugins/my_plugin.py"
+@plugin "../shared/team_plugin.py"
+```
+
+Plugins loaded via `@plugin` override built-ins with the same name.
 
 ## Writing a Plugin
 
