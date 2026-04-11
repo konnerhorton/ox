@@ -21,6 +21,7 @@ from ox.data import TrainingLog
 logger = logging.getLogger(__name__)
 
 PLUGINS: dict[str, dict] = {}
+USER_PLUGINS: set[str] = set()
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,7 +64,9 @@ def _load_module_from_path(path: Path) -> ModuleType | None:
     return module
 
 
-def _register_descriptors(descriptors: list[dict], source: str) -> None:
+def _register_descriptors(
+    descriptors: list[dict], source: str, is_user: bool = False
+) -> None:
     """Register plugin descriptors into the unified registry."""
     for desc in descriptors:
         name = desc.get("name")
@@ -77,6 +80,8 @@ def _register_descriptors(descriptors: list[dict], source: str) -> None:
         if name in PLUGINS:
             logger.warning("Plugin '%s' redefined by %s", name, source)
         PLUGINS[name] = desc
+        if is_user:
+            USER_PLUGINS.add(name)
 
 
 def _load_from_log_directives(log: TrainingLog, base_path: Path) -> None:
@@ -87,7 +92,7 @@ def _load_from_log_directives(log: TrainingLog, base_path: Path) -> None:
         if module and hasattr(module, "register"):
             try:
                 descriptors = module.register()
-                _register_descriptors(descriptors, str(resolved))
+                _register_descriptors(descriptors, str(resolved), is_user=True)
             except Exception:
                 logger.warning(
                     "Error calling register() in %s", resolved, exc_info=True
@@ -105,6 +110,7 @@ def _load_builtins() -> None:
 def load_plugins(log: TrainingLog | None = None, base_path: Path | None = None) -> None:
     """Discover and load all plugins. Call once at startup."""
     PLUGINS.clear()
+    USER_PLUGINS.clear()
     _load_builtins()
     if log is not None and base_path is not None:
         _load_from_log_directives(log, base_path)

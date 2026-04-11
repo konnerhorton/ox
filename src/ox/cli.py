@@ -18,6 +18,7 @@ from ox.db import create_db
 from ox.lint import collect_diagnostics
 from ox.plugins import (
     PLUGINS,
+    USER_PLUGINS,
     PlotResult,
     PluginContext,
     TableResult,
@@ -302,8 +303,14 @@ def cli(file):
         console.print(
             f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
             f"{len(log.planned_sessions)} planned sessions, "
-            f"{len(log.weigh_ins)} weigh-in(s)\n"
+            f"{len(log.weigh_ins)} weigh-in(s)"
         )
+        if USER_PLUGINS:
+            console.print(
+                f"[green]✓[/green] Loaded user plugins: {', '.join(sorted(USER_PLUGINS))}\n"
+            )
+        else:
+            console.print()
         if log.diagnostics:
             console.print(
                 f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
@@ -404,8 +411,14 @@ def cli(file):
                     console.print(
                         f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
                         f"{len(log.planned_sessions)} planned sessions, "
-                        f"{len(log.weigh_ins)} weigh-in(s)\n"
+                        f"{len(log.weigh_ins)} weigh-in(s)"
                     )
+                    if USER_PLUGINS:
+                        console.print(
+                            f"[green]✓[/green] Loaded user plugins: {', '.join(sorted(USER_PLUGINS))}"
+                        )
+                    else:
+                        console.print()
                     if log.diagnostics:
                         console.print(
                             f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
