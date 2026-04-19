@@ -1,7 +1,6 @@
 """Command-line interface for ox."""
 
 import sqlite3
-from importlib.metadata import version as _pkg_version
 
 import click
 from pathlib import Path
@@ -288,7 +287,7 @@ def show_tables(conn: sqlite3.Connection, headers: bool = False):
 
 @click.command()
 @click.argument("file", type=click.Path(exists=True, path_type=Path))
-@click.version_option(version=_pkg_version("ox"))
+@click.version_option(version="0.3.0")
 def cli(file):
     """Interactive training log analyzer.
 
