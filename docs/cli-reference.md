@@ -14,26 +14,20 @@ Opens an interactive REPL. Parse errors are summarized on load — run `lint` fo
 
 ## Commands
 
-### `report [NAME [OPTIONS]]`
+### `run [NAME [OPTIONS]]`
 
-List or run reports. Reports query the SQLite database and return tables.
-
-```
-ox> report                              # list available reports
-ox> report volume -m squat --bin monthly
-ox> report e1rm -m deadlift
-```
-
-See [Reports & Plugins](plugins.md) for details.
-
-### `generate [NAME [OPTIONS]]`
-
-List or run generators. Generators produce `.ox` text for planning.
+List or run plugins. Plugins receive the parsed log plus a SQLite connection and return a table, text, or plot.
 
 ```
-ox> generate                                    # list available generators
-ox> generate wendler531 -m squat:315,bench:225
+ox> run                                         # list available plugins
+ox> run volume -m squat --bin monthly
+ox> run e1rm -m deadlift
+ox> run wendler531 -m squat:315,bench:225
 ```
+
+Plugin names also work directly — `volume -m squat` is equivalent to `run volume -m squat`.
+
+See [Plugins](plugins.md) for details.
 
 ### `query SQL`
 
