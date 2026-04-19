@@ -188,10 +188,10 @@ def process_singleline_entry(raw_entry: Node) -> TrainingSession | None:
 def process_session_block_pending(raw_entry: Node) -> TrainingSession | None:
     """Process a pending session block (flag='!').
 
-    Not yet implemented.
+    Deferred: planned sessions are parsed but not materialized for analysis.
+    See SPEC.md "What's incomplete".
     """
-    # TODO: implement pending session processing
-    pass
+    return None
 
 
 def process_session_block(raw_entry: Node) -> TrainingSession | None:
@@ -208,7 +208,6 @@ def process_session_block(raw_entry: Node) -> TrainingSession | None:
             name=name, flag=flag, date=date, movements=tuple(movements), notes=notes
         )
     else:
-        # TODO: handle pending sessions
         return process_session_block_pending(raw_entry)
 
 
