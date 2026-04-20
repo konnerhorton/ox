@@ -8,6 +8,7 @@ match the `PlotResult.lines` contract consumed by the CLI.
 import calendar
 import math
 import re
+from dataclasses import dataclass
 from datetime import date as _date
 from typing import Literal
 
@@ -22,6 +23,26 @@ _DEFAULT_WIDTH = 60
 _DEFAULT_HEIGHT = 22  # empirical: even 3-row tick spacing for 6–7 y-ticks
 
 _EMPTY_MESSAGE = "Not enough data to plot."
+
+_SCATTER_MARKERS = ["dot", "cross", "star", "heart", "at"]
+_LINE_MARKER = "braille"
+
+
+@dataclass(frozen=True, slots=True)
+class Series:
+    """A named data series for :func:`multi_series` plotting.
+
+    Attributes:
+        label: Legend label rendered by plotext.
+        dates: ISO-formatted date strings ("YYYY-MM-DD"), one per value.
+        values: Numeric y-values, aligned with ``dates``.
+        style: "scatter" renders as discrete markers, "line" connects points.
+    """
+
+    label: str
+    dates: list[str]
+    values: list[float]
+    style: Literal["scatter", "line"] = "scatter"
 
 
 def _finalize() -> list[str]:
@@ -296,3 +317,114 @@ def scatter(
         plt.title(title)
     lines = _finalize()
     return _inject_year_row(lines, tick_labels, tick_years)
+
+
+def multi_series(
+    series: list[Series],
+    *,
+    y_label: str,
+    title: str | None = None,
+    width: int = _DEFAULT_WIDTH,
+    height: int = _DEFAULT_HEIGHT,
+    y_step: float | None = None,
+    x_scale: Scale | None = None,
+) -> list[str]:
+    """Plot multiple named series on a shared ISO-date x-axis.
+
+    Scatter series cycle through distinct markers so they remain
+    distinguishable under the monochrome "clear" theme; line series
+    use a braille marker for continuous connection.
+
+    Args:
+        series: Data series to overlay. Empty series are skipped.
+        y_label: Label rendered beneath the y-axis.
+        title: Optional plot title.
+        width: Plot width in characters.
+        height: Plot height in rows.
+        y_step: Override the auto-picked y-tick increment.
+        x_scale: One of "week", "month", "quarter", "year" to force
+            calendar-aligned x-tick stepping.
+
+    Returns:
+        Rendered rows. Returns ``["Not enough data to plot."]`` when
+        fewer than 2 total points are supplied.
+    """
+    non_empty = [s for s in series if s.values]
+    total = sum(len(s.values) for s in non_empty)
+    if total < 2:
+        return [_EMPTY_MESSAGE]
+
+    plt.clf()
+    plt.theme("clear")
+    plt.plot_size(width, height)
+    plt.date_form("Y-m-d")
+
+    scatter_idx = 0
+    for s in non_empty:
+        if s.style == "line":
+            plt.plot(s.dates, s.values, label=s.label, marker=_LINE_MARKER)
+        else:
+            marker = _SCATTER_MARKERS[scatter_idx % len(_SCATTER_MARKERS)]
+            scatter_idx += 1
+            plt.scatter(s.dates, s.values, label=s.label, marker=marker)
+
+    all_values = [v for s in non_empty for v in s.values]
+    yticks, y_bottom, y_top = _whole_number_yticks(all_values, step=y_step)
+    plt.yticks(yticks)
+    plt.ylim(y_bottom, y_top)
+
+    all_dates = [d for s in non_empty for d in s.dates]
+    tick_positions, tick_labels, tick_years = _anchored_date_xticks(
+        all_dates, scale=x_scale
+    )
+    plt.xticks(tick_positions, tick_labels)
+    plt.ylabel(y_label)
+    if title:
+        plt.title(title)
+    lines = _finalize()
+    return _inject_year_row(lines, tick_labels, tick_years)
+
+
+def bar(
+    labels: list[str],
+    values: list[float],
+    *,
+    y_label: str,
+    title: str | None = None,
+    width: int = _DEFAULT_WIDTH,
+    height: int = _DEFAULT_HEIGHT,
+    y_step: float | None = None,
+) -> list[str]:
+    """Vertical bar chart with categorical string labels.
+
+    Plotext decimates x-labels automatically when too many bars are
+    supplied; no year-row injection is done since bar categories are
+    not assumed to be dates.
+
+    Args:
+        labels: Category labels, one per bar.
+        values: Bar heights, aligned with ``labels``.
+        y_label: Label rendered beneath the y-axis.
+        title: Optional plot title.
+        width: Plot width in characters.
+        height: Plot height in rows.
+        y_step: Override the auto-picked y-tick increment.
+
+    Returns:
+        Rendered rows. Returns ``["Not enough data to plot."]`` when
+        fewer than 2 values are supplied.
+    """
+    if len(values) < 2:
+        return [_EMPTY_MESSAGE]
+    plt.clf()
+    plt.theme("clear")
+    plt.plot_size(width, height)
+    plt.bar(labels, values, width=0.5)
+    if y_step is not None:
+        yticks, y_bottom, y_top = _whole_number_yticks([0.0, *values], step=y_step)
+        plt.yticks(yticks)
+        plt.ylim(y_bottom, y_top)
+    plt.ylabel(y_label)
+    if title:
+        plt.title(title)
+    return _finalize()

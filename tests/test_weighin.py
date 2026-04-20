@@ -155,24 +155,27 @@ class TestWeighInReportPlot:
         assert "home scale" in text
         assert "(no scale)" in text
 
-    def test_legend_shows_rolling_avg(self, weigh_in_multi_scale_db):
+    def test_rolling_avg_hidden_by_default(self, weigh_in_multi_scale_db):
         _cols, rows = _run_weighin(weigh_in_multi_scale_db, output="plot")
         text = "\n".join(r[0] for r in rows)
-        assert "rolling avg" in text
+        assert "rolling avg" not in text
+
+    def test_rolling_avg_shown_when_window_set(self, weigh_in_multi_scale_db):
+        _cols, rows = _run_weighin(weigh_in_multi_scale_db, output="plot", window=7)
+        text = "\n".join(r[0] for r in rows)
+        assert "7-day rolling avg" in text
 
     def test_custom_window_in_legend(self, weigh_in_multi_scale_db):
         _cols, rows = _run_weighin(weigh_in_multi_scale_db, output="plot", window=14)
         text = "\n".join(r[0] for r in rows)
         assert "14-day rolling avg" in text
 
-    def test_two_different_markers_used(self, weigh_in_multi_scale_db):
-        """Two scales must produce two distinct markers in the legend."""
-        from ox.builtins.weighin import _MARKERS
-
+    def test_both_scale_series_labeled(self, weigh_in_multi_scale_db):
+        """Two scales must each appear as labeled series in the legend."""
         _cols, rows = _run_weighin(weigh_in_multi_scale_db, output="plot")
         text = "\n".join(r[0] for r in rows)
-        markers_found = [m for m in _MARKERS if m in text]
-        assert len(markers_found) >= 2
+        assert "home scale" in text
+        assert "(no scale)" in text
 
     def test_not_enough_data_message(self, tmp_path):
         """Single weigh-in produces a 'Not enough data' message."""

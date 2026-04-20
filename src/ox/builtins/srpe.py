@@ -21,15 +21,12 @@ import re
 from collections import defaultdict
 from datetime import date as _date, timedelta as _timedelta
 
+from ox import plot
 from ox.plugins import PlotResult, PluginContext, TableResult
 
 _SRPE_PATTERN = re.compile(
     r"srpe:\s*(\d+(?:\.\d+)?)\s*[;,]\s*(PT[\dHMShms]+)", re.IGNORECASE
 )
-
-_PLOT_WIDTH = 60
-_PLOT_HEIGHT = 15
-_MARKER = "●"
 
 
 def _parse_iso_duration_minutes(duration_str: str) -> float:
@@ -107,73 +104,6 @@ def _extract_srpe_data(ctx: PluginContext) -> list[tuple[str, float, float, floa
 
     results.sort(key=lambda r: r[0])
     return results
-
-
-def _render_plot(data: list[tuple[str, float]], bin_label: str) -> list[str]:
-    """Render AU over time as an ASCII bar chart.
-
-    Args:
-        data: List of (period, total_AU) tuples
-        bin_label: Time bin name for labeling
-    """
-    if not data:
-        return ["No sRPE data found."]
-    if len(data) < 2:
-        return ["Not enough data to plot (need at least 2 periods)."]
-
-    max_au = max(au for _, au in data)
-    min_au = min(au for _, au in data)
-    au_range = max_au - min_au or 1.0
-
-    width = _PLOT_WIDTH
-    height = _PLOT_HEIGHT
-    grid = [[" "] * width for _ in range(height)]
-
-    def to_y(v):
-        return int((max_au - v) / au_range * (height - 1) + 0.5)
-
-    def to_x(i):
-        return int(i / (len(data) - 1) * (width - 1)) if len(data) > 1 else 0
-
-    for i, (_, au) in enumerate(data):
-        x, y = to_x(i), to_y(au)
-        if 0 <= y < height and 0 <= x < width:
-            grid[y][x] = _MARKER
-
-    tick_interval = max(1, height // 4)
-    lines = []
-    for row_idx in range(height):
-        v = max_au - au_range * row_idx / (height - 1) if height > 1 else max_au
-        if row_idx % tick_interval == 0 or row_idx == height - 1:
-            label = f"{v:6.0f} │"
-        else:
-            label = "       │"
-        lines.append(label + "".join(grid[row_idx]))
-
-    lines.append("       └" + "─" * width)
-
-    n = len(data)
-    num_labels = min(5, n)
-    label_indices = (
-        [int(i * (n - 1) / (num_labels - 1)) for i in range(num_labels)]
-        if num_labels > 1
-        else [0]
-    )
-    x_label_chars = [" "] * (8 + width)
-    for idx in label_indices:
-        x = 8 + to_x(idx)
-        label = data[idx][0][-5:]
-        start = x - len(label) // 2
-        for j, ch in enumerate(label):
-            pos = start + j
-            if 0 <= pos < len(x_label_chars):
-                x_label_chars[pos] = ch
-    lines.append("".join(x_label_chars))
-
-    lines.append("")
-    lines.append(f"  {_MARKER}  total AU ({bin_label})")
-
-    return lines
 
 
 def _daily_au(data: list[tuple[str, float, float, float]]) -> dict[_date, float]:
@@ -454,12 +384,9 @@ def srpe_report(ctx: PluginContext, bin: str = "weekly", output: str = "table"):
     periods = sorted(grouped.keys())
 
     if output == "plot":
-        plot_data = []
-        for period in periods:
-            entries = grouped[period]
-            total_au = sum(e[2] for e in entries)
-            plot_data.append((period, total_au))
-        return PlotResult(_render_plot(plot_data, bin))
+        labels = [p for p in periods]
+        values = [sum(e[2] for e in grouped[p]) for p in periods]
+        return PlotResult(plot.bar(labels, values, y_label=f"total AU ({bin})"))
 
     # table output
     rows = []
