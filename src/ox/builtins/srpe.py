@@ -114,22 +114,24 @@ def _daily_au(data: list[tuple[str, float, float, float]]) -> dict[_date, float]
     return dict(daily)
 
 
-def _weekly_loads(
-    daily: dict[_date, float], weeks: int | None = None
-) -> list[tuple[_date, float]]:
-    """Roll up daily AU into ISO weeks (Mon–Sun).
+def _weekly_daily_buckets(
+    daily: dict[_date, float],
+) -> dict[_date, list[float]]:
+    """Bucket daily AU into ISO weeks (Mon-Sun), filling missing days with 0.
 
-    Returns (monday_date, weekly_total_AU) sorted chronologically.
-    If *weeks* is given, return only the last N weeks.
+    Returns {monday_date: [au_per_day, ...]} spanning first to last observed day.
     """
-    buckets: dict[_date, float] = defaultdict(float)
-    for d, au in daily.items():
+    if not daily:
+        return {}
+    all_dates = sorted(daily.keys())
+    first, last = all_dates[0], all_dates[-1]
+    weeks: dict[_date, list[float]] = defaultdict(list)
+    d = first
+    while d <= last:
         monday = d - _timedelta(days=d.weekday())
-        buckets[monday] += au
-    result = sorted(buckets.items())
-    if weeks is not None:
-        result = result[-weeks:]
-    return result
+        weeks[monday].append(daily.get(d, 0.0))
+        d += _timedelta(days=1)
+    return weeks
 
 
 def _acwr_report(
@@ -219,30 +221,12 @@ def _monotony_report(
     Monotony = mean daily TL / SD of daily TL (over a 7-day window).
     High monotony (>2.0) with high load predicts overtraining.
     """
-    daily = _daily_au(data)
-    if not daily:
+    weeks = _weekly_daily_buckets(_daily_au(data))
+    if not weeks:
         return TableResult(
             ["week", "weekly_AU", "mean_daily_AU", "sd_daily_AU", "monotony"],
             [],
         )
-
-    all_dates = sorted(daily.keys())
-    first, last = all_dates[0], all_dates[-1]
-
-    # Build complete date range
-    d = first
-    date_range = []
-    while d <= last:
-        date_range.append(d)
-        d += _timedelta(days=1)
-
-    full_daily = {d: daily.get(d, 0.0) for d in date_range}
-
-    # Group into ISO weeks (Mon-Sun)
-    weeks: dict[_date, list[float]] = defaultdict(list)
-    for d in date_range:
-        monday = d - _timedelta(days=d.weekday())
-        weeks[monday].append(full_daily[d])
 
     rows = []
     for monday in sorted(weeks.keys()):
@@ -279,28 +263,12 @@ def _strain_report(
     Strain = weekly TL × monotony.
     High strain combined with high monotony predicts illness/overtraining.
     """
-    daily = _daily_au(data)
-    if not daily:
+    weeks = _weekly_daily_buckets(_daily_au(data))
+    if not weeks:
         return TableResult(
             ["week", "weekly_AU", "monotony", "strain", "risk"],
             [],
         )
-
-    all_dates = sorted(daily.keys())
-    first, last = all_dates[0], all_dates[-1]
-
-    d = first
-    date_range = []
-    while d <= last:
-        date_range.append(d)
-        d += _timedelta(days=1)
-
-    full_daily = {d: daily.get(d, 0.0) for d in date_range}
-
-    weeks: dict[_date, list[float]] = defaultdict(list)
-    for d in date_range:
-        monday = d - _timedelta(days=d.weekday())
-        weeks[monday].append(full_daily[d])
 
     rows = []
     for monday in sorted(weeks.keys()):

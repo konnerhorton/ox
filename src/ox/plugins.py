@@ -46,9 +46,6 @@ class PlotResult:
     lines: list[str]
 
 
-PluginResult = TableResult | TextResult | PlotResult
-
-
 def _load_module_from_path(path: Path) -> ModuleType | None:
     """Import a .py file as a module. Returns None on failure."""
     spec = importlib.util.spec_from_file_location(path.stem, path)

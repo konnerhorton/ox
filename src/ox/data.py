@@ -6,7 +6,6 @@ from typing import Optional, List, Iterator
 from pint import Quantity
 
 DATE_FORMAT = "%Y-%m-%d"
-ITEM_FIELDS = ["weight", "rep_scheme", "time", "distance", "note"]
 
 
 @dataclass(frozen=True, slots=True)
