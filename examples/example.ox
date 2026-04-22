@@ -3,86 +3,86 @@
 # Using a focused set of movements for better statistics
 
 # Exercise Definitions
-@exercise squat
+@movement squat
 equipment: barbell
-pattern: squat
+tag: squat
 url: https://www.strongerbyscience.com/how-to-squat/
 note: keep chest up, knees track over toes, full depth
 @end
 
-@exercise deadlift
+@movement deadlift
 equipment: barbell
-pattern: hinge
+tag: hinge
 url: https://www.strongerbyscience.com/how-to-deadlift/
 note: neutral spine, drive through heels, hinge at hips
 @end
 
-@exercise bench-press
+@movement bench-press
 equipment: barbell
-pattern: press
+tag: press
 url: https://www.strongerbyscience.com/how-to-bench/
 note: retract scapula, feet planted, bar path to mid-chest
 @end
 
-@exercise overhead-press
+@movement overhead-press
 equipment: barbell
-pattern: press
+tag: press
 url: https://www.strongerbyscience.com/how-to-press/
 note: brace core, vertical bar path, squeeze glutes
 @end
 
-@exercise pullup
+@movement pullup
 equipment: bodyweight
-pattern: pull
+tag: pull
 url: https://www.strongerbyscience.com/how-to-pull-up/
 note: full hang to chin over bar, control descent
 @end
 
-@exercise kb-swing
+@movement kb-swing
 equipment: kettlebell
-pattern: hinge
+tag: hinge
 url: https://www.strongfirst.com/the-swing/
 note: explosive hip drive, park the bell, tight lats
 @end
 
-@exercise kb-snatch
+@movement kb-snatch
 equipment: kettlebell
-pattern: ballistic
+tag: ballistic
 url: https://www.strongfirst.com/the-snatch/
 note: punch through at top, smooth arc, tight shoulder
 @end
 
-@exercise kb-clean-and-press
+@movement kb-clean-and-press
 equipment: kettlebell
-pattern: combination
+tag: combination
 url: https://www.strongfirst.com/the-clean/
 note: clean to rack position, press with full lockout
 @end
 
-@exercise kb-turkish-getup
+@movement kb-turkish-getup
 equipment: kettlebell
-pattern: getup
+tag: getup
 url: https://www.strongfirst.com/the-turkish-get-up/
 note: eyes on bell, stable shoulder, controlled movement
 @end
 
-@exercise box-jump
+@movement box-jump
 equipment: plyometric
-pattern: jump
+tag: jump
 url: https://www.bodybuilding.com/exercises/box-jump
 note: soft landing, full hip extension, step down
 @end
 
-@exercise burpee
+@movement burpee
 equipment: bodyweight
-pattern: full-body
+tag: full-body
 url: https://wodwell.com/exercise/burpee/
 note: chest to floor, explosive jump, full extension
 @end
 
-@exercise run
+@movement run
 equipment: cardio
-pattern: endurance
+tag: endurance
 url: https://www.runnersworld.com/training/
 note: comfortable pace unless noted, focus on form
 @end

@@ -3,67 +3,67 @@
 # ~8 weeks of realistic training data with sRPE, weigh-ins, notes, and queries
 
 # Exercise Definitions
-@exercise squat
+@movement squat
 equipment: barbell
 tags: squat, lower
 note: back squat, full depth
 @end
 
-@exercise deadlift
+@movement deadlift
 equipment: barbell
 tags: hinge, lower
 note: conventional barbell deadlift
 @end
 
-@exercise bench-press
+@movement bench-press
 equipment: barbell
 tags: push, upper
 note: flat barbell bench press
 @end
 
-@exercise kb-snatch
+@movement kb-snatch
 equipment: kettlebell
 tags: power, full-body, unilateral
 note: single-arm kettlebell snatch
 @end
 
-@exercise kb-oh-press
+@movement kb-oh-press
 equipment: kettlebell
 tags: push, upper, unilateral
 note: single-arm overhead press
 @end
 
-@exercise kb-tgu
+@movement kb-tgu
 equipment: kettlebell
 tags: full-body, unilateral
 note: Turkish get-up
 @end
 
-@exercise kb-dh-swing
+@movement kb-dh-swing
 equipment: kettlebell
 tags: hinge, lower, conditioning
 note: double-handed kettlebell swing
 @end
 
-@exercise pullup
+@movement pullup
 equipment: pull-up bar
 tags: pull, upper
 note: pronated grip pull-up
 @end
 
-@exercise goblet-squat
+@movement goblet-squat
 equipment: kettlebell
 tags: squat, lower
 note: weight held at chest
 @end
 
-@exercise burpee
+@movement burpee
 equipment: none
 tags: conditioning, full-body
 note: chest to floor, explosive jump
 @end
 
-@exercise run
+@movement run
 equipment: none
 tags: cardio, conditioning
 note: running for distance or time
