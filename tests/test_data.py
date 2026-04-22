@@ -6,6 +6,8 @@ Testing philosophy:
 - Focus on edge cases and business logic
 """
 
+from pathlib import Path
+
 import pytest
 from datetime import date, time
 from ox.data import TrainingSet, Movement, TrainingSession, TrainingLog, WeighIn
@@ -119,6 +121,83 @@ class TestMovement:
         movement = Movement(name="pullups", sets=sets, note=None)
 
         assert movement.top_set_weight is None
+
+
+class TestToOxRoundTrip:
+    """Movement and TrainingSession to_ox() should emit a form that re-parses to an equal object."""
+
+    def _reparse_movement(self, line: str) -> Movement:
+        from ox.cli import parse_file
+        import tempfile
+
+        p = Path(tempfile.mktemp(suffix=".ox"))
+        p.write_text(f"2025-01-10 * {line}\n")
+        return parse_file(p).sessions[0].movements[0]
+
+    def test_movement_uniform_weight(self):
+        m = Movement(
+            name="bench-press",
+            sets=[TrainingSet(reps=5, weight=135 * ureg.pound) for _ in range(3)],
+            note=None,
+        )
+        assert m.to_ox() == "bench-press: 135lb 3x5"
+        round_tripped = self._reparse_movement(m.to_ox())
+        assert round_tripped.name == m.name
+        assert round_tripped.total_reps == m.total_reps
+        assert round_tripped.top_set_weight == m.top_set_weight
+
+    def test_movement_bodyweight(self):
+        m = Movement(
+            name="pullups",
+            sets=[TrainingSet(reps=10, weight=None) for _ in range(5)],
+            note=None,
+        )
+        assert m.to_ox() == "pullups: BW 5x10"
+
+    def test_movement_progressive_weight(self):
+        m = Movement(
+            name="squat",
+            sets=[TrainingSet(reps=5, weight=w * ureg.pound) for w in (135, 185, 225)],
+            note=None,
+        )
+        # varied weights → progressive form
+        assert "/" in m.to_ox()
+        round_tripped = self._reparse_movement(m.to_ox())
+        assert [s.weight for s in round_tripped.sets] == [
+            135 * ureg.pound,
+            185 * ureg.pound,
+            225 * ureg.pound,
+        ]
+
+    def test_movement_with_note_round_trip(self):
+        m = Movement(
+            name="bench-press",
+            sets=[TrainingSet(reps=5, weight=135 * ureg.pound)],
+            note="paused",
+        )
+        round_tripped = self._reparse_movement(m.to_ox())
+        assert round_tripped.note == "paused"
+
+    def test_session_single_line(self):
+        m = Movement(
+            name="pullups", sets=[TrainingSet(reps=10, weight=None)], note=None
+        )
+        s = TrainingSession(date=date(2025, 1, 10), flag="*", name=None, movements=(m,))
+        assert s.to_ox() == "2025-01-10 * pullups: BW 1x10"
+
+    def test_session_block(self):
+        m1 = Movement(
+            name="bench-press",
+            sets=[TrainingSet(reps=5, weight=135 * ureg.pound) for _ in range(5)],
+            note=None,
+        )
+        s = TrainingSession(
+            date=date(2025, 1, 11), flag="*", name="Upper Day", movements=(m1,)
+        )
+        out = s.to_ox()
+        assert out.startswith("@session\n2025-01-11 * Upper Day")
+        assert out.endswith("@end")
+        assert "bench-press: 135lb 5x5" in out
 
 
 class TestTrainingLog:

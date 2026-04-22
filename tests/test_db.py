@@ -12,27 +12,20 @@ from ox.units import ureg
 class TestSchema:
     """Verify the database schema is created correctly."""
 
-    def test_sessions_table_exists(self, simple_db):
+    @pytest.mark.parametrize(
+        "kind,name",
+        [
+            ("table", "sessions"),
+            ("table", "movements"),
+            ("table", "sets"),
+            ("table", "weigh_ins"),
+            ("table", "queries"),
+            ("view", "training"),
+        ],
+    )
+    def test_schema_object_exists(self, simple_db, kind, name):
         rows = simple_db.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'"
-        ).fetchall()
-        assert len(rows) == 1
-
-    def test_movements_table_exists(self, simple_db):
-        rows = simple_db.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='movements'"
-        ).fetchall()
-        assert len(rows) == 1
-
-    def test_sets_table_exists(self, simple_db):
-        rows = simple_db.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='sets'"
-        ).fetchall()
-        assert len(rows) == 1
-
-    def test_training_view_exists(self, simple_db):
-        rows = simple_db.execute(
-            "SELECT name FROM sqlite_master WHERE type='view' AND name='training'"
+            "SELECT name FROM sqlite_master WHERE type=? AND name=?", (kind, name)
         ).fetchall()
         assert len(rows) == 1
 
@@ -142,6 +135,21 @@ class TestWeightInDatabase:
         ).fetchone()
         assert row[0] == 24.0
         assert row[1] == "kilogram"
+
+    def test_combined_weight_summed_in_db(self, tmp_path):
+        """24kg+32kg should land as 56kg per set in the training view."""
+        from ox.cli import parse_file
+
+        f = tmp_path / "combined.ox"
+        f.write_text("2025-01-10 * db-press: 24kg+32kg 5x5\n")
+        conn = create_db(parse_file(f))
+        rows = conn.execute(
+            "SELECT weight_magnitude, weight_unit FROM training "
+            "WHERE movement_name = 'db-press'"
+        ).fetchall()
+        assert len(rows) == 5
+        assert all(r == (56.0, "kilogram") for r in rows)
+        conn.close()
 
     def test_bodyweight_is_null(self, simple_db):
         row = simple_db.execute(
@@ -262,87 +270,42 @@ class TestUserQueries:
 
 
 class TestWeighInsTable:
-    """Verify the weigh_ins table is created and populated correctly."""
+    """Verify the weigh_ins table is populated correctly."""
 
-    def test_weigh_ins_table_exists(self, simple_db):
-        rows = simple_db.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='weigh_ins'"
-        ).fetchall()
-        assert len(rows) == 1
-
-    def test_row_count(self, log_with_weigh_ins_file):
+    @pytest.fixture
+    def weigh_ins_db(self, log_with_weigh_ins_file):
         from ox.cli import parse_file
 
-        log = parse_file(log_with_weigh_ins_file)
-        conn = create_db(log)
-        count = conn.execute("SELECT COUNT(*) FROM weigh_ins").fetchone()[0]
-        assert count == 3
+        conn = create_db(parse_file(log_with_weigh_ins_file))
+        yield conn
         conn.close()
 
-    def test_time_of_day_null_when_absent(self, log_with_weigh_ins_file):
-        from ox.cli import parse_file
+    def test_row_count(self, weigh_ins_db):
+        assert weigh_ins_db.execute("SELECT COUNT(*) FROM weigh_ins").fetchone()[0] == 3
 
-        log = parse_file(log_with_weigh_ins_file)
-        conn = create_db(log)
-        row = conn.execute(
-            "SELECT time_of_day FROM weigh_ins WHERE date = '2025-01-10'"
+    def test_nulls_when_absent(self, weigh_ins_db):
+        row = weigh_ins_db.execute(
+            "SELECT time_of_day, scale FROM weigh_ins WHERE date = '2025-01-10'"
         ).fetchone()
-        assert row[0] is None
-        conn.close()
+        assert row == (None, None)
 
-    def test_scale_null_when_absent(self, log_with_weigh_ins_file):
-        from ox.cli import parse_file
-
-        log = parse_file(log_with_weigh_ins_file)
-        conn = create_db(log)
-        row = conn.execute(
-            "SELECT scale FROM weigh_ins WHERE date = '2025-01-10'"
+    def test_values_stored_correctly(self, weigh_ins_db):
+        row = weigh_ins_db.execute(
+            "SELECT weight_magnitude, weight_unit, time_of_day, scale "
+            "FROM weigh_ins WHERE date = '2025-01-12'"
         ).fetchone()
-        assert row[0] is None
-        conn.close()
-
-    def test_values_stored_correctly(self, log_with_weigh_ins_file):
-        from ox.cli import parse_file
-
-        log = parse_file(log_with_weigh_ins_file)
-        conn = create_db(log)
-        row = conn.execute(
-            "SELECT weight_magnitude, weight_unit, time_of_day, scale FROM weigh_ins WHERE date = '2025-01-12'"
-        ).fetchone()
-        assert row[0] == 84.0
-        assert row[1] == "kilogram"
-        assert row[2] == "07:00"
-        assert row[3] == "gym scale"
-        conn.close()
+        assert row == (84.0, "kilogram", "07:00", "gym scale")
 
 
 class TestQueriesTable:
     """Verify the queries table is populated from StoredQuery objects."""
 
-    def test_queries_table_exists(self, simple_db):
-        rows = simple_db.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='queries'"
-        ).fetchall()
-        assert len(rows) == 1
-
     def test_stored_query_inserted(self, log_with_query_file):
         from ox.cli import parse_file
 
-        log = parse_file(log_with_query_file)
-        conn = create_db(log)
+        conn = create_db(parse_file(log_with_query_file))
         rows = conn.execute("SELECT name, sql FROM queries").fetchall()
         assert len(rows) == 1
         assert rows[0][0] == "max-pullups"
         assert "pullups" in rows[0][1]
-        conn.close()
-
-    def test_stored_query_lookup_by_name(self, log_with_query_file):
-        from ox.cli import parse_file
-
-        log = parse_file(log_with_query_file)
-        conn = create_db(log)
-        row = conn.execute(
-            "SELECT sql FROM queries WHERE name = ?", ("max-pullups",)
-        ).fetchone()
-        assert row is not None
         conn.close()

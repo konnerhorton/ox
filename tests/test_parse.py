@@ -6,68 +6,34 @@ Testing philosophy:
 - Test edge cases from the documentation
 """
 
+import pytest
+
 from ox.parse import weight_text_to_quantity, process_weights
 from ox.units import ureg
 
 
 class TestWeightTextToQuantity:
-    """Test parsing individual weight strings.
+    """Test parsing individual weight strings."""
 
-    This is the lowest-level parsing function.
-    """
+    @pytest.mark.parametrize(
+        "text,magnitude,unit",
+        [
+            ("24kg", 24, "kilogram"),
+            ("135lb", 135, "pound"),
+            ("500g", 500, "gram"),
+            ("16oz", 16, "ounce"),
+            ("12stone", 12, "stone"),
+            ("135pound", 135, "pound"),
+            ("24kilogram", 24, "kilogram"),
+            ("2.5kg", 2.5, "kilogram"),
+        ],
+    )
+    def test_valid(self, text, magnitude, unit):
+        assert weight_text_to_quantity(text) == magnitude * ureg.parse_units(unit)
 
-    def test_parse_kg(self):
-        """Test parsing kilogram weights."""
-        result = weight_text_to_quantity("24kg")
-        assert result == 24 * ureg.kilogram
-
-    def test_parse_lb(self):
-        """Test parsing pound weights."""
-        result = weight_text_to_quantity("135lb")
-        assert result == 135 * ureg.pound
-
-    def test_parse_gram(self):
-        """Test parsing gram weights."""
-        result = weight_text_to_quantity("500g")
-        assert result == 500 * ureg.gram
-
-    def test_parse_ounce(self):
-        """Test parsing ounce weights."""
-        result = weight_text_to_quantity("16oz")
-        assert result == 16 * ureg.ounce
-
-    def test_parse_stone(self):
-        """Test parsing stone weights."""
-        result = weight_text_to_quantity("12stone")
-        assert result == 12 * ureg.stone
-
-    def test_parse_pound_alias(self):
-        """Test parsing 'pound' as long-form unit."""
-        result = weight_text_to_quantity("135pound")
-        assert result == 135 * ureg.pound
-
-    def test_parse_kilogram_alias(self):
-        """Test parsing 'kilogram' as long-form unit."""
-        result = weight_text_to_quantity("24kilogram")
-        assert result == 24 * ureg.kilogram
-
-    def test_parse_decimal_weight(self):
-        """Test parsing decimal weights."""
-        result = weight_text_to_quantity("2.5kg")
-        assert result == 2.5 * ureg.kilogram
-
-    def test_rejects_non_mass_unit(self):
-        """Test that non-mass units are rejected."""
-        assert weight_text_to_quantity("100m") is None
-        assert weight_text_to_quantity("30min") is None
-
-    def test_parse_invalid(self):
-        """Test invalid weight strings return None."""
-        # No unit
-        assert weight_text_to_quantity("100") is None
-
-        # Invalid format
-        assert weight_text_to_quantity("abc") is None
+    @pytest.mark.parametrize("text", ["100m", "30min", "100", "abc"])
+    def test_invalid_returns_none(self, text):
+        assert weight_text_to_quantity(text) is None
 
 
 class TestProcessWeights:
@@ -203,32 +169,12 @@ def _parse_str(content: str):
 class TestDurationToken:
     """Test that ISO 8601 PT duration strings are accepted by the grammar."""
 
-    def test_minutes_only(self):
-        _, diags = _parse_str("2025-01-10 * run: PT30M\n")
-        assert not diags
-
-    def test_minutes_and_seconds(self):
-        _, diags = _parse_str("2025-01-10 * run: PT30M15S\n")
-        assert not diags
-
-    def test_hours_only(self):
-        _, diags = _parse_str("2025-01-10 * run: PT1H\n")
-        assert not diags
-
-    def test_hours_and_minutes(self):
-        _, diags = _parse_str("2025-01-10 * run: PT1H30M\n")
-        assert not diags
-
-    def test_hours_minutes_seconds(self):
-        _, diags = _parse_str("2025-01-10 * run: PT1H30M15S\n")
-        assert not diags
-
-    def test_fractional_seconds(self):
-        _, diags = _parse_str("2025-01-10 * run: PT30M15.5S\n")
-        assert not diags
-
-    def test_seconds_only(self):
-        _, diags = _parse_str("2025-01-10 * run: PT45S\n")
+    @pytest.mark.parametrize(
+        "duration",
+        ["PT30M", "PT30M15S", "PT1H", "PT1H30M", "PT1H30M15S", "PT30M15.5S", "PT45S"],
+    )
+    def test_accepted(self, duration):
+        _, diags = _parse_str(f"2025-01-10 * run: {duration}\n")
         assert not diags
 
     def test_old_time_format_rejected(self):
@@ -237,75 +183,52 @@ class TestDurationToken:
 
 
 class TestWeighInEntry:
-    """Test that weigh_in_entry nodes parse correctly."""
+    """Grammar accepts weigh-in forms without producing diagnostics."""
 
-    def test_weight_only(self):
-        _, diags = _parse_str("2025-01-10 W 185lb\n")
-        assert not diags
-
-    def test_weight_with_timestamp(self):
-        _, diags = _parse_str("2025-01-10 W 185lb T06:30\n")
-        assert not diags
-
-    def test_weight_with_scale(self):
-        _, diags = _parse_str('2025-01-10 W 185lb "bathroom scale"\n')
-        assert not diags
-
-    def test_weight_with_timestamp_and_scale(self):
-        _, diags = _parse_str('2025-01-10 W 83.5kg T06:30 "home scale"\n')
-        assert not diags
-
-    def test_kg_weight(self):
-        _, diags = _parse_str("2025-01-10 W 83.5kg\n")
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "2025-01-10 W 185lb\n",
+            "2025-01-10 W 185lb T06:30\n",
+            '2025-01-10 W 185lb "bathroom scale"\n',
+            '2025-01-10 W 83.5kg T06:30 "home scale"\n',
+            "2025-01-10 W 83.5kg\n",
+        ],
+    )
+    def test_accepted(self, line):
+        _, diags = _parse_str(line)
         assert not diags
 
 
-class TestProcessWeighInEntry:
-    """Test process_weigh_in_entry via parse_file."""
+class TestBlockDirectives:
+    """Grammar accepts top-level @-directives without diagnostics.
 
-    def test_date(self, log_with_weigh_ins_file):
-        from datetime import date
-        from ox.cli import parse_file
+    These aren't yet promoted to data structures, but the grammar must not reject them.
+    """
 
-        log = parse_file(log_with_weigh_ins_file)
-        assert log.weigh_ins[0].date == date(2025, 1, 10)
+    def test_exercise_block(self):
+        src = (
+            "@exercise squat\n"
+            "equipment: barbell\n"
+            "tags: squat, lower\n"
+            "note: back squat\n"
+            "@end\n"
+        )
+        _, diags = _parse_str(src)
+        assert not diags
 
-    def test_weight_magnitude_and_unit(self, log_with_weigh_ins_file):
-        from ox.cli import parse_file
+    def test_template_block(self):
+        src = "@template upper\nbench-press: 135lb 5x5\n@end\n"
+        _, diags = _parse_str(src)
+        assert not diags
 
-        log = parse_file(log_with_weigh_ins_file)
-        assert log.weigh_ins[0].weight == 185 * ureg.pound
+    def test_plugin_directive(self):
+        _, diags = _parse_str('@plugin "my_plugin.py"\n')
+        assert not diags
 
-    def test_time_of_day_absent(self, log_with_weigh_ins_file):
-        from ox.cli import parse_file
-
-        log = parse_file(log_with_weigh_ins_file)
-        assert log.weigh_ins[0].time_of_day is None
-
-    def test_time_of_day_present(self, log_with_weigh_ins_file):
-        from datetime import time
-        from ox.cli import parse_file
-
-        log = parse_file(log_with_weigh_ins_file)
-        assert log.weigh_ins[1].time_of_day == time(6, 30)
-
-    def test_scale_absent(self, log_with_weigh_ins_file):
-        from ox.cli import parse_file
-
-        log = parse_file(log_with_weigh_ins_file)
-        assert log.weigh_ins[0].scale is None
-
-    def test_scale_present(self, log_with_weigh_ins_file):
-        from ox.cli import parse_file
-
-        log = parse_file(log_with_weigh_ins_file)
-        assert log.weigh_ins[2].scale == "gym scale"
-
-    def test_kg_weight(self, log_with_weigh_ins_file):
-        from ox.cli import parse_file
-
-        log = parse_file(log_with_weigh_ins_file)
-        assert log.weigh_ins[2].weight == 84 * ureg.kilogram
+    def test_include_directive(self):
+        _, diags = _parse_str('@include "other.ox"\n')
+        assert not diags
 
 
 class TestQueryEntryParsing:

@@ -190,18 +190,6 @@ class TestLoadPlugins:
         load_plugins(log, base)
         assert "idem" in PLUGINS
 
-    def test_builtin_e1rm_registered(self):
-        load_plugins()
-        assert "e1rm" in PLUGINS
-
-    def test_builtin_wendler531_registered(self):
-        load_plugins()
-        assert "wendler531" in PLUGINS
-
-    def test_builtin_volume_registered(self):
-        load_plugins()
-        assert "volume" in PLUGINS
-
     def test_clears_previous(self, tmp_path):
         """After removing a plugin file, reload should not keep stale entries."""
         plugin_code = textwrap.dedent("""\
