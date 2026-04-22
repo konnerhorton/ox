@@ -177,8 +177,8 @@ module.exports = grammar({
     // BW remains a special bodyweight token
     weight: ($) => token(choice(
       /\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)((\+\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))+)?/,  // single or combined: 24kg or 24kg+32kg
-      /\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)((\/\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))+)?/,  // single or progressive: 24kg/32kg/48kg
-      /(BW|\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))(\/(BW|\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)))+/,  // mixed BW/concrete progressive: BW/25lb/50lb
+      /((BW|\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)?)\/)+(BW|\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))/,  // progressive (incl. implied units + mixed BW): 24kg/32kg, 160/185/210lb, BW/25lb, 60/70kg/160/180lb
+      /\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)/,  // single: 24kg
       /BW/                                // bodyweight standalone
     )),
 

@@ -108,7 +108,7 @@
       "name": "string.quoted.double.ox"
     },
     "weight": {
-      "match": "\\b(BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)([+/]\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))*)\\b",
+      "match": "\\b(((BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)?)/)+(BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)(\\+\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))*|BW)\\b",
       "name": "constant.numeric.weight.ox"
     },
     "rep-scheme": {

@@ -507,7 +507,7 @@ box-jump: BW 6x3
 # Week 15 - Mixed Training
 @session
 2024-04-15 * Upper Power
-bench-press: 175lb 5x3
+bench-press: 120/130/140/150/175lb 5x3
 overhead-press: 105lb 5x3
 pullup: 30lb 5x3
 @end
@@ -515,7 +515,7 @@ pullup: 30lb 5x3
 @session
 2024-04-16 * Lower Power
 squat: 205lb 5x3
-deadlift: 245lb 5x3
+deadlift: 45/245lb 5x3
 box-jump: BW 5x3
 @end
 

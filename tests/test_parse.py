@@ -6,7 +6,6 @@ Testing philosophy:
 - Test edge cases from the documentation
 """
 
-import pytest
 from ox.parse import weight_text_to_quantity, process_weights
 from ox.units import ureg
 
@@ -110,21 +109,33 @@ class TestProcessWeights:
         assert result[1] == 32 * ureg.kilogram
         assert result[2] == 48 * ureg.kilogram
 
-    @pytest.mark.xfail(reason="Known bug: unit not implied across slashes")
     def test_progressive_weights_implied_unit(self):
-        """Test progressive weights with implied unit.
-
-        Example: 160/185/210lbs means three weights, all in lbs.
-
-        This is currently BROKEN - the parser doesn't handle implied units.
-        Marking as xfail so we know it's a known issue.
-        """
+        """Progressive weights inherit the nearest succeeding unit."""
         result = process_weights("160/185/210lb")
 
         assert len(result) == 3
         assert result[0] == 160 * ureg.pound
         assert result[1] == 185 * ureg.pound
         assert result[2] == 210 * ureg.pound
+
+    def test_progressive_weights_mixed_implied_units(self):
+        """Mixed implied/explicit units: each unitless segment takes the next unit."""
+        result = process_weights("60/70kg/160/180lb")
+
+        assert len(result) == 4
+        assert result[0] == 60 * ureg.kilogram
+        assert result[1] == 70 * ureg.kilogram
+        assert result[2] == 160 * ureg.pound
+        assert result[3] == 180 * ureg.pound
+
+    def test_progressive_weights_bw_with_implied_unit(self):
+        """BW segments pass through while implied units resolve."""
+        result = process_weights("BW/5/10lb")
+
+        assert len(result) == 3
+        assert result[0] is None
+        assert result[1] == 5 * ureg.pound
+        assert result[2] == 10 * ureg.pound
 
     def test_combined_and_progressive(self):
         """Test mixing combined and progressive weights.

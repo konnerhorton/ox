@@ -104,7 +104,7 @@ movement: details
 
 # Flags: * = completed, ! = planned, W = weigh-in
 # Weight units: kg, lb, g, oz, stone, grain, and more (any pint-compatible mass unit)
-# Weight formats: 24kg, BW, 24kg+32kg (combined), 24kg/32kg/48kg (progressive)
+# Weight formats: 24kg, BW, 24kg+32kg (combined), 24kg/32kg/48kg (progressive), 160/185/210lb (implied unit)
 # Rep formats: 5x5 (sets x reps), 5/5/5 (per-set reps)
 # Duration: ISO 8601 (PT30M, PT1H30M15S)
 # Distance: numeric + unit (m, km, ft, mi, etc.)
@@ -121,5 +121,3 @@ movement: details
 - All analysis features are plugins (builtins or user-defined). Plugins receive `PluginContext(db, log)` and return `TableResult`, `TextResult`, or `PlotResult`
 - CLI commands: `run NAME [ARGS]` for plugins, `query` for raw SQL. Plugin names also work directly (e.g. `stats` instead of `run stats`)
 
-## Known Issues
-- Progressive weights for the same movement require explicit units, this is a known bug and applicable tests are skipped.

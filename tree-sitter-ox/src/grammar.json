@@ -739,11 +739,11 @@
           },
           {
             "type": "PATTERN",
-            "value": "\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)((\\/\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))+)?"
+            "value": "((BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)?)\\/)+(BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))"
           },
           {
             "type": "PATTERN",
-            "value": "(BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))(\\/(BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)))+"
+            "value": "\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)"
           },
           {
             "type": "PATTERN",

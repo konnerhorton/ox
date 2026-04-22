@@ -78,10 +78,36 @@ def process_weights(weight_str: str) -> list[Quantity]:
     """Parse weight string into list of Quantity objects.
 
     Handles formats like "24kg", "24kg+32kg", "24kg/32kg/48kg".
+
+    In progressive sequences, a segment may omit its unit; it inherits the
+    nearest succeeding unit. E.g. "160/185/210lb" → three lb weights;
+    "60/70kg/160/180lb" → [60kg, 70kg, 160lb, 180lb].
     """
     weight_str_split = weight_str.split("/")
+    # Right-to-left pass to resolve implied units.
+    carried_unit = None
+    resolved = [None] * len(weight_str_split)
+    for i in range(len(weight_str_split) - 1, -1, -1):
+        w = weight_str_split[i]
+        if w == "BW" or "+" in w:
+            resolved[i] = w
+            continue
+        m = re.match(r"^(\d+(?:\.\d+)?)(\w+)?$", w)
+        if not m:
+            resolved[i] = w
+            continue
+        num, unit = m.group(1), m.group(2)
+        if unit is None:
+            if carried_unit is None:
+                resolved[i] = w  # will fail to parse downstream
+            else:
+                resolved[i] = f"{num}{carried_unit}"
+        else:
+            carried_unit = unit
+            resolved[i] = w
+
     weight_objs = []
-    for w in weight_str_split:
+    for w in resolved:
         if "+" in w:
             result = sum([weight_text_to_quantity(i) for i in w.split("+")])
             weight_objs.append(result)
