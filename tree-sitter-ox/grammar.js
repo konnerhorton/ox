@@ -18,7 +18,7 @@ module.exports = grammar({
     _entry: ($) => choice(
       $.singleline_entry,
       $.session_block,
-      $.exercise_block,
+      $.movement_block,
       $.template_block,
       $.note_entry,
       $.query_entry,
@@ -96,10 +96,10 @@ module.exports = grammar({
         optional("\n")
       )),
 
-    // @exercise block
-    exercise_block: ($) =>
+    // @movement block
+    movement_block: ($) =>
       prec.right(seq(
-        "@exercise",
+        "@movement",
         field("name", $.identifier),
         "\n",
         repeat($.metadata_line),

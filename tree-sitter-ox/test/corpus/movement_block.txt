@@ -1,10 +1,10 @@
 ==================
-Exercise Block
+Movement Block
 ==================
 
-@exercise kb-oh-press
+@movement kb-oh-press
 equipment: kettlebell
-pattern: press
+tag: press
 url: https://example.com/kb-press
 note: keep elbow tight
 @end
@@ -12,7 +12,7 @@ note: keep elbow tight
 ---
 
 (source_file
-  (exercise_block
+  (movement_block
     name: (identifier)
     (metadata_line
       key: (identifier)

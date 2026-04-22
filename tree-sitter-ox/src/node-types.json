@@ -56,32 +56,6 @@
     }
   },
   {
-    "type": "exercise_block",
-    "named": true,
-    "fields": {
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      }
-    },
-    "children": {
-      "multiple": true,
-      "required": false,
-      "types": [
-        {
-          "type": "metadata_line",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
     "type": "file_path",
     "named": true,
     "fields": {}
@@ -167,6 +141,32 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "movement_block",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "metadata_line",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -378,11 +378,11 @@
           "named": true
         },
         {
-          "type": "exercise_block",
+          "type": "include_directive",
           "named": true
         },
         {
-          "type": "include_directive",
+          "type": "movement_block",
           "named": true
         },
         {
@@ -522,11 +522,11 @@
     "named": false
   },
   {
-    "type": "@exercise",
+    "type": "@include",
     "named": false
   },
   {
-    "type": "@include",
+    "type": "@movement",
     "named": false
   },
   {
