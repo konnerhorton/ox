@@ -1,8 +1,8 @@
 """Volume over time plugin for ox.
 
 Usage:
-    run volume -m squat
-    run volume -m squat -b monthly -u kg
+    volume -m squat
+    volume -m squat -b monthly -u kg
 """
 
 from ox.plugins import PluginContext, TableResult

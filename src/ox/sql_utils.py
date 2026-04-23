@@ -109,18 +109,17 @@ def parse_plugin_args(params: list[dict], arg_string: str) -> dict:
     return parsed
 
 
-def plugin_usage(name: str, entry: dict, command: str = "run") -> str:
+def plugin_usage(name: str, entry: dict) -> str:
     """Generate a usage string for a plugin.
 
     Args:
         name: Plugin name
         entry: Registry entry with params list
-        command: CLI command prefix
 
     Returns:
-        Formatted usage string
+        Formatted usage string (e.g. "volume --movement <movement>")
     """
-    parts = [f"{command} {name}"]
+    parts = [name]
     for p in entry["params"]:
         short = f"-{p['short']}/" if p.get("short") else ""
         flag = f"{short}--{p['name']} <{p['name']}>"

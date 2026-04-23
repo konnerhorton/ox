@@ -221,14 +221,10 @@ class TestLoadPlugins:
 
 
 class TestPluginUsageCommand:
-    """Test that plugin_usage respects the command parameter."""
+    """Test plugin_usage output format."""
 
-    def test_default_command(self):
+    def test_starts_with_name(self):
         entry = {"params": [{"name": "x", "type": str, "required": True}]}
         usage = plugin_usage("test", entry)
-        assert usage.startswith("run test")
-
-    def test_custom_command(self):
-        entry = {"params": [{"name": "x", "type": str, "required": True}]}
-        usage = plugin_usage("test", entry, command="custom")
-        assert usage.startswith("custom test")
+        assert usage.startswith("test ")
+        assert "run " not in usage

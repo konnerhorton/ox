@@ -218,7 +218,8 @@ class TestPluginUsage:
         usage = plugin_usage("volume", PLUGINS["volume"])
         assert "--movement" in usage
         assert "--bin" in usage
-        assert "run volume" in usage
+        assert usage.startswith("volume ")
+        assert "run " not in usage
 
     def test_required_not_bracketed(self):
         load_plugins()

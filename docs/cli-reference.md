@@ -14,20 +14,25 @@ Opens an interactive REPL. Parse errors are summarized on load — run `lint` fo
 
 ## Commands
 
-### `run [NAME [OPTIONS]]`
+### `plugins`
 
-List or run plugins. Plugins receive the parsed log plus a SQLite connection and return a table, text, or plot.
+List available plugins with their descriptions and usage strings.
 
 ```
-ox> run                                         # list available plugins
-ox> run volume -m squat --bin monthly
-ox> run e1rm -m deadlift
-ox> run wendler531 -m squat:315,bench:225
+ox> plugins
 ```
 
-Plugin names also work directly — `volume -m squat` is equivalent to `run volume -m squat`.
+### Running a plugin
 
-See [Plugins](plugins.md) for details.
+Invoke a plugin by name. Plugins receive the parsed log plus a SQLite connection and return a table, text, or plot.
+
+```
+ox> volume -m squat --bin monthly
+ox> e1rm -m deadlift
+ox> wendler531 -m squat:315,bench:225
+```
+
+Typing a plugin's name with no args prints its usage. See [Plugins](plugins.md) for details.
 
 ### `query SQL`
 

@@ -5,9 +5,9 @@ Only considers sets tagged with "^rm" in the movement note
 (convention for marking max-effort sets).
 
 Usage:
-    run e1rm -m deadlift
-    run e1rm -m squat -f epley
-    run e1rm -m deadlift -o plot
+    e1rm -m deadlift
+    e1rm -m squat -f epley
+    e1rm -m deadlift -o plot
 
 Example .ox line:
     deadlift: 315lbs 1x3 "^rm top set felt good"

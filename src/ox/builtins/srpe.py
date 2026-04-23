@@ -8,12 +8,12 @@ sRPE data is extracted from:
 - Single-line entry notes: `"srpe: 4; PT50M"` (embedded in the movement note)
 
 Usage:
-    run srpe
-    run srpe -b monthly
-    run srpe -o plot
-    run srpe -o acwr
-    run srpe -o monotony
-    run srpe -o strain
+    srpe
+    srpe -b monthly
+    srpe -o plot
+    srpe -o acwr
+    srpe -o monotony
+    srpe -o strain
 """
 
 import math

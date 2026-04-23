@@ -4,10 +4,10 @@ Generates a 4-week training cycle based on Jim Wendler's 5/3/1 program.
 Outputs valid .ox text with planned (!) flag.
 
 Usage:
-    run wendler531 -m squat:315
-    run wendler531 -m squat:315,bench-press:200
-    run wendler531 -m squat:315 -u kg
-    run wendler531 -m squat:315,deadlift:405 -d 2026-03-01
+    wendler531 -m squat:315
+    wendler531 -m squat:315,bench-press:200
+    wendler531 -m squat:315 -u kg
+    wendler531 -m squat:315,deadlift:405 -d 2026-03-01
 """
 
 from datetime import datetime, timedelta

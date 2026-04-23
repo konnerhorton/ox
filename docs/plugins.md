@@ -13,8 +13,8 @@ Plugins extend ox with custom analysis and generation. Each plugin receives a `P
 Volume over time for a movement.
 
 ```
-ox> run volume -m squat
-ox> run volume -m deadlift --bin monthly --unit kg
+ox> volume -m squat
+ox> volume -m deadlift --bin monthly --unit kg
 ```
 
 | Param | Default | Options |
@@ -28,8 +28,8 @@ ox> run volume -m deadlift --bin monthly --unit kg
 Estimated 1RM progression. Only uses sets with `^rm` in the note.
 
 ```
-ox> run e1rm -m deadlift
-ox> run e1rm -m squat --formula epley --output plot
+ox> e1rm -m deadlift
+ox> e1rm -m squat --formula epley --output plot
 ```
 
 | Param | Default | Options |
@@ -50,9 +50,9 @@ deadlift: 315lb 1x3 "^rm top set"
 Body weight tracking with statistics and trend analysis.
 
 ```
-ox> run weighin
-ox> run weighin --output plot --window 14
-ox> run weighin --output stats
+ox> weighin
+ox> weighin --output plot --window 14
+ox> weighin --output stats
 ```
 
 | Param | Default | Options |
@@ -68,12 +68,12 @@ Supports multiple scales — `stats` output shows per-scale breakdowns.
 Training load analysis from session RPE (sRPE). Computes arbitrary units (AU = rating × duration in minutes) from sRPE entries recorded as session metadata or movement notes.
 
 ```
-ox> run srpe
-ox> run srpe -b monthly
-ox> run srpe -o plot
-ox> run srpe -o acwr
-ox> run srpe -o monotony
-ox> run srpe -o strain
+ox> srpe
+ox> srpe -b monthly
+ox> srpe -o plot
+ox> srpe -o acwr
+ox> srpe -o monotony
+ox> srpe -o strain
 ```
 
 | Param | Default | Options |
@@ -108,8 +108,8 @@ squat: 155lb 4x5
 Generates a 4-week Wendler 5/3/1 cycle as planned sessions.
 
 ```
-ox> run wendler531 -m squat:315,bench:225
-ox> run wendler531 -m deadlift:405 --unit kg --start-date 2026-03-01
+ox> wendler531 -m squat:315,bench:225
+ox> wendler531 -m deadlift:405 --unit kg --start-date 2026-03-01
 ```
 
 | Param | Default | Options |
@@ -134,6 +134,10 @@ To load a custom plugin, add an `@plugin` directive to your log file. The path i
 ```
 
 Plugins loaded via `@plugin` override built-ins with the same name.
+
+### Reserved names
+
+Avoid naming a plugin the same as a built-in REPL command (`query`, `tables`, `reload`, `lint`, `plugins`, `help`, `exit`, `quit`) — built-ins win the name lookup and the plugin will be unreachable.
 
 ## Writing a Plugin
 

@@ -3,11 +3,11 @@
 Tracks body weight over time, with support for multiple scales.
 
 Usage:
-    run weighin
-    run weighin -o plot
-    run weighin -o stats
-    run weighin -u kg
-    run weighin -o plot -w 14
+    weighin
+    weighin -o plot
+    weighin -o stats
+    weighin -u kg
+    weighin -o plot -w 14
 
 Example .ox lines:
     2025-01-10 W 185lb

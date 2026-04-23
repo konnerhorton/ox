@@ -209,8 +209,9 @@ def parse_file(file_path: Path) -> TrainingLog:
 def show_help():
     """Display help message with available commands."""
     console.print("\n[bold cyan]Available Commands:[/bold cyan]")
+    console.print("  [green]plugins[/green]            - List available plugins")
     console.print(
-        "  [green]run[/green] NAME [ARGS]   - Run a plugin (or list all plugins)"
+        "  [green]<plugin>[/green] [ARGS]    - Run a plugin by name (e.g. [green]volume -m squat[/green])"
     )
     console.print(
         "  [green]query[/green] SQL          - Run a SQL query or a stored query by name"
@@ -359,7 +360,7 @@ def cli(file):
 
     # Setup tab completion for commands + plugin names
     commands = [
-        "run",
+        "plugins",
         "query",
         "tables",
         "reload",
@@ -396,14 +397,8 @@ def cli(file):
             elif command == "help":
                 show_help()
 
-            elif command == "run":
-                if not args:
-                    show_plugin_list()
-                else:
-                    parts2 = args.split(maxsplit=1)
-                    plugin_name = parts2[0]
-                    plugin_args = parts2[1] if len(parts2) > 1 else ""
-                    run_plugin(ctx, plugin_name, plugin_args)
+            elif command == "plugins":
+                show_plugin_list()
 
             elif command == "query":
                 if not args:
@@ -463,7 +458,7 @@ def cli(file):
                         )
                     # Update completer with any new plugins
                     commands = [
-                        "run",
+                        "plugins",
                         "query",
                         "tables",
                         "reload",
@@ -485,7 +480,6 @@ def cli(file):
                     console.print()
 
             elif command in PLUGINS:
-                # Allow running plugins directly by name without "run" prefix
                 run_plugin(ctx, command, args)
 
             else:
