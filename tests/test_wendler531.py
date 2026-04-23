@@ -93,7 +93,7 @@ def test_wendler531_week_dates():
 
 def test_wendler531_has_four_weeks():
     result = wendler531(_ctx(), movements="squat:300", start_date="2026-01-05")
-    for week in ("5/3/1 Week 1", "5/3/1 Week 2", "5/3/1 Week 3", "5/3/1 Week 4"):
+    for week in ("531-week-1", "531-week-2", "531-week-3", "531-week-4"):
         assert week in result.text
 
 
@@ -105,7 +105,7 @@ def test_wendler531_all_sessions_planned():
 def test_wendler531_week1_weights_lb():
     # 300 * 0.65=195, 0.75=225, 0.85=255 (already round 5)
     result = wendler531(_ctx(), movements="squat:300", start_date="2026-01-05")
-    text = result.text.split("5/3/1 Week 2")[0]
+    text = result.text.split("531-week-2")[0]
     assert "195lb" in text.replace("pound", "lb") or "195 pound" in text
     assert "225" in text
     assert "255" in text
@@ -114,7 +114,7 @@ def test_wendler531_week1_weights_lb():
 def test_wendler531_deload_weights():
     # Week 4: 40/50/60%
     result = wendler531(_ctx(), movements="squat:300", start_date="2026-01-05")
-    week4 = result.text.split("5/3/1 Week 4")[1]
+    week4 = result.text.split("531-week-4")[1]
     # 300 * 0.4=120, 0.5=150, 0.6=180
     assert "120" in week4
     assert "150" in week4
@@ -142,7 +142,7 @@ def test_wendler531_rm_tag_on_weeks_1_to_3():
     result = wendler531(
         _ctx(), movements="squat:300", start_date="2026-01-05", rm="true"
     )
-    parts = result.text.split("5/3/1 Week ")
+    parts = result.text.split("531-week-")
     # parts[1]=week1..., parts[4]=week4
     assert "^rm" in parts[1]
     assert "^rm" in parts[2]
