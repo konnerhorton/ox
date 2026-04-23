@@ -14,42 +14,25 @@ Opens an interactive REPL. Parse errors are summarized on load — run `lint` fo
 
 ## Commands
 
-### `stats`
+### `plugins`
 
-Summary table of all exercises: session count, total reps, last session date.
-
-```
-ox> stats
-```
-
-### `history EXERCISE`
-
-Per-exercise history: date, sets/reps, top weight, volume.
+List available plugins with their descriptions and usage strings.
 
 ```
-ox> history squat
+ox> plugins
 ```
 
-### `report [NAME [OPTIONS]]`
+### Running a plugin
 
-List or run reports. Reports query the SQLite database and return tables.
-
-```
-ox> report                              # list available reports
-ox> report volume -m squat --bin monthly
-ox> report e1rm -m deadlift
-```
-
-See [Reports & Plugins](plugins.md) for details.
-
-### `generate [NAME [OPTIONS]]`
-
-List or run generators. Generators produce `.ox` text for planning.
+Invoke a plugin by name. Plugins receive the parsed log plus a SQLite connection and return a table, text, or plot.
 
 ```
-ox> generate                                    # list available generators
-ox> generate wendler531 -m squat:315,bench:225
+ox> volume -m squat --bin monthly
+ox> e1rm -m deadlift
+ox> wendler531 -m squat:315,bench:225
 ```
+
+Typing a plugin's name with no args prints its usage. See [Plugins](plugins.md) for details.
 
 ### `query SQL`
 

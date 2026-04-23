@@ -6,6 +6,7 @@
     { "include": "#comment" },
     { "include": "#block-keyword" },
     { "include": "#include-directive" },
+    { "include": "#plugin-directive" },
     { "include": "#query-entry" },
     { "include": "#singleline-entry" },
     { "include": "#note-entry" },
@@ -20,13 +21,20 @@
       "name": "comment.line.number-sign.ox"
     },
     "block-keyword": {
-      "match": "^(@session|@exercise|@template|@end)\\b",
+      "match": "^(@session|@movement|@template|@end)\\b",
       "name": "keyword.control.block.ox"
     },
     "include-directive": {
       "match": "^(@include)\\s+(\"[^\"]+\")",
       "captures": {
         "1": { "name": "keyword.control.include.ox" },
+        "2": { "name": "string.quoted.double.ox" }
+      }
+    },
+    "plugin-directive": {
+      "match": "^(@plugin)\\s+(\"[^\"]+\")",
+      "captures": {
+        "1": { "name": "keyword.control.plugin.ox" },
         "2": { "name": "string.quoted.double.ox" }
       }
     },
@@ -80,7 +88,7 @@
       }
     },
     "metadata-line": {
-      "match": "^\\s*(equipment|pattern|url|note):\\s*(.*)$",
+      "match": "^\\s*(equipment|tag|tags|url|note):\\s*(.*)$",
       "captures": {
         "1": { "name": "support.type.property-name.ox" },
         "2": { "name": "string.unquoted.ox" }
@@ -100,7 +108,7 @@
       "name": "string.quoted.double.ox"
     },
     "weight": {
-      "match": "\\b(BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)([+/]\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))*)\\b",
+      "match": "\\b(((BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)?)/)+(BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)(\\+\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))*|BW)\\b",
       "name": "constant.numeric.weight.ox"
     },
     "rep-scheme": {

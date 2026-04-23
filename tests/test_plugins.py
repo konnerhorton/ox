@@ -2,199 +2,176 @@
 
 import textwrap
 
+from ox.data import TrainingLog
 from ox.plugins import (
-    GENERATOR_PLUGINS,
-    REPORT_PLUGINS,
-    _load_from_directory,
+    PLUGINS,
+    _load_from_log_directives,
     _register_descriptors,
     load_plugins,
 )
-from ox.reports import REPORTS, get_all_reports, report_usage
+from ox.sql_utils import plugin_usage
 
 
-def _dummy_report(conn, movement="x"):
+def _dummy_fn(ctx, movement="x"):
     return ["col"], [("row",)]
 
 
-def _dummy_generator(movement="x"):
-    return "output"
+def _make_log(plugin_paths: tuple[str, ...]) -> TrainingLog:
+    return TrainingLog(
+        sessions=(),
+        notes=(),
+        diagnostics=(),
+        queries=(),
+        weigh_ins=(),
+        plugin_paths=plugin_paths,
+    )
 
 
 class TestRegisterDescriptors:
     """Test descriptor routing and validation."""
 
     def setup_method(self):
-        REPORT_PLUGINS.clear()
-        GENERATOR_PLUGINS.clear()
+        PLUGINS.clear()
 
-    def test_routes_report(self):
+    def test_registers_plugin(self):
         _register_descriptors(
             [
                 {
-                    "type": "report",
-                    "name": "test-report",
-                    "fn": _dummy_report,
+                    "name": "test-plugin",
+                    "fn": _dummy_fn,
                     "description": "A test",
                     "params": [],
                 }
             ],
             "test",
         )
-        assert "test-report" in REPORT_PLUGINS
-        assert GENERATOR_PLUGINS == {}
-
-    def test_routes_generator(self):
-        _register_descriptors(
-            [
-                {
-                    "type": "generator",
-                    "name": "test-gen",
-                    "fn": _dummy_generator,
-                    "description": "A test",
-                    "params": [],
-                }
-            ],
-            "test",
-        )
-        assert "test-gen" in GENERATOR_PLUGINS
-        assert REPORT_PLUGINS == {}
+        assert "test-plugin" in PLUGINS
 
     def test_skips_missing_fn(self):
         _register_descriptors(
-            [{"type": "report", "name": "bad", "description": "no fn"}],
+            [{"name": "bad", "description": "no fn"}],
             "test",
         )
-        assert REPORT_PLUGINS == {}
+        assert PLUGINS == {}
 
     def test_skips_missing_name(self):
         _register_descriptors(
-            [{"type": "report", "fn": _dummy_report}],
+            [{"fn": _dummy_fn}],
             "test",
         )
-        assert REPORT_PLUGINS == {}
-
-    def test_skips_missing_type(self):
-        _register_descriptors(
-            [{"name": "bad", "fn": _dummy_report}],
-            "test",
-        )
-        assert REPORT_PLUGINS == {}
-
-    def test_skips_unknown_type(self):
-        _register_descriptors(
-            [{"type": "widget", "name": "bad", "fn": _dummy_report}],
-            "test",
-        )
-        assert REPORT_PLUGINS == {}
-        assert GENERATOR_PLUGINS == {}
+        assert PLUGINS == {}
 
     def test_name_collision_overwrites(self):
         desc = {
-            "type": "report",
             "name": "dup",
-            "fn": _dummy_report,
+            "fn": _dummy_fn,
             "description": "first",
             "params": [],
         }
         _register_descriptors([desc], "first-source")
-        assert REPORT_PLUGINS["dup"]["description"] == "first"
+        assert PLUGINS["dup"]["description"] == "first"
 
         desc2 = {**desc, "description": "second"}
         _register_descriptors([desc2], "second-source")
-        assert REPORT_PLUGINS["dup"]["description"] == "second"
+        assert PLUGINS["dup"]["description"] == "second"
 
     def test_multiple_descriptors_in_one_call(self):
         _register_descriptors(
             [
                 {
-                    "type": "report",
-                    "name": "r1",
-                    "fn": _dummy_report,
-                    "description": "r",
+                    "name": "p1",
+                    "fn": _dummy_fn,
+                    "description": "first",
                     "params": [],
                 },
                 {
-                    "type": "generator",
-                    "name": "g1",
-                    "fn": _dummy_generator,
-                    "description": "g",
+                    "name": "p2",
+                    "fn": _dummy_fn,
+                    "description": "second",
                     "params": [],
                 },
             ],
             "test",
         )
-        assert "r1" in REPORT_PLUGINS
-        assert "g1" in GENERATOR_PLUGINS
+        assert "p1" in PLUGINS
+        assert "p2" in PLUGINS
 
 
-class TestLoadFromDirectory:
-    """Test file-based plugin discovery."""
+class TestLoadFromLogDirectives:
+    """Test @plugin directive discovery."""
 
     def setup_method(self):
-        REPORT_PLUGINS.clear()
-        GENERATOR_PLUGINS.clear()
+        PLUGINS.clear()
 
-    def test_loads_plugin_from_directory(self, tmp_path, monkeypatch):
+    def test_loads_plugin_from_directive(self, tmp_path):
         plugin_code = textwrap.dedent("""\
-            def _my_fn(conn, x="y"):
+            def _my_fn(ctx, x="y"):
                 return ["col"], [("row",)]
 
             def register():
                 return [
                     {
-                        "type": "report",
-                        "name": "from-dir",
+                        "name": "from-directive",
                         "fn": _my_fn,
-                        "description": "loaded from dir",
+                        "description": "loaded from @plugin",
                         "params": [],
                     }
                 ]
         """)
         (tmp_path / "my_plugin.py").write_text(plugin_code)
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
-        _load_from_directory()
-        assert "from-dir" in REPORT_PLUGINS
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("my_plugin.py",))
+        _load_from_log_directives(log, base)
+        assert "from-directive" in PLUGINS
 
-    def test_ignores_file_without_register(self, tmp_path, monkeypatch):
+    def test_ignores_file_without_register(self, tmp_path):
         (tmp_path / "no_register.py").write_text("x = 1\n")
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
-        _load_from_directory()
-        assert REPORT_PLUGINS == {}
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("no_register.py",))
+        _load_from_log_directives(log, base)
+        assert PLUGINS == {}
 
-    def test_handles_register_error(self, tmp_path, monkeypatch):
+    def test_handles_register_error(self, tmp_path):
         plugin_code = textwrap.dedent("""\
             def register():
                 raise RuntimeError("boom")
         """)
         (tmp_path / "bad_plugin.py").write_text(plugin_code)
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
-        _load_from_directory()
-        assert REPORT_PLUGINS == {}
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("bad_plugin.py",))
+        _load_from_log_directives(log, base)
+        assert PLUGINS == {}
 
-    def test_handles_import_error(self, tmp_path, monkeypatch):
+    def test_handles_import_error(self, tmp_path):
         (tmp_path / "broken.py").write_text("import nonexistent_module_xyz\n")
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
-        _load_from_directory()
-        assert REPORT_PLUGINS == {}
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("broken.py",))
+        _load_from_log_directives(log, base)
+        assert PLUGINS == {}
 
-    def test_nonexistent_directory(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path / "nope")
-        _load_from_directory()
-        assert REPORT_PLUGINS == {}
+    def test_missing_file(self, tmp_path):
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("does_not_exist.py",))
+        _load_from_log_directives(log, base)
+        assert PLUGINS == {}
 
 
 class TestLoadPlugins:
     """Test the top-level load_plugins function."""
 
-    def test_idempotent(self, tmp_path, monkeypatch):
+    def test_idempotent(self, tmp_path):
         plugin_code = textwrap.dedent("""\
-            def _fn(conn):
+            def _fn(ctx):
                 return [], []
 
             def register():
                 return [
                     {
-                        "type": "report",
                         "name": "idem",
                         "fn": _fn,
                         "description": "test",
@@ -203,38 +180,25 @@ class TestLoadPlugins:
                 ]
         """)
         (tmp_path / "idem.py").write_text(plugin_code)
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("idem.py",))
 
-        load_plugins()
-        assert "idem" in REPORT_PLUGINS
+        load_plugins(log, base)
+        assert "idem" in PLUGINS
 
-        load_plugins()
-        assert "idem" in REPORT_PLUGINS
+        load_plugins(log, base)
+        assert "idem" in PLUGINS
 
-    def test_builtin_e1rm_registered(self, tmp_path, monkeypatch):
-        """load_plugins() registers the built-in e1rm report."""
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
-        load_plugins()
-        assert "e1rm" in REPORT_PLUGINS
-        assert REPORT_PLUGINS["e1rm"]["type"] == "report"
-
-    def test_builtin_wendler531_registered(self, tmp_path, monkeypatch):
-        """load_plugins() registers the built-in wendler531 generator."""
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
-        load_plugins()
-        assert "wendler531" in GENERATOR_PLUGINS
-        assert GENERATOR_PLUGINS["wendler531"]["type"] == "generator"
-
-    def test_clears_previous(self, tmp_path, monkeypatch):
+    def test_clears_previous(self, tmp_path):
         """After removing a plugin file, reload should not keep stale entries."""
         plugin_code = textwrap.dedent("""\
-            def _fn(conn):
+            def _fn(ctx):
                 return [], []
 
             def register():
                 return [
                     {
-                        "type": "report",
                         "name": "gone",
                         "fn": _fn,
                         "description": "test",
@@ -244,61 +208,23 @@ class TestLoadPlugins:
         """)
         plugin_file = tmp_path / "gone.py"
         plugin_file.write_text(plugin_code)
-        monkeypatch.setattr("ox.plugins.PLUGIN_DIR", tmp_path)
+        base = tmp_path / "log.ox"
+        base.write_text("")
+        log = _make_log(("gone.py",))
 
-        load_plugins()
-        assert "gone" in REPORT_PLUGINS
+        load_plugins(log, base)
+        assert "gone" in PLUGINS
 
         plugin_file.unlink()
-        load_plugins()
-        assert "gone" not in REPORT_PLUGINS
+        load_plugins(log, base)
+        assert "gone" not in PLUGINS
 
 
-class TestGetAllReports:
-    """Test merging built-in reports with plugin reports."""
+class TestPluginUsageCommand:
+    """Test plugin_usage output format."""
 
-    def setup_method(self):
-        REPORT_PLUGINS.clear()
-
-    def test_returns_builtins_when_no_plugins(self):
-        result = get_all_reports()
-        assert "volume" in result
-        assert "matrix" in result
-
-    def test_merges_plugin_reports(self):
-        REPORT_PLUGINS["custom"] = {
-            "type": "report",
-            "name": "custom",
-            "fn": _dummy_report,
-            "description": "Custom report",
-            "params": [{"name": "x", "type": str, "required": True}],
-        }
-        result = get_all_reports()
-        assert "volume" in result
-        assert "custom" in result
-        assert result["custom"]["fn"] is _dummy_report
-
-    def test_does_not_mutate_builtins(self):
-        REPORT_PLUGINS["custom"] = {
-            "type": "report",
-            "name": "custom",
-            "fn": _dummy_report,
-            "description": "Custom report",
-            "params": [],
-        }
-        get_all_reports()
-        assert "custom" not in REPORTS
-
-
-class TestReportUsageCommand:
-    """Test that report_usage respects the command parameter."""
-
-    def test_default_command(self):
+    def test_starts_with_name(self):
         entry = {"params": [{"name": "x", "type": str, "required": True}]}
-        usage = report_usage("test", entry)
-        assert usage.startswith("report test")
-
-    def test_generate_command(self):
-        entry = {"params": [{"name": "x", "type": str, "required": True}]}
-        usage = report_usage("test", entry, command="generate")
-        assert usage.startswith("generate test")
+        usage = plugin_usage("test", entry)
+        assert usage.startswith("test ")
+        assert "run " not in usage

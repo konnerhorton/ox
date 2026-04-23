@@ -17,6 +17,10 @@
           },
           {
             "type": "SYMBOL",
+            "name": "plugin_directive"
+          },
+          {
+            "type": "SYMBOL",
             "name": "comment"
           },
           {
@@ -39,7 +43,7 @@
         },
         {
           "type": "SYMBOL",
-          "name": "exercise_block"
+          "name": "movement_block"
         },
         {
           "type": "SYMBOL",
@@ -68,6 +72,39 @@
           {
             "type": "STRING",
             "value": "@include"
+          },
+          {
+            "type": "FIELD",
+            "name": "path",
+            "content": {
+              "type": "SYMBOL",
+              "name": "file_path"
+            }
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "\n"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "plugin_directive": {
+      "type": "PREC_RIGHT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "@plugin"
           },
           {
             "type": "FIELD",
@@ -418,7 +455,7 @@
         ]
       }
     },
-    "exercise_block": {
+    "movement_block": {
       "type": "PREC_RIGHT",
       "value": 0,
       "content": {
@@ -426,7 +463,7 @@
         "members": [
           {
             "type": "STRING",
-            "value": "@exercise"
+            "value": "@movement"
           },
           {
             "type": "FIELD",
@@ -702,11 +739,11 @@
           },
           {
             "type": "PATTERN",
-            "value": "\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)((\\/\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))+)?"
+            "value": "((BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)?)\\/)+(BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))"
           },
           {
             "type": "PATTERN",
-            "value": "(BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))(\\/(BW|\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)))+"
+            "value": "\\d+(\\.\\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)"
           },
           {
             "type": "PATTERN",

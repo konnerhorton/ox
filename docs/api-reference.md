@@ -28,6 +28,9 @@ All are frozen dataclasses with `slots=True`.
 |---|---|
 | `sessions` | `tuple[TrainingSession, ...]` |
 | `notes` | `tuple[Note, ...]` |
+| `weigh_ins` | `tuple[WeighIn, ...]` |
+| `queries` | `tuple[StoredQuery, ...]` |
+| `movement_definitions` | `tuple[MovementDefinition, ...]` |
 | `diagnostics` | `tuple[Diagnostic, ...]` |
 
 **Properties:** `completed_sessions`, `planned_sessions`
@@ -64,6 +67,18 @@ All are frozen dataclasses with `slots=True`.
 | `weight` | `Quantity \| None` |
 
 **Properties:** `volume` (`reps × weight`, or `None` for BW)
+
+### MovementDefinition
+
+| Attribute | Type |
+|---|---|
+| `name` | `str` |
+| `equipment` | `str \| None` |
+| `tags` | `tuple[str, ...]` |
+| `note` | `str \| None` |
+| `url` | `str \| None` |
+
+Parsed from `@movement` blocks. Used by the LSP for name completion; queryable directly off the log.
 
 ### WeighIn
 
@@ -144,3 +159,35 @@ session.to_ox()     # serialize session to .ox format
 movement.to_ox()    # serialize movement
 note.to_ox()        # serialize note
 ```
+
+## Plugin API
+
+Plugins receive a `PluginContext` and return one of three result types. All are frozen dataclasses in `ox.plugins`.
+
+### PluginContext
+
+| Attribute | Type |
+|---|---|
+| `db` | `sqlite3.Connection` |
+| `log` | `TrainingLog` |
+
+### TableResult
+
+| Attribute | Type |
+|---|---|
+| `columns` | `list[str]` |
+| `rows` | `list[tuple]` |
+
+### TextResult
+
+| Attribute | Type |
+|---|---|
+| `text` | `str` |
+
+### PlotResult
+
+| Attribute | Type |
+|---|---|
+| `lines` | `list[str]` |
+
+See [Plugins](plugins.md) for a walkthrough of writing a plugin and registering it via `register()`.

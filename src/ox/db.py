@@ -52,6 +52,20 @@ CREATE TABLE queries (
     sql  TEXT NOT NULL
 );
 
+CREATE TABLE movement_definitions (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    name      TEXT NOT NULL UNIQUE,
+    equipment TEXT,
+    note      TEXT,
+    url       TEXT
+);
+
+CREATE TABLE movement_tags (
+    movement_definition_id INTEGER NOT NULL REFERENCES movement_definitions(id),
+    tag                    TEXT NOT NULL,
+    PRIMARY KEY (movement_definition_id, tag)
+);
+
 CREATE TABLE weigh_ins (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     date             TEXT NOT NULL,
@@ -144,6 +158,18 @@ def create_db(log: TrainingLog) -> sqlite3.Connection:
             "INSERT INTO queries (date, name, sql) VALUES (?, ?, ?)",
             (q.date.isoformat(), q.name, q.sql),
         )
+
+    for mdef in log.movement_definitions:
+        cursor = conn.execute(
+            "INSERT INTO movement_definitions (name, equipment, note, url) VALUES (?, ?, ?, ?)",
+            (mdef.name, mdef.equipment, mdef.note, mdef.url),
+        )
+        mdef_id = cursor.lastrowid
+        for tag in mdef.tags:
+            conn.execute(
+                "INSERT INTO movement_tags (movement_definition_id, tag) VALUES (?, ?)",
+                (mdef_id, tag),
+            )
 
     for w in log.weigh_ins:
         mag, unit = _decompose_weight(w.weight)

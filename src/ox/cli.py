@@ -1,6 +1,7 @@
 """Command-line interface for ox."""
 
 import sqlite3
+from importlib.metadata import version as _pkg_version
 
 import click
 from pathlib import Path
@@ -12,12 +13,28 @@ from rich.table import Table
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 
-from ox.parse import process_include_directive, process_node
-from ox.data import Diagnostic, Note, StoredQuery, TrainingLog, TrainingSession, WeighIn
+from ox.parse import process_include_directive, process_plugin_directive, process_node
+from ox.data import (
+    Diagnostic,
+    MovementDefinition,
+    Note,
+    StoredQuery,
+    TrainingLog,
+    TrainingSession,
+    WeighIn,
+)
 from ox.db import create_db
 from ox.lint import collect_diagnostics
-from ox.plugins import GENERATOR_PLUGINS, load_plugins
-from ox.reports import get_all_reports, parse_report_args, report_usage
+from ox.plugins import (
+    PLUGINS,
+    USER_PLUGINS,
+    PlotResult,
+    PluginContext,
+    TableResult,
+    TextResult,
+    load_plugins,
+)
+from ox.sql_utils import parse_plugin_args, plugin_usage
 
 console = Console()
 
@@ -26,11 +43,11 @@ DEFAULT_TABLE_BOX = box.SIMPLE
 
 def _parse_single_file(
     file_path: Path, parser: Parser
-) -> tuple[list, list, list, list, list, list[str]]:
+) -> tuple[list, list, list, list, list, list[str], list[str], list]:
     """Parse a single .ox file without resolving includes.
 
     Returns:
-        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, include_paths)
+        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, include_paths, plugin_paths, movement_definitions)
     """
     with open(file_path, "r") as f:
         data = bytes(f.read(), encoding="utf-8")
@@ -43,9 +60,14 @@ def _parse_single_file(
     log_queries = []
     log_weigh_ins = []
     include_paths = []
+    plugin_paths = []
+    movement_definitions = []
     for child in root_node.children:
         if child.type == "include_directive":
             include_paths.append(process_include_directive(child))
+            continue
+        if child.type == "plugin_directive":
+            plugin_paths.append(process_plugin_directive(child))
             continue
         result = process_node(child)
         if isinstance(result, TrainingSession):
@@ -56,20 +78,31 @@ def _parse_single_file(
             log_queries.append(result)
         elif isinstance(result, WeighIn):
             log_weigh_ins.append(result)
+        elif isinstance(result, MovementDefinition):
+            movement_definitions.append(result)
 
     diagnostics = list(collect_diagnostics(tree))
-    return entries, log_notes, log_queries, log_weigh_ins, diagnostics, include_paths
+    return (
+        entries,
+        log_notes,
+        log_queries,
+        log_weigh_ins,
+        diagnostics,
+        include_paths,
+        plugin_paths,
+        movement_definitions,
+    )
 
 
 def _load_recursive(
     file_path: Path,
     parser: Parser,
     visited: set[Path],
-) -> tuple[list, list, list, list, list]:
+) -> tuple[list, list, list, list, list, list, list]:
     """Recursively load a file and its includes with cycle detection.
 
     Returns:
-        Tuple of (sessions, notes, queries, weigh_ins, diagnostics)
+        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, plugin_paths, movement_definitions)
     """
     abs_path = file_path.resolve()
 
@@ -82,7 +115,7 @@ def _load_recursive(
             message=f"Circular include detected: {file_path}",
             severity="warning",
         )
-        return [], [], [], [], [diag]
+        return [], [], [], [], [diag], [], []
 
     visited.add(abs_path)
 
@@ -95,24 +128,47 @@ def _load_recursive(
             message=f"Included file not found: {file_path}",
             severity="warning",
         )
-        return [], [], [], [], [diag]
+        return [], [], [], [], [diag], [], []
 
-    entries, notes, queries, weigh_ins, diagnostics, include_paths = _parse_single_file(
-        abs_path, parser
-    )
+    (
+        entries,
+        notes,
+        queries,
+        weigh_ins,
+        diagnostics,
+        include_paths,
+        plugin_paths,
+        movement_definitions,
+    ) = _parse_single_file(abs_path, parser)
 
     for inc_path in include_paths:
         resolved = (abs_path.parent / inc_path).resolve()
-        inc_entries, inc_notes, inc_queries, inc_weigh_ins, inc_diagnostics = (
-            _load_recursive(Path(resolved), parser, visited)
-        )
+        (
+            inc_entries,
+            inc_notes,
+            inc_queries,
+            inc_weigh_ins,
+            inc_diagnostics,
+            inc_plugins,
+            inc_defs,
+        ) = _load_recursive(Path(resolved), parser, visited)
         entries.extend(inc_entries)
         notes.extend(inc_notes)
         queries.extend(inc_queries)
         weigh_ins.extend(inc_weigh_ins)
         diagnostics.extend(inc_diagnostics)
+        plugin_paths.extend(inc_plugins)
+        movement_definitions.extend(inc_defs)
 
-    return entries, notes, queries, weigh_ins, diagnostics
+    return (
+        entries,
+        notes,
+        queries,
+        weigh_ins,
+        diagnostics,
+        plugin_paths,
+        movement_definitions,
+    )
 
 
 def parse_file(file_path: Path) -> TrainingLog:
@@ -129,9 +185,15 @@ def parse_file(file_path: Path) -> TrainingLog:
     language = Language(tree_sitter_ox.language())
     parser = Parser(language)
 
-    entries, notes, queries, weigh_ins, diagnostics = _load_recursive(
-        file_path, parser, visited=set()
-    )
+    (
+        entries,
+        notes,
+        queries,
+        weigh_ins,
+        diagnostics,
+        plugin_paths,
+        movement_definitions,
+    ) = _load_recursive(file_path, parser, visited=set())
 
     return TrainingLog(
         tuple(entries),
@@ -139,23 +201,17 @@ def parse_file(file_path: Path) -> TrainingLog:
         tuple(diagnostics),
         tuple(queries),
         tuple(weigh_ins),
+        tuple(plugin_paths),
+        tuple(movement_definitions),
     )
 
 
 def show_help():
     """Display help message with available commands."""
     console.print("\n[bold cyan]Available Commands:[/bold cyan]")
+    console.print("  [green]plugins[/green]            - List available plugins")
     console.print(
-        "  [green]stats[/green]              - Show summary statistics for all exercises"
-    )
-    console.print(
-        "  [green]history[/green] EXERCISE   - Show training history for an exercise"
-    )
-    console.print(
-        "  [green]report[/green]             - List available reports (or run one)"
-    )
-    console.print(
-        "  [green]generate[/green]           - List available generators (or run one)"
+        "  [green]<plugin>[/green] [ARGS]    - Run a plugin by name (e.g. [green]volume -m squat[/green])"
     )
     console.print(
         "  [green]query[/green] SQL          - Run a SQL query or a stored query by name"
@@ -172,61 +228,60 @@ def show_help():
     console.print()
 
 
-def show_stats(log: TrainingLog):
-    """Show summary statistics for completed exercises.
-
-    Only includes completed sessions (flag="*"), not planned sessions.
-    """
-    # Collect all unique exercises
-    exercises = {}
-    for date, movement in log.movements():
-        if movement.name not in exercises:
-            exercises[movement.name] = []
-        exercises[movement.name].append((date, movement))
-
-    table = Table(title="Training Statistics", box=DEFAULT_TABLE_BOX)
-    table.add_column("Exercise", style="cyan")
-    table.add_column("Sessions", style="magenta")
-    table.add_column("Total Reps", style="green")
-    table.add_column("Last Session", style="yellow")
-
-    for exercise_name, sessions in sorted(exercises.items()):
-        total_reps = sum(m.total_reps for _, m in sessions)
-        last_date = max(d for d, _ in sessions)
-
-        table.add_row(
-            exercise_name, str(len(sessions)), str(total_reps), str(last_date)
-        )
-
-    console.print(table)
-    console.print(f"\n[bold]Completed sessions:[/bold] {len(log.completed_sessions)}")
-    console.print(f"[bold]Planned sessions:[/bold] {len(log.planned_sessions)}")
-    console.print(f"[bold]Unique exercises:[/bold] {len(exercises)}\n")
+def show_plugin_list():
+    """Show available plugins with descriptions and usage."""
+    if not PLUGINS:
+        console.print("[yellow]No plugins installed.[/yellow]\n")
+        return
+    console.print("\n[bold cyan]Available Plugins:[/bold cyan]")
+    for name, entry in PLUGINS.items():
+        usage = plugin_usage(name, entry)
+        console.print(f"  [green]{name}[/green] - {entry['description']}")
+        console.print(f"    Usage: {usage}")
+    console.print()
 
 
-def show_history(log: TrainingLog, exercise: str):
-    """Show training history for a specific exercise."""
-    history = log.movement_history(exercise)
+def render_result(result):
+    """Render a plugin result to the console."""
+    if isinstance(result, TableResult):
+        if not result.rows:
+            console.print("[yellow]No results.[/yellow]\n")
+            return
+        table = Table(box=DEFAULT_TABLE_BOX)
+        for col in result.columns:
+            table.add_column(col, style="cyan")
+        for row in result.rows:
+            table.add_row(*(str(v) for v in row))
+        console.print(table)
+        console.print(f"\n[dim]{len(result.rows)} row(s)[/dim]\n")
+    elif isinstance(result, TextResult):
+        console.print(result.text)
+    elif isinstance(result, PlotResult):
+        for line in result.lines:
+            console.print(line)
+        console.print()
 
-    if not history:
-        console.print(f"[yellow]No history found for '{exercise}'[/yellow]\n")
+
+def run_plugin(ctx: PluginContext, plugin_name: str, arg_string: str):
+    """Look up and execute a plugin by name."""
+    if plugin_name not in PLUGINS:
+        console.print(f"[red]Unknown plugin: {plugin_name}[/red]")
+        show_plugin_list()
         return
 
-    table = Table(title=f"History: {exercise}", box=DEFAULT_TABLE_BOX)
-    table.add_column("Date", style="cyan")
-    table.add_column("Sets × Reps", style="magenta")
-    table.add_column("Top Weight", style="green")
-    table.add_column("Volume", style="yellow")
+    entry = PLUGINS[plugin_name]
 
-    for date, movement in history:
-        sets_reps = " + ".join([str(s.reps) for s in movement.sets])
-        top_weight = str(movement.top_set_weight) if movement.top_set_weight else "BW"
-        volume = str(movement.total_volume()) if movement.total_volume() else "—"
+    if not arg_string.strip() and any(p.get("required") for p in entry["params"]):
+        usage = plugin_usage(plugin_name, entry)
+        console.print(f"[yellow]Usage: {usage}[/yellow]\n")
+        return
 
-        table.add_row(str(date), sets_reps, top_weight, volume)
-
-    console.print(table)
-    console.print()  # Blank line after table
+    try:
+        kwargs = parse_plugin_args(entry["params"], arg_string)
+        result = entry["fn"](ctx, **kwargs)
+        render_result(result)
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]\n")
 
 
 def show_query(conn: sqlite3.Connection, sql: str):
@@ -268,97 +323,9 @@ def show_tables(conn: sqlite3.Connection, headers: bool = False):
     console.print()
 
 
-def show_report_list():
-    """Show available reports with descriptions and usage."""
-    console.print("\n[bold cyan]Available Reports:[/bold cyan]")
-    for name, entry in get_all_reports().items():
-        usage = report_usage(name, entry)
-        console.print(f"  [green]{name}[/green] - {entry['description']}")
-        console.print(f"    Usage: {usage}")
-    console.print()
-
-
-def render_report(columns: list[str], rows: list[tuple]):
-    """Render (columns, rows) as a rich table."""
-    if not rows:
-        console.print("[yellow]No results.[/yellow]\n")
-        return
-
-    table = Table(box=DEFAULT_TABLE_BOX)
-    for col in columns:
-        table.add_column(col, style="cyan")
-
-    for row in rows:
-        table.add_row(*(str(v) for v in row))
-
-    console.print(table)
-    console.print(f"\n[dim]{len(rows)} row(s)[/dim]\n")
-
-
-def run_report(conn: sqlite3.Connection, report_name: str, arg_string: str):
-    """Look up and execute a report by name."""
-    all_reports = get_all_reports()
-    if report_name not in all_reports:
-        console.print(f"[red]Unknown report: {report_name}[/red]")
-        show_report_list()
-        return
-
-    entry = all_reports[report_name]
-
-    if not arg_string.strip() and any(p.get("required") for p in entry["params"]):
-        usage = report_usage(report_name, entry)
-        console.print(f"[yellow]Usage: {usage}[/yellow]\n")
-        return
-
-    try:
-        kwargs = parse_report_args(entry["params"], arg_string)
-        columns, rows = entry["fn"](conn, **kwargs)
-        render_report(columns, rows)
-    except ValueError as e:
-        console.print(f"[red]{e}[/red]\n")
-
-
-def show_generator_list():
-    """Show available generators with descriptions and usage."""
-    if not GENERATOR_PLUGINS:
-        console.print("[yellow]No generator plugins installed.[/yellow]\n")
-        return
-    console.print("\n[bold cyan]Available Generators:[/bold cyan]")
-    for name, entry in GENERATOR_PLUGINS.items():
-        usage = report_usage(name, entry, command="generate")
-        console.print(f"  [green]{name}[/green] - {entry['description']}")
-        console.print(f"    Usage: {usage}")
-    console.print()
-
-
-def run_generator(conn: sqlite3.Connection, gen_name: str, arg_string: str):
-    """Look up and execute a generator by name."""
-    if gen_name not in GENERATOR_PLUGINS:
-        console.print(f"[red]Unknown generator: {gen_name}[/red]")
-        show_generator_list()
-        return
-
-    entry = GENERATOR_PLUGINS[gen_name]
-
-    if not arg_string.strip() and any(p.get("required") for p in entry["params"]):
-        usage = report_usage(gen_name, entry, command="generate")
-        console.print(f"[yellow]Usage: {usage}[/yellow]\n")
-        return
-
-    try:
-        kwargs = parse_report_args(entry["params"], arg_string)
-        if entry.get("needs_db"):
-            output = entry["fn"](conn, **kwargs)
-        else:
-            output = entry["fn"](**kwargs)
-        console.print(output)
-    except ValueError as e:
-        console.print(f"[red]{e}[/red]\n")
-
-
 @click.command()
 @click.argument("file", type=click.Path(exists=True, path_type=Path))
-@click.version_option(version="0.2.0")
+@click.version_option(version=_pkg_version("ox"))
 def cli(file):
     """Interactive training log analyzer.
 
@@ -369,12 +336,19 @@ def cli(file):
         console.print(f"[cyan]Loading {file}...[/cyan]")
         log = parse_file(file)
         db = create_db(log)
-        load_plugins()
+        load_plugins(log, file)
+        ctx = PluginContext(db=db, log=log)
         console.print(
             f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
             f"{len(log.planned_sessions)} planned sessions, "
-            f"{len(log.weigh_ins)} weigh-in(s)\n"
+            f"{len(log.weigh_ins)} weigh-in(s)"
         )
+        if USER_PLUGINS:
+            console.print(
+                f"[green]✓[/green] Loaded user plugins: {', '.join(sorted(USER_PLUGINS))}\n"
+            )
+        else:
+            console.print()
         if log.diagnostics:
             console.print(
                 f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
@@ -384,20 +358,17 @@ def cli(file):
         console.print(f"[red]✗[/red] Error loading file: {e}", style="red")
         raise click.Abort()
 
-    # Setup tab completion for commands
+    # Setup tab completion for commands + plugin names
     commands = [
-        "history",
-        "stats",
-        "report",
-        "reload",
-        "generate",
+        "plugins",
         "query",
         "tables",
+        "reload",
         "lint",
         "help",
         "exit",
         "quit",
-    ]
+    ] + list(PLUGINS.keys())
     completer = WordCompleter(commands, ignore_case=True)
 
     # Create prompt session
@@ -426,32 +397,8 @@ def cli(file):
             elif command == "help":
                 show_help()
 
-            elif command == "stats":
-                show_stats(log)
-
-            elif command == "history":
-                if not args:
-                    console.print("[yellow]Usage: history EXERCISE[/yellow]")
-                else:
-                    show_history(log, args)
-
-            elif command == "report":
-                if not args:
-                    show_report_list()
-                else:
-                    parts2 = args.split(maxsplit=1)
-                    report_name = parts2[0]
-                    report_args = parts2[1] if len(parts2) > 1 else ""
-                    run_report(db, report_name, report_args)
-
-            elif command == "generate":
-                if not args:
-                    show_generator_list()
-                else:
-                    parts2 = args.split(maxsplit=1)
-                    gen_name = parts2[0]
-                    gen_args = parts2[1] if len(parts2) > 1 else ""
-                    run_generator(db, gen_name, gen_args)
+            elif command == "plugins":
+                show_plugin_list()
 
             elif command == "query":
                 if not args:
@@ -491,16 +438,36 @@ def cli(file):
                     log = parse_file(file)
                     db.close()
                     db = create_db(log)
+                    load_plugins(log, file)
+                    ctx = PluginContext(db=db, log=log)
                     console.print(
                         f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
                         f"{len(log.planned_sessions)} planned sessions, "
-                        f"{len(log.weigh_ins)} weigh-in(s)\n"
+                        f"{len(log.weigh_ins)} weigh-in(s)"
                     )
+                    if USER_PLUGINS:
+                        console.print(
+                            f"[green]✓[/green] Loaded user plugins: {', '.join(sorted(USER_PLUGINS))}"
+                        )
+                    else:
+                        console.print()
                     if log.diagnostics:
                         console.print(
                             f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
                             "Run 'lint' for details.[/yellow]\n"
                         )
+                    # Update completer with any new plugins
+                    commands = [
+                        "plugins",
+                        "query",
+                        "tables",
+                        "reload",
+                        "lint",
+                        "help",
+                        "exit",
+                        "quit",
+                    ] + list(PLUGINS.keys())
+                    session.completer = WordCompleter(commands, ignore_case=True)
                 except Exception as e:
                     console.print(f"[red]✗[/red] Error reloading file: {e}\n")
 
@@ -511,6 +478,9 @@ def cli(file):
                     for d in log.diagnostics:
                         console.print(f"Line {d.line}, col {d.col}: {d.message}")
                     console.print()
+
+            elif command in PLUGINS:
+                run_plugin(ctx, command, args)
 
             else:
                 console.print(f"[red]Unknown command: {command}[/red]")

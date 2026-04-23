@@ -6,7 +6,6 @@ from typing import Optional, List, Iterator
 from pint import Quantity
 
 DATE_FORMAT = "%Y-%m-%d"
-ITEM_FIELDS = ["weight", "rep_scheme", "time", "distance", "note"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,6 +168,25 @@ class Movement:
 
 
 @dataclass(frozen=True, slots=True)
+class MovementDefinition:
+    """A movement definition from an @movement block.
+
+    Attributes:
+        name: Movement name (e.g., "kb-oh-press")
+        equipment: Equipment used (e.g., "kettlebell")
+        tags: Movement tags (e.g., ("press", "upper"))
+        note: Freeform description
+        url: Reference URL
+    """
+
+    name: str
+    equipment: Optional[str] = None
+    tags: tuple[str, ...] = ()
+    note: Optional[str] = None
+    url: Optional[str] = None
+
+
+@dataclass(frozen=True, slots=True)
 class TrainingSession(Entry):
     """A training session containing one or more movements.
 
@@ -208,11 +226,14 @@ class TrainingLog:
         diagnostics: Tuple of parse diagnostics (errors/warnings)
     """
 
+    # TODO: Add attributes to docstring and improve description
     sessions: tuple[TrainingSession, ...]
     notes: tuple[Note, ...] = field(default_factory=tuple)
     diagnostics: tuple[Diagnostic, ...] = field(default_factory=tuple)
     queries: tuple[StoredQuery, ...] = field(default_factory=tuple)
     weigh_ins: tuple[WeighIn, ...] = field(default_factory=tuple)
+    plugin_paths: tuple[str, ...] = field(default_factory=tuple)
+    movement_definitions: tuple[MovementDefinition, ...] = field(default_factory=tuple)
 
     @property
     def completed_sessions(self) -> tuple[TrainingSession, ...]:

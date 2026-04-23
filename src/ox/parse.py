@@ -5,6 +5,7 @@ from datetime import datetime
 from ox.data import (
     DATE_FORMAT,
     Movement,
+    MovementDefinition,
     Note,
     StoredQuery,
     TrainingSession,
@@ -78,10 +79,36 @@ def process_weights(weight_str: str) -> list[Quantity]:
     """Parse weight string into list of Quantity objects.
 
     Handles formats like "24kg", "24kg+32kg", "24kg/32kg/48kg".
+
+    In progressive sequences, a segment may omit its unit; it inherits the
+    nearest succeeding unit. E.g. "160/185/210lb" → three lb weights;
+    "60/70kg/160/180lb" → [60kg, 70kg, 160lb, 180lb].
     """
     weight_str_split = weight_str.split("/")
+    # Right-to-left pass to resolve implied units.
+    carried_unit = None
+    resolved = [None] * len(weight_str_split)
+    for i in range(len(weight_str_split) - 1, -1, -1):
+        w = weight_str_split[i]
+        if w == "BW" or "+" in w:
+            resolved[i] = w
+            continue
+        m = re.match(r"^(\d+(?:\.\d+)?)(\w+)?$", w)
+        if not m:
+            resolved[i] = w
+            continue
+        num, unit = m.group(1), m.group(2)
+        if unit is None:
+            if carried_unit is None:
+                resolved[i] = w  # will fail to parse downstream
+            else:
+                resolved[i] = f"{num}{carried_unit}"
+        else:
+            carried_unit = unit
+            resolved[i] = w
+
     weight_objs = []
-    for w in weight_str_split:
+    for w in resolved:
         if "+" in w:
             result = sum([weight_text_to_quantity(i) for i in w.split("+")])
             weight_objs.append(result)
@@ -179,17 +206,19 @@ def process_singleline_entry(raw_entry: Node) -> TrainingSession | None:
 
     if flag in ["*", "!"]:
         date, movement = process_singleline_completed_session(raw_entry)
-        return TrainingSession(name=None, date=date, flag=flag, movements=movement)
+        return TrainingSession(
+            name=movement[0].name, date=date, flag=flag, movements=movement
+        )
     return None
 
 
 def process_session_block_pending(raw_entry: Node) -> TrainingSession | None:
     """Process a pending session block (flag='!').
 
-    Not yet implemented.
+    Deferred: planned sessions are parsed but not materialized for analysis.
+    See SPEC.md "What's incomplete".
     """
-    # TODO: implement pending session processing
-    pass
+    return None
 
 
 def process_session_block(raw_entry: Node) -> TrainingSession | None:
@@ -206,7 +235,6 @@ def process_session_block(raw_entry: Node) -> TrainingSession | None:
             name=name, flag=flag, date=date, movements=tuple(movements), notes=notes
         )
     else:
-        # TODO: handle pending sessions
         return process_session_block_pending(raw_entry)
 
 
@@ -239,8 +267,43 @@ def process_query_entry(node: Node) -> StoredQuery:
     return StoredQuery(name=name, sql=sql, date=date)
 
 
+def process_movement_block(node: Node) -> MovementDefinition:
+    """Process a movement_block node into a MovementDefinition."""
+    name = node.child_by_field_name("name").text.decode("utf-8")
+    metadata: dict[str, str] = {}
+    for child in node.children:
+        if child.type != "metadata_line":
+            continue
+        key_node = child.child_by_field_name("key")
+        value_node = child.child_by_field_name("value")
+        if key_node is None or value_node is None:
+            continue
+        metadata[key_node.text.decode("utf-8")] = value_node.text.decode(
+            "utf-8"
+        ).strip()
+
+    tags_raw = metadata.get("tags") or metadata.get("tag")
+    tags: tuple[str, ...] = ()
+    if tags_raw:
+        tags = tuple(t.strip() for t in tags_raw.split(",") if t.strip())
+
+    return MovementDefinition(
+        name=name,
+        equipment=metadata.get("equipment"),
+        tags=tags,
+        note=metadata.get("note"),
+        url=metadata.get("url"),
+    )
+
+
 def process_include_directive(node: Node) -> str:
     """Extract file path from an include_directive node."""
+    raw = node.child_by_field_name("path").text.decode("utf-8")
+    return raw.strip('"')
+
+
+def process_plugin_directive(node: Node) -> str:
+    """Extract file path from a plugin_directive node."""
     raw = node.child_by_field_name("path").text.decode("utf-8")
     return raw.strip('"')
 
@@ -264,5 +327,7 @@ def process_node(node: Node) -> TrainingSession | Note | StoredQuery | None:
         return process_query_entry(node)
     if node.type == "weigh_in_entry":
         return process_weigh_in_entry(node)
-    # Skip comments, exercise_block, template_block for now
+    if node.type == "movement_block":
+        return process_movement_block(node)
+    # Skip comments, template_block for now
     return None

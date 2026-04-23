@@ -3,6 +3,21 @@
 import pytest
 
 from ox.builtins.weighin import _rolling_avg, _linear_trend, weigh_in_report
+from ox.data import TrainingLog
+from ox.plugins import PluginContext, PlotResult
+
+
+def _ctx(db):
+    """Create a PluginContext wrapping a db connection."""
+    return PluginContext(db=db, log=TrainingLog(sessions=()))
+
+
+def _run_weighin(db, **kwargs):
+    """Run weigh_in_report and return (columns, rows) tuple for test compat."""
+    result = weigh_in_report(_ctx(db), **kwargs)
+    if isinstance(result, PlotResult):
+        return ["plot"], [(line,) for line in result.lines]
+    return result.columns, result.rows
 
 
 # ---------------------------------------------------------------------------
@@ -94,11 +109,11 @@ class TestLinearTrend:
 
 class TestWeighInReportTable:
     def test_returns_all_rows(self, weigh_in_multi_scale_db):
-        cols, rows = weigh_in_report(weigh_in_multi_scale_db, output="table")
+        cols, rows = _run_weighin(weigh_in_multi_scale_db, output="table")
         assert len(rows) == 8
 
     def test_columns(self, weigh_in_multi_scale_db):
-        cols, rows = weigh_in_report(weigh_in_multi_scale_db, output="table")
+        cols, rows = _run_weighin(weigh_in_multi_scale_db, output="table")
         assert cols == ["date", "weight (lb)", "scale"]
 
     def test_unit_conversion(self, log_with_weigh_ins_file, tmp_path):
@@ -108,56 +123,59 @@ class TestWeighInReportTable:
 
         log = parse_file(log_with_weigh_ins_file)
         conn = create_db(log)
-        cols, rows = weigh_in_report(conn, unit="lb", output="table")
+        cols, rows = _run_weighin(conn, unit="lb", output="table")
         # 84kg in lb ≈ 185.19
         kg_row = next(r for r in rows if r[2] == "gym scale")
         assert abs(kg_row[1] - 185.19) < 0.1
         conn.close()
 
     def test_empty_db_returns_empty_rows(self, simple_db):
-        cols, rows = weigh_in_report(simple_db, output="table")
+        cols, rows = _run_weighin(simple_db, output="table")
         assert rows == []
 
     def test_scale_none_shown_as_empty_string(self, weigh_in_multi_scale_db):
-        cols, rows = weigh_in_report(weigh_in_multi_scale_db, output="table")
+        cols, rows = _run_weighin(weigh_in_multi_scale_db, output="table")
         no_scale_rows = [r for r in rows if r[2] == ""]
         assert len(no_scale_rows) > 0
 
     def test_invalid_output_raises(self, weigh_in_multi_scale_db):
         with pytest.raises(ValueError, match="output must be"):
-            weigh_in_report(weigh_in_multi_scale_db, output="csv")
+            _run_weighin(weigh_in_multi_scale_db, output="csv")
 
 
 class TestWeighInReportPlot:
     def test_returns_plot_lines(self, weigh_in_multi_scale_db):
-        cols, rows = weigh_in_report(weigh_in_multi_scale_db, output="plot")
+        cols, rows = _run_weighin(weigh_in_multi_scale_db, output="plot")
         assert cols == ["plot"]
         assert len(rows) > 0
 
     def test_legend_shows_both_scales(self, weigh_in_multi_scale_db):
-        _cols, rows = weigh_in_report(weigh_in_multi_scale_db, output="plot")
+        _cols, rows = _run_weighin(weigh_in_multi_scale_db, output="plot")
         text = "\n".join(r[0] for r in rows)
         assert "home scale" in text
         assert "(no scale)" in text
 
-    def test_legend_shows_rolling_avg(self, weigh_in_multi_scale_db):
-        _cols, rows = weigh_in_report(weigh_in_multi_scale_db, output="plot")
+    def test_rolling_avg_hidden_by_default(self, weigh_in_multi_scale_db):
+        _cols, rows = _run_weighin(weigh_in_multi_scale_db, output="plot")
         text = "\n".join(r[0] for r in rows)
-        assert "rolling avg" in text
+        assert "rolling avg" not in text
+
+    def test_rolling_avg_shown_when_window_set(self, weigh_in_multi_scale_db):
+        _cols, rows = _run_weighin(weigh_in_multi_scale_db, output="plot", window=7)
+        text = "\n".join(r[0] for r in rows)
+        assert "7-day rolling avg" in text
 
     def test_custom_window_in_legend(self, weigh_in_multi_scale_db):
-        _cols, rows = weigh_in_report(weigh_in_multi_scale_db, output="plot", window=14)
+        _cols, rows = _run_weighin(weigh_in_multi_scale_db, output="plot", window=14)
         text = "\n".join(r[0] for r in rows)
         assert "14-day rolling avg" in text
 
-    def test_two_different_markers_used(self, weigh_in_multi_scale_db):
-        """Two scales must produce two distinct markers in the legend."""
-        from ox.builtins.weighin import _MARKERS
-
-        _cols, rows = weigh_in_report(weigh_in_multi_scale_db, output="plot")
+    def test_both_scale_series_labeled(self, weigh_in_multi_scale_db):
+        """Two scales must each appear as labeled series in the legend."""
+        _cols, rows = _run_weighin(weigh_in_multi_scale_db, output="plot")
         text = "\n".join(r[0] for r in rows)
-        markers_found = [m for m in _MARKERS if m in text]
-        assert len(markers_found) >= 2
+        assert "home scale" in text
+        assert "(no scale)" in text
 
     def test_not_enough_data_message(self, tmp_path):
         """Single weigh-in produces a 'Not enough data' message."""
@@ -167,20 +185,20 @@ class TestWeighInReportPlot:
         f = tmp_path / "single.ox"
         f.write_text("2025-01-01 W 185lb\n")
         conn = create_db(parse_file(f))
-        _cols, rows = weigh_in_report(conn, output="plot")
+        _cols, rows = _run_weighin(conn, output="plot")
         assert "Not enough data" in rows[0][0]
         conn.close()
 
     def test_no_data_message(self, simple_db):
         """No weigh-ins at all returns a message row."""
-        _cols, rows = weigh_in_report(simple_db, output="plot")
+        _cols, rows = _run_weighin(simple_db, output="plot")
         assert len(rows) == 1
         assert "No weigh-in data" in rows[0][0]
 
 
 class TestWeighInReportStats:
     def test_columns(self, weigh_in_multi_scale_db):
-        cols, _rows = weigh_in_report(weigh_in_multi_scale_db, output="stats")
+        cols, _rows = _run_weighin(weigh_in_multi_scale_db, output="stats")
         assert cols[0] == "scale"
         assert "count" in cols
         assert any("min" in c for c in cols)
@@ -189,7 +207,7 @@ class TestWeighInReportStats:
         assert any("trend" in c for c in cols)
 
     def test_one_row_per_scale_plus_all(self, weigh_in_multi_scale_db):
-        _cols, rows = weigh_in_report(weigh_in_multi_scale_db, output="stats")
+        _cols, rows = _run_weighin(weigh_in_multi_scale_db, output="stats")
         labels = [r[0] for r in rows]
         assert "(no scale)" in labels
         assert "home scale" in labels
@@ -205,13 +223,13 @@ class TestWeighInReportStats:
         f.write_text(content)
         log = parse_file(f)
         conn = create_db(log)
-        _cols, rows = weigh_in_report(conn, output="stats")
+        _cols, rows = _run_weighin(conn, output="stats")
         labels = [r[0] for r in rows]
         assert "(all)" not in labels
         conn.close()
 
     def test_count_matches_measurements(self, weigh_in_multi_scale_db):
-        _cols, rows = weigh_in_report(weigh_in_multi_scale_db, output="stats")
+        _cols, rows = _run_weighin(weigh_in_multi_scale_db, output="stats")
         row_map = {r[0]: r for r in rows}
         # 4 entries with no scale, 4 with "home scale"
         assert row_map["(no scale)"][1] == 4
@@ -219,22 +237,22 @@ class TestWeighInReportStats:
         assert row_map["(all)"][1] == 8
 
     def test_min_lte_max(self, weigh_in_multi_scale_db):
-        _cols, rows = weigh_in_report(weigh_in_multi_scale_db, output="stats")
+        _cols, rows = _run_weighin(weigh_in_multi_scale_db, output="stats")
         for row in rows:
             mn, mx = row[3], row[4]
             assert mn <= mx
 
     def test_trend_is_numeric_or_none(self, weigh_in_multi_scale_db):
-        _cols, rows = weigh_in_report(weigh_in_multi_scale_db, output="stats")
+        _cols, rows = _run_weighin(weigh_in_multi_scale_db, output="stats")
         for row in rows:
             trend = row[6]
             assert trend is None or isinstance(trend, float)
 
     def test_unit_conversion_in_stats(self, weigh_in_multi_scale_db):
-        _cols_lb, rows_lb = weigh_in_report(
+        _cols_lb, rows_lb = _run_weighin(
             weigh_in_multi_scale_db, unit="lb", output="stats"
         )
-        _cols_kg, rows_kg = weigh_in_report(
+        _cols_kg, rows_kg = _run_weighin(
             weigh_in_multi_scale_db, unit="kg", output="stats"
         )
         # avg in lb should be ~2.205× avg in kg
@@ -245,14 +263,14 @@ class TestWeighInReportStats:
 
 class TestWeighInPluginRegistration:
     def test_weighin_registered(self):
-        from ox.plugins import load_plugins, REPORT_PLUGINS
+        from ox.plugins import load_plugins, PLUGINS
 
         load_plugins()
-        assert "weighin" in REPORT_PLUGINS
+        assert "weighin" in PLUGINS
 
     def test_weighin_has_expected_params(self):
-        from ox.plugins import load_plugins, REPORT_PLUGINS
+        from ox.plugins import load_plugins, PLUGINS
 
         load_plugins()
-        params = {p["name"] for p in REPORT_PLUGINS["weighin"]["params"]}
+        params = {p["name"] for p in PLUGINS["weighin"]["params"]}
         assert params == {"unit", "output", "window"}

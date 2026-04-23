@@ -56,32 +56,6 @@
     }
   },
   {
-    "type": "exercise_block",
-    "named": true,
-    "fields": {
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      }
-    },
-    "children": {
-      "multiple": true,
-      "required": false,
-      "types": [
-        {
-          "type": "metadata_line",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
     "type": "file_path",
     "named": true,
     "fields": {}
@@ -170,6 +144,32 @@
     }
   },
   {
+    "type": "movement_block",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "metadata_line",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "name",
     "named": true,
     "fields": {}
@@ -210,6 +210,22 @@
         "types": [
           {
             "type": "quoted_string",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "plugin_directive",
+    "named": true,
+    "fields": {
+      "path": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "file_path",
             "named": true
           }
         ]
@@ -362,15 +378,19 @@
           "named": true
         },
         {
-          "type": "exercise_block",
-          "named": true
-        },
-        {
           "type": "include_directive",
           "named": true
         },
         {
+          "type": "movement_block",
+          "named": true
+        },
+        {
           "type": "note_entry",
+          "named": true
+        },
+        {
+          "type": "plugin_directive",
           "named": true
         },
         {
@@ -502,11 +522,15 @@
     "named": false
   },
   {
-    "type": "@exercise",
+    "type": "@include",
     "named": false
   },
   {
-    "type": "@include",
+    "type": "@movement",
+    "named": false
+  },
+  {
+    "type": "@plugin",
     "named": false
   },
   {

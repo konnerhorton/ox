@@ -52,19 +52,11 @@ class TestParseFile:
         assert "kb-oh-press" in movement_names
 
         # Check completed vs planned
-        assert len(log.completed_sessions) >= 2
-        # assert len(log.planned_sessions) >= 1  # TODO: Enable when ! flag parsing is fixed
+        assert len(log.completed_sessions) == 2
+        assert len(log.planned_sessions) == 1
 
-    @pytest.mark.skip(reason="Planned session (! flag) parsing not yet implemented")
     def test_parse_planned_vs_completed(self, simple_log_file):
-        """Test that flags are parsed correctly.
-
-        Flags indicate session status:
-        - * = completed
-        - ! = planned
-
-        TODO: Enable this test when planned session parsing is implemented.
-        """
+        """Flags are parsed: * = completed, ! = planned."""
         log = parse_file(simple_log_file)
 
         # First two sessions are completed (*)
@@ -99,7 +91,7 @@ class TestParseFile:
         """
         from pathlib import Path
 
-        example_file = Path(__file__).parent.parent / "example" / "example.ox"
+        example_file = Path(__file__).parent.parent / "examples" / "example.ox"
 
         if not example_file.exists():
             pytest.skip("Example file not found")
@@ -266,6 +258,7 @@ class TestWeighInIntegration:
         assert w1.scale is None
 
         assert w2.date == date(2025, 1, 12)
+        assert w2.weight == 84 * ureg.kilogram
         assert w2.time_of_day == time(7, 0)
         assert w2.scale == "gym scale"
 

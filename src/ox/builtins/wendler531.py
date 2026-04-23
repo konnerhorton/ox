@@ -4,15 +4,16 @@ Generates a 4-week training cycle based on Jim Wendler's 5/3/1 program.
 Outputs valid .ox text with planned (!) flag.
 
 Usage:
-    generate wendler531 -m squat:315
-    generate wendler531 -m squat:315,bench-press:200
-    generate wendler531 -m squat:315 -u kg
-    generate wendler531 -m squat:315,deadlift:405 -d 2026-03-01
+    wendler531 -m squat:315
+    wendler531 -m squat:315,bench-press:200
+    wendler531 -m squat:315 -u kg
+    wendler531 -m squat:315,deadlift:405 -d 2026-03-01
 """
 
 from datetime import datetime, timedelta
 
 from ox.data import Movement, TrainingSession, TrainingSet
+from ox.plugins import PluginContext, TextResult
 from ox.units import Q_
 
 # Percentages of training max for each week.
@@ -57,19 +58,8 @@ def _pint_unit(unit):
     return {"lb": "pound", "lbs": "pound", "kg": "kilogram"}.get(unit, unit)
 
 
-def wendler531(movements, unit="lb", start_date=None, rm="true"):
-    """Generate a 4-week Wendler 5/3/1 cycle.
-
-    Args:
-        movements: Comma-separated name:training_max pairs
-                   (e.g. "squat:315,deadlift:405")
-        unit: Weight unit ("lb" or "kg")
-        start_date: Start date as YYYY-MM-DD string (defaults to today)
-        rm: Tag working weeks (1-3) with ^rm for e1rm tracking ("true"/"false")
-
-    Returns:
-        Valid .ox formatted text
-    """
+def wendler531(ctx: PluginContext, movements, unit="lb", start_date=None, rm="true"):
+    """Generate a 4-week Wendler 5/3/1 cycle."""
     parsed = _parse_movements(movements)
     pint_unit = _pint_unit(unit)
     tag_rm = rm.lower() == "true"
@@ -99,18 +89,17 @@ def wendler531(movements, unit="lb", start_date=None, rm="true"):
             TrainingSession(
                 date=session_date,
                 flag="!",
-                name=f"5/3/1 Week {week_num}",
+                name=f"531-week-{week_num}",
                 movements=tuple(week_movements),
             )
         )
 
-    return "\n\n".join(s.to_ox() for s in sessions) + "\n"
+    return TextResult("\n\n".join(s.to_ox() for s in sessions) + "\n")
 
 
 def register():
     return [
         {
-            "type": "generator",
             "name": "wendler531",
             "fn": wendler531,
             "description": "Generate a Wendler 5/3/1 cycle",

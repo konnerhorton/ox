@@ -119,6 +119,10 @@ def _collect_movement_names(tree) -> set[str]:
                     item = child.child_by_field_name("item")
                     if item:
                         names.add(item.text.decode("utf-8"))
+        elif node.type == "movement_block":
+            name = node.child_by_field_name("name")
+            if name:
+                names.add(name.text.decode("utf-8"))
     return names
 
 

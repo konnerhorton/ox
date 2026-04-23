@@ -13,12 +13,12 @@ module.exports = grammar({
   extras: ($) => [/[ \t]/], // Only spaces and tabs, NOT newlines
 
   rules: {
-    source_file: ($) => repeat(choice($._entry, $.include_directive, $.comment, "\n")),
+    source_file: ($) => repeat(choice($._entry, $.include_directive, $.plugin_directive, $.comment, "\n")),
 
     _entry: ($) => choice(
       $.singleline_entry,
       $.session_block,
-      $.exercise_block,
+      $.movement_block,
       $.template_block,
       $.note_entry,
       $.query_entry,
@@ -27,6 +27,12 @@ module.exports = grammar({
 
     include_directive: ($) => prec.right(seq(
       "@include",
+      field("path", $.file_path),
+      optional("\n")
+    )),
+
+    plugin_directive: ($) => prec.right(seq(
+      "@plugin",
       field("path", $.file_path),
       optional("\n")
     )),
@@ -90,10 +96,10 @@ module.exports = grammar({
         optional("\n")
       )),
 
-    // @exercise block
-    exercise_block: ($) =>
+    // @movement block
+    movement_block: ($) =>
       prec.right(seq(
-        "@exercise",
+        "@movement",
         field("name", $.identifier),
         "\n",
         repeat($.metadata_line),
@@ -171,8 +177,8 @@ module.exports = grammar({
     // BW remains a special bodyweight token
     weight: ($) => token(choice(
       /\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)((\+\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))+)?/,  // single or combined: 24kg or 24kg+32kg
-      /\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)((\/\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))+)?/,  // single or progressive: 24kg/32kg/48kg
-      /(BW|\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))(\/(BW|\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)))+/,  // mixed BW/concrete progressive: BW/25lb/50lb
+      /((BW|\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)?)\/)+(BW|\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))/,  // progressive (incl. implied units + mixed BW): 24kg/32kg, 160/185/210lb, BW/25lb, 60/70kg/160/180lb
+      /\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)/,  // single: 24kg
       /BW/                                // bodyweight standalone
     )),
 

@@ -27,10 +27,10 @@ Developers and power users comfortable with text files and CLIs.
 - **Python parser** (`src/ox/parse.py`) — tree-sitter nodes → dataclasses
 - **Data model** (`src/ox/data.py`) — `TrainingSet`, `Movement`, `TrainingSession`, `TrainingLog`, `Note`, `WeighIn`, `StoredQuery`, `Diagnostic`
 - **SQLite query layer** (`src/ox/db.py`) — in-memory DB with `sessions`, `movements`, `sets`, `notes`, `session_notes`, `weigh_ins`, `queries` tables and `training` view
-- **Plugin system** (`src/ox/plugins.py`) — discovery from `~/.ox/plugins/`, entry points, and builtins; report and generator types
+- **Plugin system** (`src/ox/plugins.py`) — built-in plugins plus user plugins loaded via `@plugin` directives in `.ox` files
 - **Built-in reports** (`src/ox/reports.py`) — `volume` (volume over time) and `matrix` (session count per movement)
 - **Built-in plugins** — `e1rm` (estimated 1RM via Brzycki/Epley), `weighin` (weight tracking with stats/plot/rolling average), `wendler531` (5/3/1 cycle generator)
-- **CLI** (`src/ox/cli.py`) — interactive REPL with `stats`, `history`, `report`, `generate`, `query`, `tables`, `lint`, `reload` commands and tab completion
+- **CLI** (`src/ox/cli.py`) — interactive REPL with `report`, `generate`, `query`, `tables`, `lint`, `reload` commands and tab completion
 - **LSP** (`src/ox/lsp.py`) — diagnostics (syntax errors + include validation), movement name completion, comment folding ranges
 - **Weigh-in tracking** — full pipeline: parse → `WeighIn` dataclass → DB → builtin report with table/plot/stats output
 - **Notes** — standalone and session-level notes, parse → `Note` dataclass → DB, `to_ox()` round-trip
@@ -45,22 +45,21 @@ Developers and power users comfortable with text files and CLIs.
 ### What's incomplete
 
 - Planned sessions (`!` flag) — parsed but ignored in analysis
-- Exercise definitions (`@exercise` blocks) — parsed but not used in analysis
 - Template blocks (`@template`) — grammar exists, no processing
 - Progressive implied weights (e.g. `160/185/210lbs`) — known parsing bug
-- CLI exercise autocompletion (tab-complete exercise names, not just commands)
+- CLI movement autocompletion (tab-complete movement names, not just commands)
 
 ## Direction
 
 ### Richer analysis
 
 - Cycle tracking — micro/meso/macro periodization
-- Exercise definitions feeding into analysis (e.g. grouping by movement pattern)
+- Movement definitions feeding into analysis (e.g. grouping by movement tag)
 - `pint.Quantity` for time/distance — enables derived units like pace and speed
 
 ### Better editor experience
 
-- LSP hover info (exercise definitions, recent history for a movement)
+- LSP hover info (movement definitions, recent history for a movement)
 - LSP completions for session templates
 - Snippets for common entry patterns
 

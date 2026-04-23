@@ -3,86 +3,86 @@
 # Using a focused set of movements for better statistics
 
 # Exercise Definitions
-@exercise squat
+@movement squat
 equipment: barbell
-pattern: squat
+tag: squat
 url: https://www.strongerbyscience.com/how-to-squat/
 note: keep chest up, knees track over toes, full depth
 @end
 
-@exercise deadlift
+@movement deadlift
 equipment: barbell
-pattern: hinge
+tag: hinge
 url: https://www.strongerbyscience.com/how-to-deadlift/
 note: neutral spine, drive through heels, hinge at hips
 @end
 
-@exercise bench-press
+@movement bench-press
 equipment: barbell
-pattern: press
+tag: press
 url: https://www.strongerbyscience.com/how-to-bench/
 note: retract scapula, feet planted, bar path to mid-chest
 @end
 
-@exercise overhead-press
+@movement overhead-press
 equipment: barbell
-pattern: press
+tag: press
 url: https://www.strongerbyscience.com/how-to-press/
 note: brace core, vertical bar path, squeeze glutes
 @end
 
-@exercise pullup
+@movement pullup
 equipment: bodyweight
-pattern: pull
+tag: pull
 url: https://www.strongerbyscience.com/how-to-pull-up/
 note: full hang to chin over bar, control descent
 @end
 
-@exercise kb-swing
+@movement kb-swing
 equipment: kettlebell
-pattern: hinge
+tag: hinge
 url: https://www.strongfirst.com/the-swing/
 note: explosive hip drive, park the bell, tight lats
 @end
 
-@exercise kb-snatch
+@movement kb-snatch
 equipment: kettlebell
-pattern: ballistic
+tag: ballistic
 url: https://www.strongfirst.com/the-snatch/
 note: punch through at top, smooth arc, tight shoulder
 @end
 
-@exercise kb-clean-and-press
+@movement kb-clean-and-press
 equipment: kettlebell
-pattern: combination
+tag: combination
 url: https://www.strongfirst.com/the-clean/
 note: clean to rack position, press with full lockout
 @end
 
-@exercise kb-turkish-getup
+@movement kb-turkish-getup
 equipment: kettlebell
-pattern: getup
+tag: getup
 url: https://www.strongfirst.com/the-turkish-get-up/
 note: eyes on bell, stable shoulder, controlled movement
 @end
 
-@exercise box-jump
+@movement box-jump
 equipment: plyometric
-pattern: jump
+tag: jump
 url: https://www.bodybuilding.com/exercises/box-jump
 note: soft landing, full hip extension, step down
 @end
 
-@exercise burpee
+@movement burpee
 equipment: bodyweight
-pattern: full-body
+tag: full-body
 url: https://wodwell.com/exercise/burpee/
 note: chest to floor, explosive jump, full extension
 @end
 
-@exercise run
+@movement run
 equipment: cardio
-pattern: endurance
+tag: endurance
 url: https://www.runnersworld.com/training/
 note: comfortable pace unless noted, focus on form
 @end
@@ -166,7 +166,7 @@ pullup: BW 4x8
 2024-01-30 * Upper Heavy
 bench-press: 165lb 5x5
 overhead-press: 105lb 3x8
-pullup: BW+25lb 4x5
+pullup: 25lb 4x5
 @end
 
 @session
@@ -185,7 +185,7 @@ box-jump: BW 5x5
 squat: 185lb 5x3
 bench-press: 155lb 5x3
 deadlift: 225lb 5x3
-pullup: BW+20lb 4x5
+pullup: 20lb 4x5
 @end
 
 @session
@@ -475,7 +475,7 @@ box-jump: BW 5x5
 @session
 2024-04-08 * Bodyweight Upper
 pullup: BW 8x5
-pullup: BW+25lb 5x3
+pullup: 25lb 5x3
 bench-press: 135lb 3x8
 overhead-press: 85lb 3x8
 @end
@@ -507,15 +507,15 @@ box-jump: BW 6x3
 # Week 15 - Mixed Training
 @session
 2024-04-15 * Upper Power
-bench-press: 175lb 5x3
+bench-press: 120/130/140/150/175lb 5x3
 overhead-press: 105lb 5x3
-pullup: BW+30lb 5x3
+pullup: 30lb 5x3
 @end
 
 @session
 2024-04-16 * Lower Power
 squat: 205lb 5x3
-deadlift: 245lb 5x3
+deadlift: 45/245lb 5x3
 box-jump: BW 5x3
 @end
 
