@@ -45,22 +45,21 @@ Developers and power users comfortable with text files and CLIs.
 ### What's incomplete
 
 - Planned sessions (`!` flag) — parsed but ignored in analysis
-- Exercise definitions (`@exercise` blocks) — parsed but not used in analysis
 - Template blocks (`@template`) — grammar exists, no processing
 - Progressive implied weights (e.g. `160/185/210lbs`) — known parsing bug
-- CLI exercise autocompletion (tab-complete exercise names, not just commands)
+- CLI movement autocompletion (tab-complete movement names, not just commands)
 
 ## Direction
 
 ### Richer analysis
 
 - Cycle tracking — micro/meso/macro periodization
-- Exercise definitions feeding into analysis (e.g. grouping by movement pattern)
+- Movement definitions feeding into analysis (e.g. grouping by movement tag)
 - `pint.Quantity` for time/distance — enables derived units like pace and speed
 
 ### Better editor experience
 
-- LSP hover info (exercise definitions, recent history for a movement)
+- LSP hover info (movement definitions, recent history for a movement)
 - LSP completions for session templates
 - Snippets for common entry patterns
 

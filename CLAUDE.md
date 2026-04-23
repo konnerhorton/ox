@@ -65,7 +65,7 @@ examples/
 ```
 # Comments start with #
 
-# Single-line entry: date flag exercise: weight reps "note"
+# Single-line entry: date flag movement: weight reps "note"
 2025-01-10 * pullups: BW 5x10
 
 # Session block
@@ -87,8 +87,8 @@ kb-oh-press: 24kg 5/5/5
 # Include another file
 @include "other.ox"
 
-# Exercise definition
-@exercise squat
+# Movement definition
+@movement squat
 equipment: barbell
 tags: squat, lower
 note: back squat
@@ -115,7 +115,7 @@ movement: details
 - Python 3.12, dependencies managed with uv
 - Frozen dataclasses with `slots=True` for data structures
 - `pint.Quantity` for all weight values (never raw numbers)
-- Exercise names are hyphenated lowercase (e.g. `kb-oh-press`, `bench-press`)
+- Movement names are hyphenated lowercase (e.g. `kb-oh-press`, `bench-press`)
 - `to_ox()` methods serialize back to .ox format (round-trip support)
 - Tree-sitter nodes are processed in `parse.py`; data structures live in `data.py` — keep this separation
 - All analysis features are plugins (builtins or user-defined). Plugins receive `PluginContext(db, log)` and return `TableResult`, `TextResult`, or `PlotResult`
