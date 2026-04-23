@@ -14,7 +14,15 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 
 from ox.parse import process_include_directive, process_plugin_directive, process_node
-from ox.data import Diagnostic, Note, StoredQuery, TrainingLog, TrainingSession, WeighIn
+from ox.data import (
+    Diagnostic,
+    MovementDefinition,
+    Note,
+    StoredQuery,
+    TrainingLog,
+    TrainingSession,
+    WeighIn,
+)
 from ox.db import create_db
 from ox.lint import collect_diagnostics
 from ox.plugins import (
@@ -35,11 +43,11 @@ DEFAULT_TABLE_BOX = box.SIMPLE
 
 def _parse_single_file(
     file_path: Path, parser: Parser
-) -> tuple[list, list, list, list, list, list[str], list[str]]:
+) -> tuple[list, list, list, list, list, list[str], list[str], list]:
     """Parse a single .ox file without resolving includes.
 
     Returns:
-        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, include_paths, plugin_paths)
+        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, include_paths, plugin_paths, movement_definitions)
     """
     with open(file_path, "r") as f:
         data = bytes(f.read(), encoding="utf-8")
@@ -53,6 +61,7 @@ def _parse_single_file(
     log_weigh_ins = []
     include_paths = []
     plugin_paths = []
+    movement_definitions = []
     for child in root_node.children:
         if child.type == "include_directive":
             include_paths.append(process_include_directive(child))
@@ -69,6 +78,8 @@ def _parse_single_file(
             log_queries.append(result)
         elif isinstance(result, WeighIn):
             log_weigh_ins.append(result)
+        elif isinstance(result, MovementDefinition):
+            movement_definitions.append(result)
 
     diagnostics = list(collect_diagnostics(tree))
     return (
@@ -79,6 +90,7 @@ def _parse_single_file(
         diagnostics,
         include_paths,
         plugin_paths,
+        movement_definitions,
     )
 
 
@@ -86,11 +98,11 @@ def _load_recursive(
     file_path: Path,
     parser: Parser,
     visited: set[Path],
-) -> tuple[list, list, list, list, list, list]:
+) -> tuple[list, list, list, list, list, list, list]:
     """Recursively load a file and its includes with cycle detection.
 
     Returns:
-        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, plugin_paths)
+        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, plugin_paths, movement_definitions)
     """
     abs_path = file_path.resolve()
 
@@ -103,7 +115,7 @@ def _load_recursive(
             message=f"Circular include detected: {file_path}",
             severity="warning",
         )
-        return [], [], [], [], [diag], []
+        return [], [], [], [], [diag], [], []
 
     visited.add(abs_path)
 
@@ -116,11 +128,18 @@ def _load_recursive(
             message=f"Included file not found: {file_path}",
             severity="warning",
         )
-        return [], [], [], [], [diag], []
+        return [], [], [], [], [diag], [], []
 
-    entries, notes, queries, weigh_ins, diagnostics, include_paths, plugin_paths = (
-        _parse_single_file(abs_path, parser)
-    )
+    (
+        entries,
+        notes,
+        queries,
+        weigh_ins,
+        diagnostics,
+        include_paths,
+        plugin_paths,
+        movement_definitions,
+    ) = _parse_single_file(abs_path, parser)
 
     for inc_path in include_paths:
         resolved = (abs_path.parent / inc_path).resolve()
@@ -131,6 +150,7 @@ def _load_recursive(
             inc_weigh_ins,
             inc_diagnostics,
             inc_plugins,
+            inc_defs,
         ) = _load_recursive(Path(resolved), parser, visited)
         entries.extend(inc_entries)
         notes.extend(inc_notes)
@@ -138,8 +158,17 @@ def _load_recursive(
         weigh_ins.extend(inc_weigh_ins)
         diagnostics.extend(inc_diagnostics)
         plugin_paths.extend(inc_plugins)
+        movement_definitions.extend(inc_defs)
 
-    return entries, notes, queries, weigh_ins, diagnostics, plugin_paths
+    return (
+        entries,
+        notes,
+        queries,
+        weigh_ins,
+        diagnostics,
+        plugin_paths,
+        movement_definitions,
+    )
 
 
 def parse_file(file_path: Path) -> TrainingLog:
@@ -156,9 +185,15 @@ def parse_file(file_path: Path) -> TrainingLog:
     language = Language(tree_sitter_ox.language())
     parser = Parser(language)
 
-    entries, notes, queries, weigh_ins, diagnostics, plugin_paths = _load_recursive(
-        file_path, parser, visited=set()
-    )
+    (
+        entries,
+        notes,
+        queries,
+        weigh_ins,
+        diagnostics,
+        plugin_paths,
+        movement_definitions,
+    ) = _load_recursive(file_path, parser, visited=set())
 
     return TrainingLog(
         tuple(entries),
@@ -167,6 +202,7 @@ def parse_file(file_path: Path) -> TrainingLog:
         tuple(queries),
         tuple(weigh_ins),
         tuple(plugin_paths),
+        tuple(movement_definitions),
     )
 
 

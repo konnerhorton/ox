@@ -206,9 +206,9 @@ class TestBlockDirectives:
     These aren't yet promoted to data structures, but the grammar must not reject them.
     """
 
-    def test_exercise_block(self):
+    def test_movement_block(self):
         src = (
-            "@exercise squat\n"
+            "@movement squat\n"
             "equipment: barbell\n"
             "tags: squat, lower\n"
             "note: back squat\n"
@@ -229,6 +229,50 @@ class TestBlockDirectives:
     def test_include_directive(self):
         _, diags = _parse_str('@include "other.ox"\n')
         assert not diags
+
+
+class TestMovementDefinitionParsing:
+    """Test that @movement blocks are parsed into MovementDefinition objects."""
+
+    def _parse_log(self, tmp_path, src):
+        from ox.cli import parse_file
+
+        p = tmp_path / "log.ox"
+        p.write_text(src)
+        return parse_file(p)
+
+    def test_single_definition(self, tmp_path):
+        log = self._parse_log(
+            tmp_path,
+            "@movement kb-oh-press\n"
+            "equipment: kettlebell\n"
+            "tag: press\n"
+            "url: https://example.com/kb-press\n"
+            "note: keep elbow tight\n"
+            "@end\n",
+        )
+        assert len(log.movement_definitions) == 1
+        m = log.movement_definitions[0]
+        assert m.name == "kb-oh-press"
+        assert m.equipment == "kettlebell"
+        assert m.tags == ("press",)
+        assert m.note == "keep elbow tight"
+        assert m.url == "https://example.com/kb-press"
+
+    def test_tags_plural_comma_separated(self, tmp_path):
+        log = self._parse_log(
+            tmp_path,
+            "@movement squat\nequipment: barbell\ntags: squat, lower\n@end\n",
+        )
+        assert log.movement_definitions[0].tags == ("squat", "lower")
+
+    def test_no_metadata(self, tmp_path):
+        log = self._parse_log(tmp_path, "@movement burpee\n@end\n")
+        m = log.movement_definitions[0]
+        assert m.name == "burpee"
+        assert m.equipment is None
+        assert m.tags == ()
+        assert m.note is None
 
 
 class TestQueryEntryParsing:

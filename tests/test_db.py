@@ -20,6 +20,8 @@ class TestSchema:
             ("table", "sets"),
             ("table", "weigh_ins"),
             ("table", "queries"),
+            ("table", "movement_definitions"),
+            ("table", "movement_tags"),
             ("view", "training"),
         ],
     )
@@ -295,6 +297,54 @@ class TestWeighInsTable:
             "FROM weigh_ins WHERE date = '2025-01-12'"
         ).fetchone()
         assert row == (84.0, "kilogram", "07:00", "gym scale")
+
+
+class TestMovementDefinitionsTable:
+    """Verify movement_definitions and movement_tags are populated."""
+
+    def _db_from_src(self, tmp_path, src):
+        from ox.cli import parse_file
+
+        p = tmp_path / "log.ox"
+        p.write_text(src)
+        return create_db(parse_file(p))
+
+    def test_definition_row_inserted(self, tmp_path):
+        conn = self._db_from_src(
+            tmp_path,
+            "@movement kb-oh-press\n"
+            "equipment: kettlebell\n"
+            "tag: press\n"
+            "url: https://example.com\n"
+            "note: tight elbow\n"
+            "@end\n",
+        )
+        row = conn.execute(
+            "SELECT name, equipment, note, url FROM movement_definitions"
+        ).fetchone()
+        assert row == (
+            "kb-oh-press",
+            "kettlebell",
+            "tight elbow",
+            "https://example.com",
+        )
+        conn.close()
+
+    def test_tags_split_into_rows(self, tmp_path):
+        conn = self._db_from_src(
+            tmp_path,
+            "@movement squat\nequipment: barbell\ntags: squat, lower\n@end\n",
+        )
+        tags = [
+            r[0]
+            for r in conn.execute(
+                "SELECT tag FROM movement_tags mt "
+                "JOIN movement_definitions md ON md.id = mt.movement_definition_id "
+                "WHERE md.name = 'squat' ORDER BY tag"
+            ).fetchall()
+        ]
+        assert tags == ["lower", "squat"]
+        conn.close()
 
 
 class TestQueriesTable:

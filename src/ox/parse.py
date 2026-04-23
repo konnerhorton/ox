@@ -5,6 +5,7 @@ from datetime import datetime
 from ox.data import (
     DATE_FORMAT,
     Movement,
+    MovementDefinition,
     Note,
     StoredQuery,
     TrainingSession,
@@ -266,6 +267,35 @@ def process_query_entry(node: Node) -> StoredQuery:
     return StoredQuery(name=name, sql=sql, date=date)
 
 
+def process_movement_block(node: Node) -> MovementDefinition:
+    """Process a movement_block node into a MovementDefinition."""
+    name = node.child_by_field_name("name").text.decode("utf-8")
+    metadata: dict[str, str] = {}
+    for child in node.children:
+        if child.type != "metadata_line":
+            continue
+        key_node = child.child_by_field_name("key")
+        value_node = child.child_by_field_name("value")
+        if key_node is None or value_node is None:
+            continue
+        metadata[key_node.text.decode("utf-8")] = value_node.text.decode(
+            "utf-8"
+        ).strip()
+
+    tags_raw = metadata.get("tags") or metadata.get("tag")
+    tags: tuple[str, ...] = ()
+    if tags_raw:
+        tags = tuple(t.strip() for t in tags_raw.split(",") if t.strip())
+
+    return MovementDefinition(
+        name=name,
+        equipment=metadata.get("equipment"),
+        tags=tags,
+        note=metadata.get("note"),
+        url=metadata.get("url"),
+    )
+
+
 def process_include_directive(node: Node) -> str:
     """Extract file path from an include_directive node."""
     raw = node.child_by_field_name("path").text.decode("utf-8")
@@ -297,5 +327,7 @@ def process_node(node: Node) -> TrainingSession | Note | StoredQuery | None:
         return process_query_entry(node)
     if node.type == "weigh_in_entry":
         return process_weigh_in_entry(node)
-    # Skip comments, exercise_block, template_block for now
+    if node.type == "movement_block":
+        return process_movement_block(node)
+    # Skip comments, template_block for now
     return None
