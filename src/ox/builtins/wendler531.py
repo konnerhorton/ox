@@ -89,7 +89,7 @@ def wendler531(ctx: PluginContext, movements, unit="lb", start_date=None, rm="tr
             TrainingSession(
                 date=session_date,
                 flag="!",
-                name=f"5/3/1 Week {week_num}",
+                name=f"531-week-{week_num}",
                 movements=tuple(week_movements),
             )
         )
