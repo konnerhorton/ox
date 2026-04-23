@@ -21,7 +21,7 @@
       "name": "comment.line.number-sign.ox"
     },
     "block-keyword": {
-      "match": "^(@session|@exercise|@template|@end)\\b",
+      "match": "^(@session|@movement|@template|@end)\\b",
       "name": "keyword.control.block.ox"
     },
     "include-directive": {
@@ -88,7 +88,7 @@
       }
     },
     "metadata-line": {
-      "match": "^\\s*(equipment|pattern|url|note):\\s*(.*)$",
+      "match": "^\\s*(equipment|tag|tags|url|note):\\s*(.*)$",
       "captures": {
         "1": { "name": "support.type.property-name.ox" },
         "2": { "name": "string.unquoted.ox" }
