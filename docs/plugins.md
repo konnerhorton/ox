@@ -19,7 +19,7 @@ ox> run volume -m deadlift --bin monthly --unit kg
 
 | Param | Default | Options |
 |---|---|---|
-| `-m/--movement` | *required* | exercise name |
+| `-m/--movement` | *required* | movement name |
 | `-b/--bin` | `weekly` | `daily`, `weekly`, `weekly-num`, `monthly` |
 | `-u/--unit` | `lb` | any mass unit |
 
@@ -34,7 +34,7 @@ ox> run e1rm -m squat --formula epley --output plot
 
 | Param | Default | Options |
 |---|---|---|
-| `-m/--movement` | *required* | exercise name |
+| `-m/--movement` | *required* | movement name |
 | `-f/--formula` | `brzycki` | `brzycki`, `epley` |
 | `-u/--unit` | `lb` | any mass unit |
 | `-o/--output` | `table` | `table`, `plot` |

@@ -1,31 +1,32 @@
 # Updates
 
-## Exercise definitions
+## Movement definitions
 
-One thing that should be built in, unilateral exercises should implicitly mean both sides when reps are stated.
+Unilateral exercises should implicitly mean both sides when reps are stated.
 For example, `pistol-squat: 3x4` means I did 3 sets of 4 reps on _each_ leg.
-For now, this will be captured with the work 'unilateral' in a `tag` in the definition
+For now, this will be captured with the word 'unilateral' in a `tag` in the definition
 
-Id also like a way to query these (exercises) meaningfully, maybe a plugin to pull up exercises with certain tags.
+I'd also like a way to query these movements meaningfully, maybe a plugin to pull up exercises with certain tags.
+For now, `query` can be used to pull.
 
 Plugin features:
 
-- Show exercises with specific tags
-- show most used exercises
+- Show movements with specific tags
+- show most used movements
 - show least used
-- show exercises that have not been done in a while, but were at one time popular
+- show movements that have not been done in a while, but were at one time popular
 
 ## Named sessions
 
-A feature I would like eventually is to be able to track progression within a session (and provide the tooling for that tracking).
-By that, I mean if I have a specific circuit, I want to see how my total volume or top weights have changed over time for that session.
+I'd like to be able to track progression within a session (and provide the tooling for that tracking).
+If I have a specific circuit, I want to see how my total volume or top weights have changed over time for that session.
 To do that, we need named sessions, which we have.
-And, some way to track exertion, which we can use [sRPE](#session-rate-of-perceived-scertion).
+And, some way to track exertion, which we can use [sRPE](#session-rate-of-perceived-exertion).
 It would also be good to be able to categorize sessions based on their specific protocol ([protocol metadata](#protocol-metadata)), like emom, tababta, amrap, etc.
-sRPE is definitely a priority between the two, as it is essential in tracking training load over time (without using a device like a heart-rate monitor).
+sRPE is now available via a plugin, so I'll probaly do a similar string/note based plugin for protocol first, them promote it to first-class later once I work out the kinks.
 
 Eventually, I need to build a plugin that allows me to compare across a single named session.
-For a given alt-emom, I want to see how I have progressed over time, mainly based on total volume within the session (I typically do a 30min session).
+For a given alt-emom, I want to see how I have progressed over time, mainly based on total volume within the session and resultant srpe.
 
 ## Session rate of perceived exertion
 
@@ -46,28 +47,22 @@ A 10-minute amrap crossfit session might by quick but feel like an 8 (two steps 
 Using these arbitrary units, I can then track total volume over whatever time period I am interested in.
 Typically that will probably be weeks and months.
 
-### implementation
-
-The larger sessions, where I do emoms, barbell lifts, or bjj training are clear / obvious to use this with.
-The smaller things though, like grip training, rehab work, etc. are more questionable.
-For now, I will not include them, unless I do some max effort grip work (heavy hand etc.)
-
 Syntax is the big question though, should I track these using first class citizens in `ox` or just use something like `spre: "4, PT30M"`
 I'll do the above for now, until I figure out the path forward.
+The srpe builtin provides this in the short term.
 
-## cardio zones
+## Cardio zones
 
-similar to sRPE above, I'd like to track my cardio zones as well for specific runs (and maybe other modalities later on)
-it would be the 1-5 system (don't know what it is call) but mostly using 2-5.
-currently I have a `zone-2-run` movement, I could do that or have a note in the session, I'll stick with this for now.
+Similar to sRPE above, I'd like to track my cardio zones as well for specific runs (and maybe other modalities later on).
+It would be the 1-5 system (don't know what it is call) but mostly using 2-5.
+Currently I have a `zone-2-run` movement, I could do that or have a note in the session, I'll stick with this for now.
 
 For other levels, I'd like to do the norwegian 4x4 method for more vo2 max training, so that'd be zone 4 or 5.
 Measures will be subjective since I do not have a heart rate monitor (and do not want to get one), but I think this will be sufficient.
 I will also use the sRPE scores on these sessions because they will certainly need to be included in the calcs.
-Honestly I probably wont be doing much / any zone 3 as the literature does not seem to suggest its that useful if you are doing a lot of zone 2 and sufficient amounts of 4/5.
-I'd need to determine how Pavel sprints fit into this though, do they count as zone 4-5? THat implies VO2 max increase and I am not so sure that is the case
+Zone 3 is not as important as the literature suggests its not that useful if you are doing a lot of zone 2 and sufficient amounts of 4/5.
 
-## protocol metadata
+## Protocol metadata
 
 I'd like to add metadata to a session, both ad-hoc and standard session so I can know the full layout 3 years from now.
 Items would include EMOM, AMRAP, Alt-EMOM, Tabata, RFT, Ladder, Complex, etc.
