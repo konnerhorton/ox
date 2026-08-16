@@ -184,15 +184,22 @@ module.exports = grammar({
 
     rep_scheme: ($) => /(\d+x\d+)|(\d+(\/\d+)+)/,  // 4x4 or 5/5/5
 
-    // ISO 8601 duration: PT followed by at least one component
-    // Examples: PT30M, PT30M15S, PT1H, PT1H30M, PT1H30M15S, PT30M15.5S
-    duration: ($) => /PT(\d+H(\d+M(\d+(\.\d+)?S)?)?|\d+M(\d+(\.\d+)?S)?|\d+(\.\d+)?S)/,
+    // ISO 8601 duration: PT followed by at least one component.
+    // Single: PT30M, PT30M15S, PT1H, PT1H30M, PT1H30M15S, PT30M15.5S
+    // Progressive (per-set durations): PT30S/PT25S/PT20S
+    duration: ($) => /PT(\d+H(\d+M(\d+(\.\d+)?S)?)?|\d+M(\d+(\.\d+)?S)?|\d+(\.\d+)?S)(\/PT(\d+H(\d+M(\d+(\.\d+)?S)?)?|\d+M(\d+(\.\d+)?S)?|\d+(\.\d+)?S))*/,
 
     // 24-hour time of day with T prefix: T06:30
     time_of_day: ($) => /T\d{2}:\d{2}/,
 
     // Distance units: curated from pint's default_en.txt
-    distance: ($) => /\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)/,
+    // Mass and distance unit sets are disjoint, so the progressive form below
+    // cannot be captured by weight's progressive branch (which requires a mass
+    // unit on its final element).
+    distance: ($) => token(choice(
+      /((\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)?)\/)+(\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi))/,  // progressive (incl. implied units): 100m/200m/400m, 100/200/400m
+      /\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)/  // single: 5km
+    )),
 
     quoted_string: ($) => /"[^"]*"/,
   },

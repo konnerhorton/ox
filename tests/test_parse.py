@@ -182,6 +182,94 @@ class TestDurationToken:
         assert len(diags) > 0
 
 
+def _detail_fields(content: str) -> dict[str, str]:
+    """Parse one entry and return its detail fields as {field_name: text}."""
+    tree, diags = _parse_str(content)
+    assert not diags, f"unexpected syntax error in {content!r}"
+    found = {}
+
+    def walk(node):
+        for i, child in enumerate(node.children):
+            name = node.field_name_for_child(i)
+            if name in ("weight", "duration", "distance", "rep_scheme"):
+                found[name] = child.text.decode("utf-8")
+            walk(child)
+
+    walk(tree.root_node)
+    return found
+
+
+class TestProgressiveDuration:
+    """Grammar accepts /-separated per-set durations."""
+
+    @pytest.mark.parametrize(
+        "duration",
+        ["PT30S/PT25S", "PT30S/PT25S/PT20S", "PT1M/PT45S", "PT1H30M/PT1H"],
+    )
+    def test_accepted(self, duration):
+        fields = _detail_fields(f"2025-01-10 * plank: {duration} 3x1\n")
+        assert fields["duration"] == duration
+
+    def test_single_duration_still_one_token(self):
+        """The progressive form must not fragment the single form."""
+        fields = _detail_fields("2025-01-10 * run: PT30M\n")
+        assert fields["duration"] == "PT30M"
+
+
+class TestProgressiveDistance:
+    """Grammar accepts /-separated per-set distances, with implied units."""
+
+    @pytest.mark.parametrize(
+        "distance",
+        ["100m/200m", "100m/200m/400m", "1km/2km", "100/200/400m", "5/10km"],
+    )
+    def test_accepted(self, distance):
+        fields = _detail_fields(f"2025-01-10 * sprints: {distance} 3x1\n")
+        assert fields["distance"] == distance
+
+    def test_single_distance_still_one_token(self):
+        fields = _detail_fields("2025-01-10 * run: 5km\n")
+        assert fields["distance"] == "5km"
+
+
+class TestDetailFieldCombinations:
+    """Independent detail fields coexist on one line and land in the right slot."""
+
+    @pytest.mark.parametrize(
+        "details,expected",
+        [
+            ("5km PT25M", {"distance": "5km", "duration": "PT25M"}),
+            (
+                "500m PT2M 5x1",
+                {"distance": "500m", "duration": "PT2M", "rep_scheme": "5x1"},
+            ),
+            (
+                "BW PT30S 3x1",
+                {"weight": "BW", "duration": "PT30S", "rep_scheme": "3x1"},
+            ),
+            (
+                "45lb PT30S 3x1",
+                {"weight": "45lb", "duration": "PT30S", "rep_scheme": "3x1"},
+            ),
+        ],
+    )
+    def test_fields_land_correctly(self, details, expected):
+        assert _detail_fields(f"2025-01-10 * x: {details}\n") == expected
+
+    @pytest.mark.parametrize(
+        "details,expected",
+        [
+            ("24kg/32kg/48kg 3x5", "24kg/32kg/48kg"),
+            ("160/185/210lb 3x5", "160/185/210lb"),
+            ("BW/25lb 2x5", "BW/25lb"),
+            ("24kg+32kg 3x5", "24kg+32kg"),
+        ],
+    )
+    def test_weight_forms_unaffected(self, details, expected):
+        """Adding progressive distance must not poach weight's progressive forms."""
+        assert _detail_fields(f"2025-01-10 * squat: {details}\n")["weight"] == expected
+
+
 class TestWeighInEntry:
     """Grammar accepts weigh-in forms without producing diagnostics."""
 
