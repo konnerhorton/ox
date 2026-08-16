@@ -5,7 +5,13 @@ Uses a custom tree-sitter grammar to parse `.ox` log files into structured data 
 
 ## Usage Notes
 - `SPEC.md` is your guide for the goals, non-goals, and roadmap for this repo.
-- If you edit `tree-sitter-ox/grammar.js` run `cd tree-sitter-ox && tree-sitter generate && cd ..` then reinstall with `uv cache clean tree-sitter-ox && uv sync`. The cache clean is required because uv caches built wheels by version number and won't rebuild the C extension otherwise.
+- If you edit `tree-sitter-ox/grammar.js`, regenerate and reinstall:
+  ```bash
+  cd tree-sitter-ox && tree-sitter generate && cd ..
+  uv sync --reinstall-package tree-sitter-ox
+  ```
+  uv keys built wheels by version number, so it will not rebuild the C extension on its own — the package version never changes. `uv cache clean tree-sitter-ox && uv sync` is **not** sufficient: `uv sync` audits, sees the version already installed, and skips the rebuild. `--reinstall-package` is what forces it.
+- Symptom of a stale C extension: a large, scattered wave of "Syntax error" diagnostic failures across `test_parse`/`test_db`/`test_integration` while `git status` is clean and `grammar.js` visibly contains the rule being rejected. Reinstall before investigating further.
 
 ## Commands
 
