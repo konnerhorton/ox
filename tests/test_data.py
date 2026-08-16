@@ -9,7 +9,7 @@ Testing philosophy:
 from pathlib import Path
 
 import pytest
-from datetime import date, time
+from datetime import date, time, timedelta
 from ox.data import TrainingSet, Movement, TrainingSession, TrainingLog, WeighIn
 from ox.units import ureg
 
@@ -64,6 +64,46 @@ class TestTrainingSet:
         # Volume = reps * weight
         expected_volume = 5 * 24 * ureg.kilogram
         assert training_set.volume == expected_volume
+
+    def test_defaults_are_none(self):
+        """duration and distance are optional and default to None."""
+        training_set = TrainingSet(reps=5)
+        assert training_set.duration is None
+        assert training_set.distance is None
+
+    def test_duration_set(self):
+        """An isometric hold: reps=1 with a duration."""
+        training_set = TrainingSet(reps=1, duration=timedelta(seconds=30))
+        assert training_set.duration == timedelta(seconds=30)
+        assert training_set.weight is None
+
+    def test_weighted_duration_set(self):
+        """Weight and duration co-occur (weighted-plank: 45lb PT30S 3x1)."""
+        training_set = TrainingSet(
+            reps=1, weight=45 * ureg.pound, duration=timedelta(seconds=30)
+        )
+        assert training_set.weight == 45 * ureg.pound
+        assert training_set.duration == timedelta(seconds=30)
+        # Volume still derives from reps * weight only
+        assert training_set.volume == 45 * ureg.pound
+
+    def test_distance_set(self):
+        """A distance-only set (run: 5km)."""
+        training_set = TrainingSet(reps=1, distance=5 * ureg.kilometer)
+        assert training_set.distance == 5 * ureg.kilometer
+
+    def test_all_fields_co_occur(self):
+        """No invariant forbids reps, weight, duration, and distance together."""
+        training_set = TrainingSet(
+            reps=1,
+            weight=20 * ureg.pound,
+            duration=timedelta(minutes=2),
+            distance=500 * ureg.meter,
+        )
+        assert training_set.reps == 1
+        assert training_set.weight == 20 * ureg.pound
+        assert training_set.duration == timedelta(minutes=2)
+        assert training_set.distance == 500 * ureg.meter
 
 
 class TestMovement:

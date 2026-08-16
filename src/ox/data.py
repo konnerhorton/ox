@@ -1,7 +1,7 @@
 """Data structures for training logs."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 from typing import Optional, List, Iterator
 from pint import Quantity
 
@@ -80,13 +80,21 @@ class Entry:
 class TrainingSet:
     """A single set of an exercise.
 
+    The four attributes are independent and may co-occur: a set can carry reps,
+    weight, duration, and distance at once (e.g. `row: 500m PT2M 5x1`).
+
     Attributes:
-        reps: Number of repetitions
+        reps: Number of repetitions. Always present; a movement with no rep
+            scheme yields a single set of reps=1.
         weight: Weight used (optional), assumes bodyweight if no weight listed
+        duration: Time under load for this set (optional), e.g. an isometric hold
+        distance: Distance covered in this set (optional)
     """
 
     reps: int
     weight: Optional[Quantity] = None
+    duration: Optional[timedelta] = None
+    distance: Optional[Quantity] = None
 
     @property
     def volume(self) -> Optional[Quantity]:
