@@ -1,7 +1,8 @@
 """Parse tree-sitter nodes into training data structures."""
 
 from tree_sitter import Node
-from datetime import datetime
+from datetime import datetime, timedelta
+from ox.duration import parse_iso_duration
 from ox.data import (
     DATE_FORMAT,
     Movement,
@@ -58,21 +59,70 @@ def get_note_text(node: Node) -> str:
     return node.child_by_field_name("text").text.decode("utf-8").strip('"')
 
 
-def weight_text_to_quantity(weight_text: str) -> Quantity:
-    """Convert weight string like "24kg" to Quantity."""
-    match = re.match(r"^(\d+(?:\.\d+)?)(\w+)$", weight_text)
-    if match:
-        magnitude = float(match[1])
-        unit_str = match[2]
-        try:
-            unit = ureg.parse_units(unit_str)
-            if not unit.dimensionality == ureg.kilogram.dimensionality:
-                return None
-            return magnitude * unit
-        except Exception:
-            return None
-    else:
+def _text_to_quantity(text: str, dimension: str) -> Quantity | None:
+    """Convert a "<number><unit>" string to a Quantity of the given dimension.
+
+    The unit is preserved as written — "135lb" stays in pounds, "5mi" in miles.
+    Only the dimension is constrained, and dimensions are unit-system agnostic,
+    so imperial and metric units are equally accepted.
+
+    Args:
+        text: A magnitude immediately followed by a unit, e.g. "24kg" or "5km"
+        dimension: Required pint dimension, "[mass]" or "[length]"
+
+    Returns:
+        The Quantity, or None if malformed, unknown, or the wrong dimension
+    """
+    match = re.match(r"^(\d+(?:\.\d+)?)(\w+)$", text)
+    if not match:
         return None
+    magnitude = float(match[1])
+    unit_str = match[2]
+    try:
+        unit = ureg.parse_units(unit_str)
+        if not unit.dimensionality == dimension:
+            return None
+        return magnitude * unit
+    except Exception:
+        return None
+
+
+def weight_text_to_quantity(weight_text: str) -> Quantity:
+    """Convert weight string like "24kg" or "135lb" to Quantity."""
+    return _text_to_quantity(weight_text, "[mass]")
+
+
+def distance_text_to_quantity(distance_text: str) -> Quantity:
+    """Convert distance string like "5km" or "3mi" to Quantity."""
+    return _text_to_quantity(distance_text, "[length]")
+
+
+def _resolve_implied_units(segments: list[str], is_special) -> list[str]:
+    """Resolve omitted units in a progressive sequence.
+
+    A segment without a unit inherits the nearest succeeding unit, so
+    "160/185/210lb" resolves to ["160lb", "185lb", "210lb"]. Segments for which
+    is_special() returns True pass through untouched.
+    """
+    carried_unit = None
+    resolved = [None] * len(segments)
+    for i in range(len(segments) - 1, -1, -1):
+        segment = segments[i]
+        if is_special(segment):
+            resolved[i] = segment
+            continue
+        m = re.match(r"^(\d+(?:\.\d+)?)(\w+)?$", segment)
+        if not m:
+            resolved[i] = segment
+            continue
+        num, unit = m.group(1), m.group(2)
+        if unit is None:
+            # No succeeding unit to inherit: leave as-is, fails downstream.
+            resolved[i] = segment if carried_unit is None else f"{num}{carried_unit}"
+        else:
+            carried_unit = unit
+            resolved[i] = segment
+    return resolved
 
 
 def process_weights(weight_str: str) -> list[Quantity]:
@@ -84,28 +134,10 @@ def process_weights(weight_str: str) -> list[Quantity]:
     nearest succeeding unit. E.g. "160/185/210lb" → three lb weights;
     "60/70kg/160/180lb" → [60kg, 70kg, 160lb, 180lb].
     """
-    weight_str_split = weight_str.split("/")
-    # Right-to-left pass to resolve implied units.
-    carried_unit = None
-    resolved = [None] * len(weight_str_split)
-    for i in range(len(weight_str_split) - 1, -1, -1):
-        w = weight_str_split[i]
-        if w == "BW" or "+" in w:
-            resolved[i] = w
-            continue
-        m = re.match(r"^(\d+(?:\.\d+)?)(\w+)?$", w)
-        if not m:
-            resolved[i] = w
-            continue
-        num, unit = m.group(1), m.group(2)
-        if unit is None:
-            if carried_unit is None:
-                resolved[i] = w  # will fail to parse downstream
-            else:
-                resolved[i] = f"{num}{carried_unit}"
-        else:
-            carried_unit = unit
-            resolved[i] = w
+    resolved = _resolve_implied_units(
+        weight_str.split("/"),
+        is_special=lambda w: w == "BW" or "+" in w,
+    )
 
     weight_objs = []
     for w in resolved:
@@ -119,8 +151,36 @@ def process_weights(weight_str: str) -> list[Quantity]:
     return weight_objs
 
 
+def process_distances(distance_str: str) -> list[Quantity]:
+    """Parse distance string into list of Quantity objects.
+
+    Handles "5km" and progressive forms like "100m/200m/400m". As with weights,
+    a segment may omit its unit and inherits the nearest succeeding one, so
+    "100/200/400m" → three metre distances.
+    """
+    resolved = _resolve_implied_units(
+        distance_str.split("/"),
+        is_special=lambda d: False,
+    )
+    return [distance_text_to_quantity(d) for d in resolved]
+
+
+def process_durations(duration_str: str) -> list[timedelta]:
+    """Parse duration string into list of timedeltas.
+
+    Handles "PT30M" and progressive forms like "PT30S/PT25S/PT20S".
+    """
+    return [parse_iso_duration(d) for d in duration_str.split("/")]
+
+
 def process_details(details: dict[str, str]) -> tuple[list[TrainingSet], str | None]:
     """Parse item details into training sets and notes.
+
+    The rep scheme determines the set count when present. Otherwise the count is
+    the longest of the progressive weight/duration/distance lists, defaulting to
+    a single set — so "run: PT30M" is one 30-minute set. Each of weight,
+    duration, and distance broadcasts across the sets: given once it applies to
+    all, given as a /-list it maps per set.
 
     Args:
         details: Dict of detail field names to values
@@ -128,32 +188,51 @@ def process_details(details: dict[str, str]) -> tuple[list[TrainingSet], str | N
     Returns:
         Tuple of (sets, note)
     """
-    weights = None
-    reps = None
     note = None
-    sets = []
-    if "rep_scheme" in details.keys():
-        reps_raw = details["rep_scheme"]
-        if "/" in reps_raw:
-            reps = [int(r) for r in details["rep_scheme"].split("/")]
-        elif "x" in reps_raw:
-            s, r = reps_raw.split("x")
-            reps = [int(r) for i in range(int(s))]
-
-    if "weight" in details.keys():
-        weights = process_weights(details["weight"])
-    if weights and reps:
-        if len(weights) > 1 and len(weights) != len(reps):
-            print("potentially incomplete entry, assume same weight across sets")
-        for i, r in enumerate(reps):
-            training_set = TrainingSet(reps=r, weight=get_or_last(weights, i))
-            sets.append(training_set)
     if "note" in details.keys():
         note = re.sub(
             "'|\"",
             "",
             details["note"],
         ).strip()
+
+    reps = None
+    if "rep_scheme" in details.keys():
+        reps_raw = details["rep_scheme"]
+        if "/" in reps_raw:
+            reps = [int(r) for r in reps_raw.split("/")]
+        elif "x" in reps_raw:
+            s, r = reps_raw.split("x")
+            reps = [int(r) for _ in range(int(s))]
+
+    weights = process_weights(details["weight"]) if "weight" in details else None
+    durations = (
+        process_durations(details["duration"]) if "duration" in details else None
+    )
+    distances = (
+        process_distances(details["distance"]) if "distance" in details else None
+    )
+
+    measures = [m for m in (weights, durations, distances) if m]
+    if reps is not None:
+        set_count = len(reps)
+        if any(len(m) > 1 and len(m) != set_count for m in measures):
+            print("potentially incomplete entry, assume same value across sets")
+    elif measures:
+        # No rep scheme: one set per progressive value, each a single rep.
+        set_count = max(len(m) for m in measures)
+    else:
+        return [], note
+
+    sets = [
+        TrainingSet(
+            reps=get_or_last(reps, i) if reps is not None else 1,
+            weight=get_or_last(weights, i) if weights else None,
+            duration=get_or_last(durations, i) if durations else None,
+            distance=get_or_last(distances, i) if distances else None,
+        )
+        for i in range(set_count)
+    ]
 
     return sets, note
 

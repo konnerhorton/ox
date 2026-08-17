@@ -7,8 +7,15 @@ Testing philosophy:
 """
 
 import pytest
+from datetime import timedelta
 
-from ox.parse import weight_text_to_quantity, process_weights
+from ox.parse import (
+    weight_text_to_quantity,
+    process_weights,
+    process_distances,
+    process_durations,
+    process_details,
+)
 from ox.units import ureg
 
 
@@ -140,18 +147,147 @@ class TestProcessWeights:
         assert result[1] == 25 * ureg.pound
 
 
-class TestRepSchemes:
-    """Test parsing rep schemes.
+class TestProcessDistances:
+    """Test parsing distance strings into lists of Quantity objects."""
 
-    Rep schemes can be:
-    - 5x5 means 5 sets of 5 reps
-    - 5/5/5 means 3 sets with 5 reps each
-    - 5/3/1 means 3 sets with different reps
+    def test_single_distance(self):
+        result = process_distances("5km")
+        assert result == [5 * ureg.kilometer]
+
+    def test_imperial_distance(self):
+        """Distance is dimension-checked, not metric-only."""
+        assert process_distances("3mi") == [3 * ureg.mile]
+
+    def test_progressive_explicit_units(self):
+        result = process_distances("100m/200m/400m")
+        assert result == [100 * ureg.meter, 200 * ureg.meter, 400 * ureg.meter]
+
+    def test_progressive_implied_unit(self):
+        """Unitless segments inherit the nearest succeeding unit."""
+        result = process_distances("100/200/400m")
+        assert result == [100 * ureg.meter, 200 * ureg.meter, 400 * ureg.meter]
+
+    def test_mass_unit_rejected(self):
+        """A mass where a length belongs yields None, not a wrong-dimension value."""
+        assert process_distances("24kg") == [None]
+
+
+class TestProcessDurations:
+    """Test parsing duration strings into lists of timedeltas."""
+
+    def test_single_duration(self):
+        assert process_durations("PT30M") == [timedelta(minutes=30)]
+
+    def test_progressive(self):
+        result = process_durations("PT30S/PT25S/PT20S")
+        assert result == [
+            timedelta(seconds=30),
+            timedelta(seconds=25),
+            timedelta(seconds=20),
+        ]
+
+
+class TestProcessDetails:
+    """Test assembling detail fields into TrainingSets.
+
+    Set count comes from the rep scheme when present; otherwise from the longest
+    progressive list, defaulting to a single set. Weight, duration, and distance
+    each broadcast across the set count.
     """
 
-    # Note: These tests would require importing process_details or a higher-level
-    # parsing function. Skipping for now since the main pain point is weights.
-    # Can add if needed.
+    def test_rep_scheme_nxr(self):
+        sets, _ = process_details({"weight": "185lb", "rep_scheme": "3x5"})
+        assert len(sets) == 3
+        assert all(s.reps == 5 and s.weight == 185 * ureg.pound for s in sets)
+
+    def test_rep_scheme_per_set(self):
+        sets, _ = process_details({"weight": "185lb", "rep_scheme": "5/5/3"})
+        assert [s.reps for s in sets] == [5, 5, 3]
+
+    def test_weight_broadcasts_across_sets(self):
+        sets, _ = process_details({"weight": "24kg/32kg", "rep_scheme": "2x5"})
+        assert [s.weight for s in sets] == [24 * ureg.kilogram, 32 * ureg.kilogram]
+
+    def test_duration_only_yields_one_set(self):
+        """run: PT30M — previously produced zero sets."""
+        sets, _ = process_details({"duration": "PT30M"})
+        assert len(sets) == 1
+        assert sets[0].reps == 1
+        assert sets[0].duration == timedelta(minutes=30)
+        assert sets[0].weight is None
+
+    def test_duration_broadcasts_across_rep_scheme(self):
+        """plank: BW PT30S 3x1 — three identical holds."""
+        sets, _ = process_details(
+            {"weight": "BW", "duration": "PT30S", "rep_scheme": "3x1"}
+        )
+        assert len(sets) == 3
+        assert all(s.duration == timedelta(seconds=30) for s in sets)
+        assert all(s.weight is None for s in sets)
+
+    def test_weight_and_duration_co_occur(self):
+        """weighted-plank: 45lb PT30S 3x1."""
+        sets, _ = process_details(
+            {"weight": "45lb", "duration": "PT30S", "rep_scheme": "3x1"}
+        )
+        assert len(sets) == 3
+        assert all(s.weight == 45 * ureg.pound for s in sets)
+        assert all(s.duration == timedelta(seconds=30) for s in sets)
+
+    def test_distance_and_duration_co_occur(self):
+        """run: 5km PT25M — one set carrying both."""
+        sets, _ = process_details({"distance": "5km", "duration": "PT25M"})
+        assert len(sets) == 1
+        assert sets[0].distance == 5 * ureg.kilometer
+        assert sets[0].duration == timedelta(minutes=25)
+
+    def test_all_fields_together(self):
+        """row: 500m PT2M 5x1."""
+        sets, _ = process_details(
+            {"distance": "500m", "duration": "PT2M", "rep_scheme": "5x1"}
+        )
+        assert len(sets) == 5
+        assert all(
+            s.reps == 1
+            and s.distance == 500 * ureg.meter
+            and s.duration == timedelta(minutes=2)
+            for s in sets
+        )
+
+    def test_progressive_duration_sets_count_without_rep_scheme(self):
+        """Set count falls back to the longest progressive list."""
+        sets, _ = process_details({"duration": "PT30S/PT25S/PT20S"})
+        assert [s.duration for s in sets] == [
+            timedelta(seconds=30),
+            timedelta(seconds=25),
+            timedelta(seconds=20),
+        ]
+
+    def test_progressive_distance_maps_per_set(self):
+        sets, _ = process_details({"distance": "100m/200m/400m", "rep_scheme": "3x1"})
+        assert [s.distance for s in sets] == [
+            100 * ureg.meter,
+            200 * ureg.meter,
+            400 * ureg.meter,
+        ]
+
+    def test_note_only_yields_no_sets(self):
+        """A movement with only a note has nothing to measure."""
+        sets, note = process_details({"note": '"felt easy"'})
+        assert sets == []
+        assert note == "felt easy"
+
+    def test_empty_details_yields_no_sets(self):
+        sets, note = process_details({})
+        assert sets == []
+        assert note is None
+
+    def test_note_extracted_alongside_sets(self):
+        sets, note = process_details(
+            {"weight": "185lb", "rep_scheme": "3x5", "note": '"felt strong"'}
+        )
+        assert len(sets) == 3
+        assert note == "felt strong"
 
 
 def _parse_str(content: str):
