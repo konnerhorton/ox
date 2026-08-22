@@ -4,8 +4,9 @@ import sqlite3
 
 import pytest
 
+from ox.cli import parse_file
 from ox.data import TrainingLog
-from ox.db import create_db, _decompose_weight
+from ox.db import create_db, _decompose_quantity
 from ox.units import ureg
 
 
@@ -38,23 +39,33 @@ class TestSchema:
             )
 
 
-class TestDecomposeWeight:
-    """Verify _decompose_weight splits Quantity objects correctly."""
+class TestDecomposeQuantity:
+    """Verify _decompose_quantity splits Quantity objects correctly."""
 
     def test_kg(self):
-        mag, unit = _decompose_weight(24.0 * ureg.kilogram)
+        mag, unit = _decompose_quantity(24.0 * ureg.kilogram)
         assert mag == 24.0
         assert unit == "kilogram"
 
     def test_lbs(self):
-        mag, unit = _decompose_weight(135.0 * ureg.pounds)
+        mag, unit = _decompose_quantity(135.0 * ureg.pounds)
         assert mag == 135.0
         assert unit == "pound"
 
     def test_bodyweight_none(self):
-        mag, unit = _decompose_weight(None)
+        mag, unit = _decompose_quantity(None)
         assert mag is None
         assert unit is None
+
+    def test_metric_distance(self):
+        mag, unit = _decompose_quantity(500.0 * ureg.meter)
+        assert mag == 500.0
+        assert unit == "meter"
+
+    def test_imperial_distance(self):
+        mag, unit = _decompose_quantity(3.0 * ureg.mile)
+        assert mag == 3.0
+        assert unit == "mile"
 
 
 class TestDataLoading:
@@ -184,6 +195,9 @@ class TestTrainingView:
             "reps",
             "weight_magnitude",
             "weight_unit",
+            "duration_seconds",
+            "distance_magnitude",
+            "distance_unit",
         ]
 
     def test_filter_by_movement_name(self, simple_db):
@@ -217,6 +231,65 @@ class TestEdgeCases:
         ).fetchall()
         assert len(rows) >= 1
         assert isinstance(rows[0][0], str)
+
+
+class TestDurationAndDistanceColumns:
+    """Duration and distance land on sets and are exposed through the view."""
+
+    @pytest.fixture
+    def measures_db(self, tmp_path):
+        f = tmp_path / "measures.ox"
+        f.write_text(
+            "2025-01-10 * run: 5km PT25M\n"
+            "2025-01-11 * plank: PT30S/PT25S/PT20S\n"
+            "2025-01-12 * sprints: 3mi 2x1\n"
+            "2025-01-13 * bench-press: 135lb 5x5\n"
+        )
+        conn = create_db(parse_file(f))
+        yield conn
+        conn.close()
+
+    def test_distance_and_duration_together(self, measures_db):
+        row = measures_db.execute(
+            "SELECT reps, duration_seconds, distance_magnitude, distance_unit"
+            " FROM training WHERE movement_name = 'run'"
+        ).fetchone()
+        assert row == (1, 1500.0, 5.0, "kilometer")
+
+    def test_progressive_duration_is_per_row(self, measures_db):
+        rows = measures_db.execute(
+            "SELECT duration_seconds FROM training WHERE movement_name = 'plank'"
+            " ORDER BY set_id"
+        ).fetchall()
+        assert [r[0] for r in rows] == [30.0, 25.0, 20.0]
+
+    def test_distance_unit_preserved(self, measures_db):
+        """Imperial units are stored as written, not converted."""
+        rows = measures_db.execute(
+            "SELECT distance_magnitude, distance_unit, duration_seconds"
+            " FROM training WHERE movement_name = 'sprints'"
+        ).fetchall()
+        assert rows == [(3.0, "mile", None), (3.0, "mile", None)]
+
+    def test_null_when_absent(self, measures_db):
+        rows = measures_db.execute(
+            "SELECT DISTINCT duration_seconds, distance_magnitude, distance_unit"
+            " FROM training WHERE movement_name = 'bench-press'"
+        ).fetchall()
+        assert rows == [(None, None, None)]
+
+    def test_reps_still_required(self, measures_db):
+        with pytest.raises(sqlite3.IntegrityError):
+            measures_db.execute(
+                "INSERT INTO sets (movement_id, duration_seconds) VALUES (1, 30.0)"
+            )
+
+    def test_example_log_has_timed_sets(self, example_db):
+        """The example log's `run: PT30M` lines reach the database."""
+        count = example_db.execute(
+            "SELECT COUNT(*) FROM training WHERE duration_seconds IS NOT NULL"
+        ).fetchone()[0]
+        assert count > 0
 
 
 class TestUserQueries:
