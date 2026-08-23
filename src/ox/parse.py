@@ -59,6 +59,30 @@ def get_note_text(node: Node) -> str:
     return node.child_by_field_name("text").text.decode("utf-8").strip('"')
 
 
+def get_srpe(
+    raw_entry: Node,
+) -> tuple[int | None, timedelta | None, str | None]:
+    """Extract the session RPE from a session block's `srpe_line`, if it has one.
+
+    Returns:
+        Tuple of (rating, duration, note), all None when the block has no
+        srpe_line. The rating node's text carries the keyword ("srpe: 5"),
+        since the grammar fuses them into one token — see grammar.js.
+    """
+    line = next((c for c in raw_entry.children if c.type == "srpe_line"), None)
+    if line is None:
+        return None, None, None
+
+    rating_text = line.child_by_field_name("rating").text.decode("utf-8")
+    rating = int(rating_text.split(":", 1)[1])
+    duration = parse_iso_duration(
+        line.child_by_field_name("duration").text.decode("utf-8")
+    )
+    note_node = line.child_by_field_name("note")
+    note = note_node.text.decode("utf-8").strip('"') if note_node else None
+    return rating, duration, note
+
+
 def _text_to_quantity(text: str, dimension: str) -> Quantity | None:
     """Convert a "<number><unit>" string to a Quantity of the given dimension.
 
@@ -255,11 +279,17 @@ def process_singleline_completed_session(
 
 def process_session_block_completed(
     raw_entry: Node,
-) -> tuple[datetime.date, str, list[Movement], tuple[Note, ...]]:
+) -> tuple[
+    datetime.date,
+    str,
+    list[Movement],
+    tuple[Note, ...],
+    tuple[int | None, timedelta | None, str | None],
+]:
     """Process a completed session block.
 
     Returns:
-        Tuple of (date, name, movements, notes)
+        Tuple of (date, name, movements, notes, srpe)
     """
     movements = []
     date = get_date(raw_entry)
@@ -272,7 +302,7 @@ def process_session_block_completed(
         movements.append(Movement(name=item, sets=sets, note=note))
     note_lines = [c for c in raw_entry.children if c.type == "note_line"]
     notes = tuple(Note(text=get_note_text(n)) for n in note_lines)
-    return date, name, movements, notes
+    return date, name, movements, notes, get_srpe(raw_entry)
 
 
 def process_singleline_entry(raw_entry: Node) -> TrainingSession | None:
@@ -309,9 +339,17 @@ def process_session_block(raw_entry: Node) -> TrainingSession | None:
     flag = get_flag(raw_entry)
 
     if flag in ["*", "!"]:
-        date, name, movements, notes = process_session_block_completed(raw_entry)
+        date, name, movements, notes, srpe = process_session_block_completed(raw_entry)
+        srpe_rating, srpe_duration, srpe_note = srpe
         return TrainingSession(
-            name=name, flag=flag, date=date, movements=tuple(movements), notes=notes
+            name=name,
+            flag=flag,
+            date=date,
+            movements=tuple(movements),
+            notes=notes,
+            srpe_rating=srpe_rating,
+            srpe_duration=srpe_duration,
+            srpe_note=srpe_note,
         )
     else:
         return process_session_block_pending(raw_entry)

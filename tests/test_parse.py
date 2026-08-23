@@ -501,6 +501,61 @@ class TestSrpeLine:
         assert kinds == ["item_line"]
 
 
+def _parse_session(content: str):
+    """Parse a .ox string and return its first TrainingSession."""
+    import tempfile
+    from pathlib import Path as _Path
+    from ox.cli import parse_file
+
+    f = _Path(tempfile.mktemp(suffix=".ox"))
+    f.write_text(content)
+    return parse_file(f).sessions[0]
+
+
+class TestSrpeParsing:
+    """srpe_line populates the session's srpe fields."""
+
+    def test_rating_and_duration(self):
+        session = _parse_session(_session("srpe: 5 PT45M", "squat: 155lb 4x5"))
+        assert session.srpe_rating == 5
+        assert session.srpe_duration == timedelta(minutes=45)
+        assert session.srpe_note is None
+
+    def test_note_is_unquoted(self):
+        session = _parse_session(_session('srpe: 5 PT45M "felt strong"'))
+        assert session.srpe_note == "felt strong"
+
+    def test_rating_keyword_is_stripped(self):
+        """The grammar hands over "srpe: 10", not "10"."""
+        assert _parse_session(_session("srpe: 10 PT45M")).srpe_rating == 10
+
+    def test_no_space_after_keyword(self):
+        assert _parse_session(_session("srpe:7 PT45M")).srpe_rating == 7
+
+    def test_absent_srpe_leaves_fields_none(self):
+        session = _parse_session(_session("squat: 155lb 4x5"))
+        assert session.srpe_rating is None
+        assert session.srpe_duration is None
+        assert session.srpe_note is None
+
+    def test_movements_and_notes_unaffected(self):
+        session = _parse_session(
+            _session("srpe: 5 PT45M", "squat: 155lb 4x5", 'note: "good day"')
+        )
+        assert [m.name for m in session.movements] == ["squat"]
+        assert [n.text for n in session.notes] == ["good day"]
+
+    def test_srpe_position_does_not_matter(self):
+        session = _parse_session(_session("squat: 155lb 4x5", "srpe: 6 PT30M"))
+        assert session.srpe_rating == 6
+
+    def test_old_movement_hack_is_not_read_as_srpe(self):
+        """`srpe: "5; PT45M"` stays a movement until slice C retires it."""
+        session = _parse_session(_session('srpe: "5; PT45M"'))
+        assert session.srpe_rating is None
+        assert [m.name for m in session.movements] == ["srpe"]
+
+
 class TestWeighInEntry:
     """Grammar accepts weigh-in forms without producing diagnostics."""
 

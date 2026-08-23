@@ -285,11 +285,17 @@ class TrainingSession(Entry):
         movements: Tuple of Movement objects
         date: Inherited from Entry
         flag: Inherited from Entry
+        srpe_rating: Session RPE, 1-10 perceived exertion for the whole session
+        srpe_duration: Wall-clock length of the session
+        srpe_note: Freeform comment on the session's exertion
     """
 
     name: str = field()
     movements: tuple[Movement, ...]
     notes: tuple[Note, ...] = ()
+    srpe_rating: Optional[int] = None
+    srpe_duration: Optional[timedelta] = None
+    srpe_note: Optional[str] = None
 
     def to_ox(self) -> str:
         """Serialize to ox format string."""
@@ -299,6 +305,11 @@ class TrainingSession(Entry):
         else:
             lines = ["@session"]
             lines.append(f"{date_str} {self.flag} {self.name}")
+            if self.srpe_rating is not None:
+                srpe = f"srpe: {self.srpe_rating} {format_iso_duration(self.srpe_duration)}"
+                if self.srpe_note:
+                    srpe += f' "{self.srpe_note}"'
+                lines.append(srpe)
             for n in self.notes:
                 lines.append(f'note: "{n.text}"')
             for m in self.movements:

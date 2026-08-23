@@ -405,6 +405,60 @@ class TestToOxDurationDistance:
         assert [s.duration for s in m.sets] == [timedelta(seconds=30)] * 3
 
 
+class TestSessionSrpe:
+    """TrainingSession carries sRPE and emits it from to_ox()."""
+
+    def _session(self, **kwargs):
+        m = Movement(name="squat", sets=[TrainingSet(reps=5)], note=None)
+        kwargs.setdefault("name", "Lower Strength")
+        return TrainingSession(
+            date=date(2025, 1, 6), flag="*", movements=(m,), **kwargs
+        )
+
+    def test_fields_default_to_none(self):
+        s = self._session()
+        assert s.srpe_rating is None
+        assert s.srpe_duration is None
+        assert s.srpe_note is None
+
+    def test_emits_srpe_line(self):
+        s = self._session(srpe_rating=5, srpe_duration=timedelta(minutes=45))
+        assert "srpe: 5 PT45M" in s.to_ox()
+
+    def test_emits_note(self):
+        s = self._session(
+            srpe_rating=5,
+            srpe_duration=timedelta(minutes=45),
+            srpe_note="felt strong",
+        )
+        assert 'srpe: 5 PT45M "felt strong"' in s.to_ox()
+
+    def test_omitted_when_absent(self):
+        assert "srpe" not in self._session().to_ox()
+
+    def test_line_precedes_movements_and_notes(self):
+        s = self._session(srpe_rating=5, srpe_duration=timedelta(minutes=45))
+        lines = s.to_ox().split("\n")
+        assert lines[2].startswith("srpe:")
+
+    def test_round_trip(self):
+        import tempfile
+        from ox.cli import parse_file
+
+        s = self._session(
+            srpe_rating=8,
+            srpe_duration=timedelta(hours=1, minutes=30),
+            srpe_note="brutal",
+        )
+        f = Path(tempfile.mktemp(suffix=".ox"))
+        f.write_text(s.to_ox() + "\n")
+        parsed = parse_file(f).sessions[0]
+        assert parsed.srpe_rating == 8
+        assert parsed.srpe_duration == timedelta(hours=1, minutes=30)
+        assert parsed.srpe_note == "brutal"
+        assert parsed.to_ox() == s.to_ox()
+
+
 class TestTrainingLog:
     """Test TrainingLog query methods."""
 
