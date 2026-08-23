@@ -12,7 +12,7 @@ SCHEMA = """
 CREATE TABLE sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT NOT NULL,
-    flag TEXT NOT NULL,
+    completed INTEGER NOT NULL DEFAULT 1,
     name TEXT
 );
 
@@ -82,7 +82,7 @@ CREATE VIEW training AS
 SELECT
     s.id AS session_id,
     s.date,
-    s.flag,
+    s.completed,
     s.name AS session_name,
     m.id AS movement_id,
     m.name AS movement_name,
@@ -129,8 +129,8 @@ def create_db(log: TrainingLog) -> sqlite3.Connection:
 
     for session in log.sessions:
         cursor = conn.execute(
-            "INSERT INTO sessions (date, flag, name) VALUES (?, ?, ?)",
-            (session.date.isoformat(), session.flag, session.name),
+            "INSERT INTO sessions (date, completed, name) VALUES (?, ?, ?)",
+            (session.date.isoformat(), int(session.completed), session.name),
         )
         session_id = cursor.lastrowid
 

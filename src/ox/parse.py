@@ -28,6 +28,14 @@ def get_flag(raw_entry: Node) -> str:
     return raw_entry.child_by_field_name("flag").text.decode("utf-8")
 
 
+def flag_to_completed(flag: str) -> bool:
+    """Map the grammar's `*` / `!` flag onto the completed bool.
+
+    Transitional: slice C replaces the flag with an explicit `completed:` line.
+    """
+    return flag == "*"
+
+
 def get_name(raw_entry: Node) -> str:
     """Extract session name from node."""
     return raw_entry.child_by_field_name("name").text.decode("utf-8").strip().strip('"')
@@ -316,13 +324,16 @@ def process_singleline_entry(raw_entry: Node) -> TrainingSession | None:
     if flag in ["*", "!"]:
         date, movement = process_singleline_completed_session(raw_entry)
         return TrainingSession(
-            name=movement[0].name, date=date, flag=flag, movements=movement
+            name=movement[0].name,
+            date=date,
+            completed=flag_to_completed(flag),
+            movements=movement,
         )
     return None
 
 
 def process_session_block_pending(raw_entry: Node) -> TrainingSession | None:
-    """Process a pending session block (flag='!').
+    """Process a pending session block (completed=False).
 
     Deferred: planned sessions are parsed but not materialized for analysis.
     See SPEC.md "What's incomplete".
@@ -343,7 +354,7 @@ def process_session_block(raw_entry: Node) -> TrainingSession | None:
         srpe_rating, srpe_duration, srpe_note = srpe
         return TrainingSession(
             name=name,
-            flag=flag,
+            completed=flag_to_completed(flag),
             date=date,
             movements=tuple(movements),
             notes=notes,

@@ -36,7 +36,7 @@ class TestParseFile:
         # Check first session (single-line entry)
         session1 = log.sessions[0]
         assert session1.date == date(2025, 1, 10)
-        assert session1.flag == "*"
+        assert session1.completed is True
         assert len(session1.movements) == 1
         assert session1.movements[0].name == "pullups"
 
@@ -60,11 +60,11 @@ class TestParseFile:
         log = parse_file(simple_log_file)
 
         # First two sessions are completed (*)
-        assert log.sessions[0].flag == "*"
-        assert log.sessions[1].flag == "*"
+        assert log.sessions[0].completed is True
+        assert log.sessions[1].completed is True
 
         # Third session is planned (!)
-        assert log.sessions[2].flag == "!"
+        assert log.sessions[2].completed is False
 
     def test_query_movements(self, simple_log_file):
         """Test querying movements from parsed log.

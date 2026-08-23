@@ -15,7 +15,7 @@ def simple_log_content():
     Design choices:
     - Uses single-line entry (simplest case)
     - Uses multi-line session (common case)
-    - Tests both completed (*) and planned (!) flags
+    - Tests both completed (*) and planned (!) entries
     - Includes weights in kg and lbs
     - Uses different rep schemes (5x5 and 5/5/5)
     """

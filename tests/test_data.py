@@ -227,7 +227,9 @@ class TestToOxRoundTrip:
         m = Movement(
             name="pullups", sets=[TrainingSet(reps=10, weight=None)], note=None
         )
-        s = TrainingSession(date=date(2025, 1, 10), flag="*", name=None, movements=(m,))
+        s = TrainingSession(
+            date=date(2025, 1, 10), completed=True, name=None, movements=(m,)
+        )
         assert s.to_ox() == "2025-01-10 * pullups: BW 1x10"
 
     def test_session_block(self):
@@ -237,7 +239,7 @@ class TestToOxRoundTrip:
             note=None,
         )
         s = TrainingSession(
-            date=date(2025, 1, 11), flag="*", name="Upper Day", movements=(m1,)
+            date=date(2025, 1, 11), completed=True, name="Upper Day", movements=(m1,)
         )
         out = s.to_ox()
         assert out.startswith("@session\n2025-01-11 * Upper Day")
@@ -405,6 +407,32 @@ class TestToOxDurationDistance:
         assert [s.duration for s in m.sets] == [timedelta(seconds=30)] * 3
 
 
+class TestCompletedFlagSerialization:
+    """`completed` is a bool internally and a `*` / `!` flag on the page."""
+
+    def _session(self, completed):
+        m = Movement(name="pullups", sets=[TrainingSet(reps=10)], note=None)
+        return TrainingSession(
+            date=date(2025, 1, 10), completed=completed, name=None, movements=(m,)
+        )
+
+    def test_completed_emits_star(self):
+        assert self._session(True).to_ox().startswith("2025-01-10 * ")
+
+    def test_planned_emits_bang(self):
+        assert self._session(False).to_ox().startswith("2025-01-10 ! ")
+
+    def test_block_header_carries_the_flag(self):
+        m = Movement(name="squat", sets=[TrainingSet(reps=5)], note=None)
+        s = TrainingSession(
+            date=date(2025, 1, 10),
+            completed=False,
+            name="Lower Day",
+            movements=(m,),
+        )
+        assert s.to_ox().split("\n")[1] == "2025-01-10 ! Lower Day"
+
+
 class TestSessionSrpe:
     """TrainingSession carries sRPE and emits it from to_ox()."""
 
@@ -412,7 +440,7 @@ class TestSessionSrpe:
         m = Movement(name="squat", sets=[TrainingSet(reps=5)], note=None)
         kwargs.setdefault("name", "Lower Strength")
         return TrainingSession(
-            date=date(2025, 1, 6), flag="*", movements=(m,), **kwargs
+            date=date(2025, 1, 6), completed=True, movements=(m,), **kwargs
         )
 
     def test_fields_default_to_none(self):
@@ -470,7 +498,7 @@ class TestTrainingLog:
         """
         session1 = TrainingSession(
             date=date(2025, 1, 10),
-            flag="*",
+            completed=True,
             name="Upper Day",
             movements=(
                 Movement("pullups", [TrainingSet(10, None)], None),
@@ -480,7 +508,7 @@ class TestTrainingLog:
 
         session2 = TrainingSession(
             date=date(2025, 1, 12),
-            flag="*",
+            completed=True,
             name="Lower Day",
             movements=(
                 Movement("squat", [TrainingSet(5, 185 * ureg.pounds)], None),
@@ -527,15 +555,15 @@ class TestTrainingLog:
         assert recent_movement.name == "pullups"
 
     def test_completed_sessions_filter(self, sample_log):
-        """Test completed_sessions property filters by flag."""
+        """Test completed_sessions property filters on the bool."""
         completed = sample_log.completed_sessions
 
-        # Both sessions in sample_log are completed (flag="*")
+        # Both sessions in sample_log are completed
         assert len(completed) == 2
-        assert all(s.flag == "*" for s in completed)
+        assert all(s.completed for s in completed)
 
     def test_planned_sessions_filter(self, sample_log):
-        """Test planned_sessions property filters by flag."""
+        """Test planned_sessions property filters on the bool."""
         planned = sample_log.planned_sessions
 
         # No planned sessions in sample_log
@@ -545,14 +573,14 @@ class TestTrainingLog:
         """Test filtering with both completed and planned sessions."""
         completed = TrainingSession(
             date=date(2025, 1, 10),
-            flag="*",
+            completed=True,
             name="Completed",
             movements=(Movement("pullups", [TrainingSet(10, None)], None),),
         )
 
         planned = TrainingSession(
             date=date(2025, 1, 11),
-            flag="!",
+            completed=False,
             name="Planned",
             movements=(Movement("squat", [TrainingSet(5, 185 * ureg.pounds)], None),),
         )

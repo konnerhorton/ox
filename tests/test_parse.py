@@ -10,6 +10,7 @@ import pytest
 from datetime import timedelta
 
 from ox.parse import (
+    flag_to_completed,
     weight_text_to_quantity,
     process_weights,
     process_distances,
@@ -510,6 +511,23 @@ def _parse_session(content: str):
     f = _Path(tempfile.mktemp(suffix=".ox"))
     f.write_text(content)
     return parse_file(f).sessions[0]
+
+
+class TestFlagToCompleted:
+    """The grammar's flag maps onto the completed bool."""
+
+    def test_star_is_completed(self):
+        assert flag_to_completed("*") is True
+
+    def test_bang_is_planned(self):
+        assert flag_to_completed("!") is False
+
+    def test_singleline_entry(self):
+        assert _parse_session("2025-01-10 * pullups: BW 5x10\n").completed is True
+
+    def test_planned_session_block(self):
+        content = "@session\n2025-01-10 ! Lower Day\nsquat: 155lb 4x5\n@end\n"
+        assert _parse_session(content).completed is False
 
 
 class TestSrpeParsing:

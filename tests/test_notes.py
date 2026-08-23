@@ -34,7 +34,7 @@ def test_note_to_ox_no_date():
 def test_training_session_to_ox_with_notes():
     session = TrainingSession(
         date=date(2025, 1, 11),
-        flag="*",
+        completed=True,
         name="Upper Day",
         movements=(
             Movement(
@@ -55,7 +55,7 @@ def test_training_session_to_ox_with_notes():
 def test_training_session_to_ox_no_notes():
     session = TrainingSession(
         date=date(2025, 1, 11),
-        flag="*",
+        completed=True,
         name="Upper Day",
         movements=(
             Movement(

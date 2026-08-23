@@ -121,11 +121,12 @@ class Entry:
 
     Attributes:
         date: Entry date
-        flag: Entry status (*=completed, !=planned, W=weigh-in)
+        completed: Whether the training actually happened. False marks a
+            planned session. Serializes as the `*` / `!` flag.
     """
 
     date: datetime.date
-    flag: str
+    completed: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -284,7 +285,7 @@ class TrainingSession(Entry):
         name: Session name (e.g., "Upper Day"), None for single-line entries
         movements: Tuple of Movement objects
         date: Inherited from Entry
-        flag: Inherited from Entry
+        completed: Inherited from Entry
         srpe_rating: Session RPE, 1-10 perceived exertion for the whole session
         srpe_duration: Wall-clock length of the session
         srpe_note: Freeform comment on the session's exertion
@@ -297,14 +298,23 @@ class TrainingSession(Entry):
     srpe_duration: Optional[timedelta] = None
     srpe_note: Optional[str] = None
 
+    @property
+    def _flag(self) -> str:
+        """The `*` / `!` flag this session serializes as.
+
+        Transitional: the grammar still speaks flags, so `to_ox()` derives one
+        from the bool until slice C replaces the flag with a `completed:` line.
+        """
+        return "*" if self.completed else "!"
+
     def to_ox(self) -> str:
         """Serialize to ox format string."""
         date_str = self.date.strftime(DATE_FORMAT)
         if self.name is None:
-            return f"{date_str} {self.flag} {self.movements[0].to_ox()}"
+            return f"{date_str} {self._flag} {self.movements[0].to_ox()}"
         else:
             lines = ["@session"]
-            lines.append(f"{date_str} {self.flag} {self.name}")
+            lines.append(f"{date_str} {self._flag} {self.name}")
             if self.srpe_rating is not None:
                 srpe = f"srpe: {self.srpe_rating} {format_iso_duration(self.srpe_duration)}"
                 if self.srpe_note:
@@ -338,21 +348,21 @@ class TrainingLog:
 
     @property
     def completed_sessions(self) -> tuple[TrainingSession, ...]:
-        """Return only completed sessions (flag="*").
+        """Return only sessions that were carried out.
 
         Returns:
             Tuple of completed TrainingSession objects
         """
-        return tuple(s for s in self.sessions if s.flag == "*")
+        return tuple(s for s in self.sessions if s.completed)
 
     @property
     def planned_sessions(self) -> tuple[TrainingSession, ...]:
-        """Return only planned sessions (flag="!").
+        """Return only sessions that were planned but not carried out.
 
         Returns:
             Tuple of planned TrainingSession objects
         """
-        return tuple(s for s in self.sessions if s.flag == "!")
+        return tuple(s for s in self.sessions if not s.completed)
 
     def movements(self, name: Optional[str] = None) -> Iterator[tuple[date, Movement]]:
         """Iterate over movements, optionally filtered by name.

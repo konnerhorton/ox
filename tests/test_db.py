@@ -101,14 +101,14 @@ class TestDataLoading:
         ]
         assert dates == ["2025-01-10", "2025-01-11", "2025-01-12"]
 
-    def test_session_flags(self, simple_db):
-        flags = [
+    def test_session_completed(self, simple_db):
+        values = [
             r[0]
             for r in simple_db.execute(
-                "SELECT flag FROM sessions ORDER BY date"
+                "SELECT completed FROM sessions ORDER BY date"
             ).fetchall()
         ]
-        assert flags == ["*", "*", "!"]
+        assert values == [1, 1, 0]
 
     def test_movement_names(self, simple_db):
         names = sorted(
@@ -186,7 +186,7 @@ class TestTrainingView:
         assert columns == [
             "session_id",
             "date",
-            "flag",
+            "completed",
             "session_name",
             "movement_id",
             "movement_name",
