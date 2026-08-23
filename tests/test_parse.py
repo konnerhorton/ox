@@ -406,6 +406,101 @@ class TestDetailFieldCombinations:
         assert _detail_fields(f"2025-01-10 * squat: {details}\n")["weight"] == expected
 
 
+def _srpe_lines(content: str) -> list[dict[str, str]]:
+    """Parse a .ox string and return one {field: text} dict per srpe_line."""
+    tree, diags = _parse_str(content)
+    assert not diags, f"unexpected syntax error in {content!r}"
+    lines = []
+
+    def walk(node):
+        if node.type == "srpe_line":
+            fields = {}
+            for i, child in enumerate(node.children):
+                name = node.field_name_for_child(i)
+                if name:
+                    fields[name] = child.text.decode("utf-8")
+            lines.append(fields)
+        for child in node.children:
+            walk(child)
+
+    walk(tree.root_node)
+    return lines
+
+
+def _session(*lines: str) -> str:
+    body = "".join(f"{line}\n" for line in lines)
+    return f"@session\n2025-01-06 * Lower Strength\n{body}@end\n"
+
+
+class TestSrpeLine:
+    """Grammar recognizes `srpe: <rating> <duration> ["note"]` inside a session."""
+
+    def test_rating_and_duration(self):
+        fields = _srpe_lines(_session("srpe: 5 PT45M"))
+        assert fields == [{"rating": "srpe: 5", "duration": "PT45M"}]
+
+    def test_with_note(self):
+        fields = _srpe_lines(_session('srpe: 5 PT45M "felt strong"'))
+        assert fields == [
+            {"rating": "srpe: 5", "duration": "PT45M", "note": '"felt strong"'}
+        ]
+
+    def test_no_space_after_keyword(self):
+        assert _srpe_lines(_session("srpe:5 PT45M"))[0]["rating"] == "srpe:5"
+
+    @pytest.mark.parametrize("rating", ["1", "5", "10"])
+    def test_rating_values(self, rating):
+        fields = _srpe_lines(_session(f"srpe: {rating} PT45M"))
+        assert fields[0]["rating"] == f"srpe: {rating}"
+
+    @pytest.mark.parametrize("duration", ["PT45M", "PT1H", "PT1H30M", "PT90S"])
+    def test_duration_forms(self, duration):
+        assert _srpe_lines(_session(f"srpe: 5 {duration}"))[0]["duration"] == duration
+
+    def test_position_within_block_is_free(self):
+        """Movements and notes may sit on either side of the srpe line."""
+        content = _session(
+            "squat: 155lb 4x5",
+            "srpe: 8 PT1H",
+            'note: "hard"',
+        )
+        assert _srpe_lines(content)[0]["rating"] == "srpe: 8"
+
+    def test_movements_still_parse_alongside(self):
+        tree, _ = _parse_str(_session("srpe: 5 PT45M", "squat: 155lb 4x5"))
+        kinds = []
+
+        def walk(node):
+            if node.type in ("srpe_line", "item_line"):
+                kinds.append(node.type)
+            for child in node.children:
+                walk(child)
+
+        walk(tree.root_node)
+        assert kinds == ["srpe_line", "item_line"]
+
+    def test_duration_is_required(self):
+        _, diags = _parse_str(_session("srpe: 5"))
+        assert len(diags) > 0
+
+    def test_old_quoted_form_stays_an_item_line(self):
+        """The transitional `srpe: "5; PT45M"` hack must keep lexing as a movement."""
+        tree, diags = _parse_str(_session('srpe: "5; PT45M"'))
+        assert not diags
+        assert _srpe_lines(_session('srpe: "5; PT45M"')) == []
+
+        kinds = []
+
+        def walk(node):
+            if node.type in ("srpe_line", "item_line"):
+                kinds.append(node.type)
+            for child in node.children:
+                walk(child)
+
+        walk(tree.root_node)
+        assert kinds == ["item_line"]
+
+
 class TestWeighInEntry:
     """Grammar accepts weigh-in forms without producing diagnostics."""
 

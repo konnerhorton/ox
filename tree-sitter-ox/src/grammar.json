@@ -432,6 +432,10 @@
                 {
                   "type": "SYMBOL",
                   "name": "note_line"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "srpe_line"
                 }
               ]
             }
@@ -609,6 +613,67 @@
           "value": "\n"
         }
       ]
+    },
+    "srpe_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "rating",
+          "content": {
+            "type": "SYMBOL",
+            "name": "srpe_rating"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "duration",
+          "content": {
+            "type": "SYMBOL",
+            "name": "duration"
+          }
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "note",
+              "content": {
+                "type": "SYMBOL",
+                "name": "quoted_string"
+              }
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "srpe_rating": {
+      "type": "TOKEN",
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "srpe:"
+          },
+          {
+            "type": "PATTERN",
+            "value": "[ \\t]*"
+          },
+          {
+            "type": "PATTERN",
+            "value": "\\d+"
+          }
+        ]
+      }
     },
     "metadata_line": {
       "type": "SEQ",

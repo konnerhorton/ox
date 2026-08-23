@@ -314,6 +314,10 @@
         {
           "type": "note_line",
           "named": true
+        },
+        {
+          "type": "srpe_line",
+          "named": true
         }
       ]
     }
@@ -414,6 +418,42 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "srpe_line",
+    "named": true,
+    "fields": {
+      "duration": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "duration",
+            "named": true
+          }
+        ]
+      },
+      "note": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "quoted_string",
+            "named": true
+          }
+        ]
+      },
+      "rating": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "srpe_rating",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -579,6 +619,10 @@
   },
   {
     "type": "rep_scheme",
+    "named": true
+  },
+  {
+    "type": "srpe_rating",
     "named": true
   },
   {

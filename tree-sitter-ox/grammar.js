@@ -91,7 +91,7 @@ module.exports = grammar({
         field("flag", $.flag),
         field("name", $.name),
         "\n",
-        repeat(choice($.item_line, $.note_line)),
+        repeat(choice($.item_line, $.note_line, $.srpe_line)),
         "@end",
         optional("\n")
       )),
@@ -134,6 +134,22 @@ module.exports = grammar({
         field("text", $.quoted_string),
         "\n"
       ),
+
+    // Session RPE line within a session block: srpe: <rating> <duration> ["note"]
+    // The keyword is fused to its rating so the token only fires on this form.
+    // A bare "srpe:" literal would outrun the generic `item` token and capture
+    // the transitional `srpe: "5; PT45M"` movement hack, which must keep
+    // lexing as an item_line until slice C retires it.
+    srpe_line: ($) =>
+      seq(
+        field("rating", $.srpe_rating),
+        field("duration", $.duration),
+        optional(field("note", $.quoted_string)),
+        "\n"
+      ),
+
+    // Keyword and rating in one token: "srpe: 5". The parser strips the prefix.
+    srpe_rating: ($) => token(seq("srpe:", /[ \t]*/, /\d+/)),
 
     // Metadata line within definition blocks: key: value
     metadata_line: ($) =>
@@ -183,6 +199,7 @@ module.exports = grammar({
     )),
 
     rep_scheme: ($) => /(\d+x\d+)|(\d+(\/\d+)+)/,  // 4x4 or 5/5/5
+
 
     // ISO 8601 duration: PT followed by at least one component.
     // Single: PT30M, PT30M15S, PT1H, PT1H30M, PT1H30M15S, PT30M15.5S
