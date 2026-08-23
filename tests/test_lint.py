@@ -20,13 +20,13 @@ def _parse_tree(text: str):
 
 class TestCollectDiagnostics:
     def test_valid_file_no_diagnostics(self):
-        text = "2025-01-10 * pullups: BW 5x10\n"
+        text = "2025-01-10 T pullups: BW 5x10\n"
         tree = _parse_tree(text)
         assert collect_diagnostics(tree) == ()
 
     def test_lbs_unit_produces_diagnostic(self):
         # "lbs" is not a valid unit; valid unit is "lb"
-        text = "2025-01-10 * bench-press: 135lbs 5x5\n"
+        text = "2025-01-10 T bench-press: 135lbs 5x5\n"
         tree = _parse_tree(text)
         diagnostics = collect_diagnostics(tree)
         assert len(diagnostics) == 1
@@ -36,13 +36,13 @@ class TestCollectDiagnostics:
         assert d.severity == "error"
 
     def test_multiple_errors_all_collected(self):
-        text = "2025-01-10 * bench-press: 135lbs 5x5\n2025-01-11 * squat: 225lbs 3x5\n"
+        text = "2025-01-10 T bench-press: 135lbs 5x5\n2025-01-11 T squat: 225lbs 3x5\n"
         tree = _parse_tree(text)
         diagnostics = collect_diagnostics(tree)
         assert len(diagnostics) >= 2
 
     def test_diagnostic_fields(self):
-        text = "2025-01-10 * bench-press: 135lbs 5x5\n"
+        text = "2025-01-10 T bench-press: 135lbs 5x5\n"
         tree = _parse_tree(text)
         diagnostics = collect_diagnostics(tree)
         assert len(diagnostics) >= 1
@@ -54,7 +54,7 @@ class TestCollectDiagnostics:
         assert d.severity == "error"
 
     def test_multiline_session_valid(self):
-        text = "@session\n2025-01-11 * Upper Day\nbench-press: 135lb 5x5\n@end\n"
+        text = "@session\ndate: 2025-01-11\nname: Upper Day\nbench-press: 135lb 5x5\n@end\n"
         tree = _parse_tree(text)
         assert collect_diagnostics(tree) == ()
 
@@ -66,7 +66,7 @@ class TestTrainingLogDiagnostics:
 
     def test_parse_file_invalid_log_has_diagnostics(self, tmp_path):
         bad_file = tmp_path / "bad.ox"
-        bad_file.write_text("2025-01-10 * bench-press: 135lbs 5x5\n")
+        bad_file.write_text("2025-01-10 T bench-press: 135lbs 5x5\n")
         log = parse_file(bad_file)
         assert len(log.diagnostics) >= 1
         assert all(isinstance(d, Diagnostic) for d in log.diagnostics)
@@ -74,8 +74,8 @@ class TestTrainingLogDiagnostics:
     def test_diagnostics_correct_line(self, tmp_path):
         content = (
             "# comment\n"
-            "2025-01-10 * pullups: BW 5x10\n"
-            "2025-01-11 * bench-press: 135lbs 5x5\n"
+            "2025-01-10 T pullups: BW 5x10\n"
+            "2025-01-11 T bench-press: 135lbs 5x5\n"
         )
         bad_file = tmp_path / "bad.ox"
         bad_file.write_text(content)
@@ -105,7 +105,7 @@ class TestLintCommand:
 
     def test_lint_shows_errors(self, tmp_path):
         bad_file = tmp_path / "bad.ox"
-        bad_file.write_text("2025-01-10 * bench-press: 135lbs 5x5\n")
+        bad_file.write_text("2025-01-10 T bench-press: 135lbs 5x5\n")
         result = _invoke_repl(bad_file, ["lint"])
         assert result.exit_code == 0
         assert "Line" in result.output
@@ -113,7 +113,7 @@ class TestLintCommand:
 
     def test_load_warning_shown_when_errors(self, tmp_path):
         bad_file = tmp_path / "bad.ox"
-        bad_file.write_text("2025-01-10 * bench-press: 135lbs 5x5\n")
+        bad_file.write_text("2025-01-10 T bench-press: 135lbs 5x5\n")
         result = _invoke_repl(bad_file, [])
         assert result.exit_code == 0
         assert "parse error" in result.output.lower()

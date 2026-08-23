@@ -311,11 +311,11 @@ class TestDurationToken:
         ["PT30M", "PT30M15S", "PT1H", "PT1H30M", "PT1H30M15S", "PT30M15.5S", "PT45S"],
     )
     def test_accepted(self, duration):
-        _, diags = _parse_str(f"2025-01-10 * run: {duration}\n")
+        _, diags = _parse_str(f"2025-01-10 T run: {duration}\n")
         assert not diags
 
     def test_old_time_format_rejected(self):
-        _, diags = _parse_str("2025-01-10 * run: 30min\n")
+        _, diags = _parse_str("2025-01-10 T run: 30min\n")
         assert len(diags) > 0
 
 
@@ -344,12 +344,12 @@ class TestProgressiveDuration:
         ["PT30S/PT25S", "PT30S/PT25S/PT20S", "PT1M/PT45S", "PT1H30M/PT1H"],
     )
     def test_accepted(self, duration):
-        fields = _detail_fields(f"2025-01-10 * plank: {duration} 3x1\n")
+        fields = _detail_fields(f"2025-01-10 T plank: {duration} 3x1\n")
         assert fields["duration"] == duration
 
     def test_single_duration_still_one_token(self):
         """The progressive form must not fragment the single form."""
-        fields = _detail_fields("2025-01-10 * run: PT30M\n")
+        fields = _detail_fields("2025-01-10 T run: PT30M\n")
         assert fields["duration"] == "PT30M"
 
 
@@ -361,11 +361,11 @@ class TestProgressiveDistance:
         ["100m/200m", "100m/200m/400m", "1km/2km", "100/200/400m", "5/10km"],
     )
     def test_accepted(self, distance):
-        fields = _detail_fields(f"2025-01-10 * sprints: {distance} 3x1\n")
+        fields = _detail_fields(f"2025-01-10 T sprints: {distance} 3x1\n")
         assert fields["distance"] == distance
 
     def test_single_distance_still_one_token(self):
-        fields = _detail_fields("2025-01-10 * run: 5km\n")
+        fields = _detail_fields("2025-01-10 T run: 5km\n")
         assert fields["distance"] == "5km"
 
 
@@ -391,7 +391,7 @@ class TestDetailFieldCombinations:
         ],
     )
     def test_fields_land_correctly(self, details, expected):
-        assert _detail_fields(f"2025-01-10 * x: {details}\n") == expected
+        assert _detail_fields(f"2025-01-10 T x: {details}\n") == expected
 
     @pytest.mark.parametrize(
         "details,expected",
@@ -404,7 +404,7 @@ class TestDetailFieldCombinations:
     )
     def test_weight_forms_unaffected(self, details, expected):
         """Adding progressive distance must not poach weight's progressive forms."""
-        assert _detail_fields(f"2025-01-10 * squat: {details}\n")["weight"] == expected
+        assert _detail_fields(f"2025-01-10 T squat: {details}\n")["weight"] == expected
 
 
 def _srpe_lines(content: str) -> list[dict[str, str]]:
@@ -430,7 +430,7 @@ def _srpe_lines(content: str) -> list[dict[str, str]]:
 
 def _session(*lines: str) -> str:
     body = "".join(f"{line}\n" for line in lines)
-    return f"@session\n2025-01-06 * Lower Strength\n{body}@end\n"
+    return f"@session\ndate: 2025-01-06\nname: Lower Strength\n{body}@end\n"
 
 
 class TestSrpeLine:

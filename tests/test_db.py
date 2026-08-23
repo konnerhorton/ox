@@ -72,11 +72,11 @@ class TestDataLoading:
     """Verify data is loaded correctly from TrainingLog.
 
     The simple_log_content fixture has:
-    - 1 single-line entry: 2025-01-10 * pullups: BW 5x10 (5 sets, no weight)
-    - 1 completed session: 2025-01-11 * Upper Day
+    - 1 single-line entry: 2025-01-10 T pullups: BW 5x10 (5 sets, no weight)
+    - 1 completed session: 2025-01-11 Upper Day
         - bench-press: 135lbs 5x5 (5 sets)
         - kb-oh-press: 24kg 5/5/5 (3 sets)
-    - 1 planned session: 2025-01-12 ! Lower Day
+    - 1 planned session: 2025-01-12 Lower Day (completed: false)
         - squat: 185lbs 3x5 (3 sets)
     """
 
@@ -154,7 +154,7 @@ class TestWeightInDatabase:
         from ox.cli import parse_file
 
         f = tmp_path / "combined.ox"
-        f.write_text("2025-01-10 * db-press: 24kg+32kg 5x5\n")
+        f.write_text("2025-01-10 T db-press: 24kg+32kg 5x5\n")
         conn = create_db(parse_file(f))
         rows = conn.execute(
             "SELECT weight_magnitude, weight_unit FROM training "
@@ -240,10 +240,10 @@ class TestDurationAndDistanceColumns:
     def measures_db(self, tmp_path):
         f = tmp_path / "measures.ox"
         f.write_text(
-            "2025-01-10 * run: 5km PT25M\n"
-            "2025-01-11 * plank: PT30S/PT25S/PT20S\n"
-            "2025-01-12 * sprints: 3mi 2x1\n"
-            "2025-01-13 * bench-press: 135lb 5x5\n"
+            "2025-01-10 T run: 5km PT25M\n"
+            "2025-01-11 T plank: PT30S/PT25S/PT20S\n"
+            "2025-01-12 T sprints: 3mi 2x1\n"
+            "2025-01-13 T bench-press: 135lb 5x5\n"
         )
         conn = create_db(parse_file(f))
         yield conn

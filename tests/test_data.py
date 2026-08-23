@@ -169,7 +169,7 @@ def reparse_movement(line: str) -> Movement:
     import tempfile
 
     p = Path(tempfile.mktemp(suffix=".ox"))
-    p.write_text(f"2025-01-10 * {line}\n")
+    p.write_text(f"2025-01-10 T {line}\n")
     return parse_file(p).sessions[0].movements[0]
 
 

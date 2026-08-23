@@ -77,7 +77,8 @@ def test_training_session_to_ox_no_notes():
 def log_with_session_notes(tmp_path):
     content = """\
 @session
-2025-01-11 * Upper Day
+date: 2025-01-11
+name: Upper Day
 note: "Cycle 1 Week 1"
 bench-press: 135lb 5x5
 @end
@@ -109,7 +110,7 @@ def test_parse_session_note_not_in_movements(log_with_session_notes):
 def log_with_standalone_note(tmp_path):
     content = """\
 2025-01-10 note "rest day"
-2025-01-11 * pullups: BW 5x10
+2025-01-11 T pullups: BW 5x10
 """
     f = tmp_path / "test.ox"
     f.write_text(content)
@@ -136,7 +137,7 @@ def test_parse_standalone_note_not_session(log_with_standalone_note):
 @pytest.fixture
 def log_without_notes(tmp_path):
     content = """\
-2025-01-11 * pullups: BW 5x10
+2025-01-11 T pullups: BW 5x10
 """
     f = tmp_path / "test.ox"
     f.write_text(content)
@@ -162,7 +163,8 @@ def db_with_notes(tmp_path):
 2025-01-10 note "rest day"
 
 @session
-2025-01-11 * Upper Day
+date: 2025-01-11
+name: Upper Day
 note: "Cycle 1 Week 1"
 bench-press: 135lb 5x5
 @end

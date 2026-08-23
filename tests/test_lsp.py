@@ -29,10 +29,10 @@ def _parse_tree(text: str):
 
 class TestGetDiagnostics:
     def test_valid_text_no_diagnostics(self):
-        assert get_diagnostics("2025-01-10 * pullups: BW 5x10\n") == []
+        assert get_diagnostics("2025-01-10 T pullups: BW 5x10\n") == []
 
     def test_invalid_unit_produces_error_diagnostic(self):
-        diags = get_diagnostics("2025-01-10 * bench-press: 135lbs 5x5\n")
+        diags = get_diagnostics("2025-01-10 T bench-press: 135lbs 5x5\n")
         assert len(diags) >= 1
         d = diags[0]
         assert d.severity == lsp.DiagnosticSeverity.Error
@@ -40,7 +40,7 @@ class TestGetDiagnostics:
 
     def test_positions_are_zero_based(self):
         # Bad entry on line 2 (1-based) of file -> line 1 in LSP
-        text = "2025-01-10 * pullups: BW 5x10\n2025-01-11 * squat: 225lbs 3x5\n"
+        text = "2025-01-10 T pullups: BW 5x10\n2025-01-11 T squat: 225lbs 3x5\n"
         diags = get_diagnostics(text)
         assert len(diags) >= 1
         assert any(d.range.start.line == 1 for d in diags)
@@ -79,7 +79,7 @@ class TestValidateIncludes:
 class TestGetAllDiagnostics:
     def test_combines_parse_and_include(self, tmp_path):
         doc = tmp_path / "main.ox"
-        doc.write_text('@include "nope.ox"\n2025-01-10 * squat: 1lbs 5x5\n')
+        doc.write_text('@include "nope.ox"\n2025-01-10 T squat: 1lbs 5x5\n')
         diags = _get_all_diagnostics(doc.read_text(), f"file://{doc}")
         severities = {d.severity for d in diags}
         assert lsp.DiagnosticSeverity.Error in severities
@@ -88,13 +88,14 @@ class TestGetAllDiagnostics:
 
 class TestCollectMovementNames:
     def test_collects_from_singleline(self):
-        tree = _parse_tree("2025-01-10 * pullups: BW 5x10\n")
+        tree = _parse_tree("2025-01-10 T pullups: BW 5x10\n")
         assert _collect_movement_names(tree) == {"pullups"}
 
     def test_collects_from_session_block(self):
         text = (
             "@session\n"
-            "2025-01-11 * Upper Day\n"
+            "date: 2025-01-11\n"
+            "name: Upper Day\n"
             "bench-press: 135lb 5x5\n"
             "pullups: BW 5x10\n"
             "@end\n"
@@ -106,7 +107,7 @@ class TestCollectMovementNames:
         assert _collect_movement_names(_parse_tree(text)) == {"squat"}
 
     def test_dedupes_across_entries(self):
-        text = "2025-01-10 * pullups: BW 5x10\n2025-01-11 * pullups: BW 5x10\n"
+        text = "2025-01-10 T pullups: BW 5x10\n2025-01-11 T pullups: BW 5x10\n"
         assert _collect_movement_names(_parse_tree(text)) == {"pullups"}
 
 
@@ -117,33 +118,36 @@ class TestCursorWantsMovement:
         assert _cursor_wants_movement(text, 0, 13, tree) is True
 
     def test_before_flag_false(self):
-        text = "2025-01-10 * pullups: BW 5x10\n"
+        text = "2025-01-10 T pullups: BW 5x10\n"
         tree = _parse_tree(text)
         assert _cursor_wants_movement(text, 0, 0, tree) is False
 
     def test_inside_session_item_line_true(self):
-        text = "@session\n2025-01-11 * Upper Day\n\n@end\n"
+        text = "@session\ndate: 2025-01-11\nname: Upper Day\n\n@end\n"
         tree = _parse_tree(text)
-        assert _cursor_wants_movement(text, 2, 0, tree) is True
+        # The empty movement line is row 3, below the two header lines
+        assert _cursor_wants_movement(text, 3, 0, tree) is True
 
     def test_on_session_header_line_false(self):
-        text = "@session\n2025-01-11 * Upper Day\nbench-press: 135lb 5x5\n@end\n"
+        text = "@session\ndate: 2025-01-11\nname: Upper Day\nbench-press: 135lb 5x5\n@end\n"
         tree = _parse_tree(text)
-        # Header line is row 1
-        assert _cursor_wants_movement(text, 1, 15, tree) is False
+        # The date header is row 1
+        assert _cursor_wants_movement(text, 1, 8, tree) is False
 
     def test_at_directive_line_false(self):
-        text = "@session\n2025-01-11 * Upper Day\n@end\n"
+        text = "@session\ndate: 2025-01-11\nname: Upper Day\n@end\n"
         tree = _parse_tree(text)
         assert _cursor_wants_movement(text, 0, 2, tree) is False
 
     def test_note_line_false(self):
-        text = "@session\n2025-01-11 * Upper Day\nnote: feeling tired\n@end\n"
+        text = (
+            "@session\ndate: 2025-01-11\nname: Upper Day\nnote: feeling tired\n@end\n"
+        )
         tree = _parse_tree(text)
-        assert _cursor_wants_movement(text, 2, 2, tree) is False
+        assert _cursor_wants_movement(text, 3, 2, tree) is False
 
     def test_line_out_of_range_false(self):
-        text = "2025-01-10 * pullups: BW 5x10\n"
+        text = "2025-01-10 T pullups: BW 5x10\n"
         tree = _parse_tree(text)
         assert _cursor_wants_movement(text, 99, 0, tree) is False
 
@@ -161,7 +165,7 @@ def captured_publish(monkeypatch):
 
 class TestDidOpen:
     def test_publishes_diagnostics(self, captured_publish, tmp_path):
-        text = "2025-01-10 * bench-press: 135lbs 5x5\n"
+        text = "2025-01-10 T bench-press: 135lbs 5x5\n"
         uri = f"file://{tmp_path / 'a.ox'}"
         params = lsp.DidOpenTextDocumentParams(
             text_document=lsp.TextDocumentItem(
@@ -190,7 +194,7 @@ def stub_workspace(monkeypatch):
 class TestDidChangeAndSave:
     def test_did_change_publishes(self, captured_publish, stub_workspace, tmp_path):
         uri = f"file://{tmp_path / 'a.ox'}"
-        stub_workspace[uri] = "2025-01-10 * squat: 225lbs 3x5\n"
+        stub_workspace[uri] = "2025-01-10 T squat: 225lbs 3x5\n"
         params = lsp.DidChangeTextDocumentParams(
             text_document=lsp.VersionedTextDocumentIdentifier(uri=uri, version=2),
             content_changes=[],
@@ -202,7 +206,7 @@ class TestDidChangeAndSave:
 
     def test_did_save_publishes(self, captured_publish, stub_workspace, tmp_path):
         uri = f"file://{tmp_path / 'a.ox'}"
-        stub_workspace[uri] = "2025-01-10 * pullups: BW 5x10\n"
+        stub_workspace[uri] = "2025-01-10 T pullups: BW 5x10\n"
         params = lsp.DidSaveTextDocumentParams(
             text_document=lsp.TextDocumentIdentifier(uri=uri)
         )
@@ -216,10 +220,10 @@ class TestFoldingRange:
         uri = f"file://{tmp_path / 'a.ox'}"
         stub_workspace[uri] = (
             "# Section A\n"
-            "2025-01-10 * pullups: BW 5x10\n"
-            "2025-01-11 * pullups: BW 5x10\n"
+            "2025-01-10 T pullups: BW 5x10\n"
+            "2025-01-11 T pullups: BW 5x10\n"
             "# Section B\n"
-            "2025-01-12 * pullups: BW 5x10\n"
+            "2025-01-12 T pullups: BW 5x10\n"
         )
         params = lsp.FoldingRangeParams(
             text_document=lsp.TextDocumentIdentifier(uri=uri)
@@ -233,7 +237,7 @@ class TestFoldingRange:
 
     def test_adjacent_comments_no_range(self, stub_workspace, tmp_path):
         uri = f"file://{tmp_path / 'a.ox'}"
-        stub_workspace[uri] = "# A\n# B\n2025-01-10 * pullups: BW 5x10\n"
+        stub_workspace[uri] = "# A\n# B\n2025-01-10 T pullups: BW 5x10\n"
         params = lsp.FoldingRangeParams(
             text_document=lsp.TextDocumentIdentifier(uri=uri)
         )
@@ -244,7 +248,7 @@ class TestFoldingRange:
 
     def test_trailing_blanks_trimmed(self, stub_workspace, tmp_path):
         uri = f"file://{tmp_path / 'a.ox'}"
-        stub_workspace[uri] = "# A\n2025-01-10 * pullups: BW 5x10\n\n\n"
+        stub_workspace[uri] = "# A\n2025-01-10 T pullups: BW 5x10\n\n\n"
         params = lsp.FoldingRangeParams(
             text_document=lsp.TextDocumentIdentifier(uri=uri)
         )
@@ -257,8 +261,8 @@ class TestCompletion:
     def test_returns_movements_in_context(self, stub_workspace, tmp_path):
         uri = f"file://{tmp_path / 'a.ox'}"
         stub_workspace[uri] = (
-            "2025-01-10 * pullups: BW 5x10\n"
-            "2025-01-11 * bench-press: 135lb 5x5\n"
+            "2025-01-10 T pullups: BW 5x10\n"
+            "2025-01-11 T bench-press: 135lb 5x5\n"
             "2025-01-12 * \n"
         )
         params = lsp.CompletionParams(
@@ -275,7 +279,7 @@ class TestCompletion:
 
     def test_empty_outside_context(self, stub_workspace, tmp_path):
         uri = f"file://{tmp_path / 'a.ox'}"
-        stub_workspace[uri] = "2025-01-10 * pullups: BW 5x10\n"
+        stub_workspace[uri] = "2025-01-10 T pullups: BW 5x10\n"
         params = lsp.CompletionParams(
             text_document=lsp.TextDocumentIdentifier(uri=uri),
             position=lsp.Position(line=0, character=0),

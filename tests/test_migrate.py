@@ -5,7 +5,6 @@ Testing philosophy:
 - Pin what the script refuses to convert, since refusing is the feature
 """
 
-import re
 import sys
 from pathlib import Path
 from textwrap import dedent
@@ -189,22 +188,29 @@ class TestHoistedSrpe:
             convert('2025-01-08 * run: PT30M "easy, srpe: 3.5; PT30M"\n')
 
 
-class TestExampleLogs:
-    """The real logs convert end to end."""
+class TestGoldenPair:
+    """The checked-in old file converts to the checked-in new file, exactly."""
 
-    @pytest.mark.parametrize("name", ["example.ox", "advanced.ox"])
-    def test_converts_without_error(self, name):
-        path = Path(__file__).parent.parent / "examples" / name
-        out = migrate_text(path.read_text())
-        entries = [
-            ln for ln in out.split("\n") if re.match(r"^\\d{4}-\\d{2}-\\d{2} ", ln)
-        ]
-        assert not [ln for ln in entries if re.match(r"^\\S+ [*!] ", ln)]
-        assert '"5; PT45M"' not in out
+    FIXTURES = Path(__file__).parent / "fixtures"
 
-    def test_advanced_keeps_every_session(self):
-        path = Path(__file__).parent.parent / "examples" / "advanced.ox"
-        before = path.read_text()
-        out = migrate_text(before)
-        # 8 single-line entries carrying sRPE become blocks of their own
-        assert out.count("@session") == before.count("@session") + 8
+    def test_matches_golden_output(self):
+        old = (self.FIXTURES / "migrate_old.ox").read_text()
+        new = (self.FIXTURES / "migrate_new.ox").read_text()
+        assert migrate_text(old) == new
+
+    def test_golden_output_parses(self):
+        """The converted file is valid under the current grammar."""
+        import tree_sitter_ox
+        from tree_sitter import Language, Parser
+
+        from ox.lint import collect_diagnostics
+
+        parser = Parser(Language(tree_sitter_ox.language()))
+        text = (self.FIXTURES / "migrate_new.ox").read_text()
+        assert not collect_diagnostics(parser.parse(text.encode()))
+
+    def test_already_converted_input_is_refused(self):
+        """Re-running on a new-syntax file stops rather than mangling it."""
+        new = (self.FIXTURES / "migrate_new.ox").read_text()
+        with pytest.raises(MigrationError, match="not followed by a date header"):
+            migrate_text(new)

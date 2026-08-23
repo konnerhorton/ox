@@ -20,16 +20,19 @@ def simple_log_content():
     - Uses different rep schemes (5x5 and 5/5/5)
     """
     return """# Test training log
-2025-01-10 * pullups: BW 5x10
+2025-01-10 T pullups: BW 5x10
 
 @session
-2025-01-11 * Upper Day
+date: 2025-01-11
+name: Upper Day
 bench-press: 135lb 5x5
 kb-oh-press: 24kg 5/5/5
 @end
 
 @session
-2025-01-12 ! Lower Day
+date: 2025-01-12
+name: Lower Day
+completed: false
 squat: 185lb 3x5
 @end
 """
@@ -68,7 +71,7 @@ def weight_edge_cases():
 def log_with_query_content():
     """Training log content containing a query_entry."""
     return (
-        "2025-01-10 * pullups: BW 5x10\n"
+        "2025-01-10 T pullups: BW 5x10\n"
         '2025-01-15 query "max-pullups" "SELECT MAX(reps) FROM training WHERE movement_name=\'pullups\'"\n'
     )
 
