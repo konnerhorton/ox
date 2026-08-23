@@ -282,8 +282,10 @@ class TrainingSession(Entry):
     """A training session containing one or more movements.
 
     Attributes:
-        name: Session name (e.g., "Upper Day"), None for single-line entries
         movements: Tuple of Movement objects
+        name: Session name (e.g., "Upper Day"), None for ad hoc sessions
+        notes: Freeform notes attached to the session
+        format: Free-text stub naming the session's shape, e.g. "5/3/1 wave"
         date: Inherited from Entry
         completed: Inherited from Entry
         srpe_rating: Session RPE, 1-10 perceived exertion for the whole session
@@ -291,41 +293,55 @@ class TrainingSession(Entry):
         srpe_note: Freeform comment on the session's exertion
     """
 
-    name: str = field()
     movements: tuple[Movement, ...]
+    name: Optional[str] = None
     notes: tuple[Note, ...] = ()
+    format: Optional[str] = None
     srpe_rating: Optional[int] = None
     srpe_duration: Optional[timedelta] = None
     srpe_note: Optional[str] = None
 
     @property
-    def _flag(self) -> str:
-        """The `*` / `!` flag this session serializes as.
+    def _is_single_line(self) -> bool:
+        """Whether this session fits on one line.
 
-        Transitional: the grammar still speaks flags, so `to_ox()` derives one
-        from the bool until slice C replaces the flag with a `completed:` line.
+        Only a lone completed movement with no session-level metadata does:
+        anything else needs a block to carry what the line cannot say.
         """
-        return "*" if self.completed else "!"
+        return (
+            self.name is None
+            and self.completed
+            and self.format is None
+            and self.srpe_rating is None
+            and not self.notes
+            and len(self.movements) == 1
+        )
 
     def to_ox(self) -> str:
         """Serialize to ox format string."""
         date_str = self.date.strftime(DATE_FORMAT)
-        if self.name is None:
-            return f"{date_str} {self._flag} {self.movements[0].to_ox()}"
-        else:
-            lines = ["@session"]
-            lines.append(f"{date_str} {self._flag} {self.name}")
-            if self.srpe_rating is not None:
-                srpe = f"srpe: {self.srpe_rating} {format_iso_duration(self.srpe_duration)}"
-                if self.srpe_note:
-                    srpe += f' "{self.srpe_note}"'
-                lines.append(srpe)
-            for n in self.notes:
-                lines.append(f'note: "{n.text}"')
-            for m in self.movements:
-                lines.append(m.to_ox())
-            lines.append("@end")
-            return "\n".join(lines)
+        if self._is_single_line:
+            return f"{date_str} T {self.movements[0].to_ox()}"
+
+        lines = ["@session", f"date: {date_str}"]
+        if self.name is not None:
+            lines.append(f"name: {self.name}")
+        if not self.completed:
+            # true is the default, so it is left implicit
+            lines.append("completed: false")
+        if self.format is not None:
+            lines.append(f"format: {self.format}")
+        if self.srpe_rating is not None:
+            srpe = f"srpe: {self.srpe_rating} {format_iso_duration(self.srpe_duration)}"
+            if self.srpe_note:
+                srpe += f' "{self.srpe_note}"'
+            lines.append(srpe)
+        for n in self.notes:
+            lines.append(f'note: "{n.text}"')
+        for m in self.movements:
+            lines.append(m.to_ox())
+        lines.append("@end")
+        return "\n".join(lines)
 
 
 @dataclass

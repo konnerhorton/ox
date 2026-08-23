@@ -230,7 +230,7 @@ class TestToOxRoundTrip:
         s = TrainingSession(
             date=date(2025, 1, 10), completed=True, name=None, movements=(m,)
         )
-        assert s.to_ox() == "2025-01-10 * pullups: BW 1x10"
+        assert s.to_ox() == "2025-01-10 T pullups: BW 1x10"
 
     def test_session_block(self):
         m1 = Movement(
@@ -242,7 +242,7 @@ class TestToOxRoundTrip:
             date=date(2025, 1, 11), completed=True, name="Upper Day", movements=(m1,)
         )
         out = s.to_ox()
-        assert out.startswith("@session\n2025-01-11 * Upper Day")
+        assert out.startswith("@session\ndate: 2025-01-11\nname: Upper Day")
         assert out.endswith("@end")
         assert "bench-press: 135lb 5x5" in out
 
@@ -407,8 +407,8 @@ class TestToOxDurationDistance:
         assert [s.duration for s in m.sets] == [timedelta(seconds=30)] * 3
 
 
-class TestCompletedFlagSerialization:
-    """`completed` is a bool internally and a `*` / `!` flag on the page."""
+class TestCompletedSerialization:
+    """`completed` is a bool internally and a `completed:` line on the page."""
 
     def _session(self, completed):
         m = Movement(name="pullups", sets=[TrainingSet(reps=10)], note=None)
@@ -416,21 +416,27 @@ class TestCompletedFlagSerialization:
             date=date(2025, 1, 10), completed=completed, name=None, movements=(m,)
         )
 
-    def test_completed_emits_star(self):
-        assert self._session(True).to_ox().startswith("2025-01-10 * ")
+    def test_completed_entry_is_a_single_line(self):
+        assert self._session(True).to_ox() == "2025-01-10 T pullups: BW 1x10"
 
-    def test_planned_emits_bang(self):
-        assert self._session(False).to_ox().startswith("2025-01-10 ! ")
+    def test_planned_entry_needs_a_block(self):
+        """`T` cannot say "planned", so planning forces the block form."""
+        out = self._session(False).to_ox()
+        assert out.splitlines()[:3] == [
+            "@session",
+            "date: 2025-01-10",
+            "completed: false",
+        ]
 
-    def test_block_header_carries_the_flag(self):
+    def test_completed_true_is_left_implicit(self):
         m = Movement(name="squat", sets=[TrainingSet(reps=5)], note=None)
         s = TrainingSession(
             date=date(2025, 1, 10),
-            completed=False,
+            completed=True,
             name="Lower Day",
             movements=(m,),
         )
-        assert s.to_ox().split("\n")[1] == "2025-01-10 ! Lower Day"
+        assert "completed:" not in s.to_ox()
 
 
 class TestSessionSrpe:
@@ -467,7 +473,7 @@ class TestSessionSrpe:
     def test_line_precedes_movements_and_notes(self):
         s = self._session(srpe_rating=5, srpe_duration=timedelta(minutes=45))
         lines = s.to_ox().split("\n")
-        assert lines[2].startswith("srpe:")
+        assert lines[3].startswith("srpe:")
 
     def test_round_trip(self):
         import tempfile

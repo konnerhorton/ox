@@ -7,7 +7,7 @@ Testing philosophy:
 """
 
 import pytest
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from ox.parse import (
     flag_to_completed,
@@ -654,6 +654,104 @@ class TestFlagToCompleted:
     def test_planned_session_block(self):
         content = "@session\n2025-01-10 ! Lower Day\nsquat: 155lb 4x5\n@end\n"
         assert _parse_session(content).completed is False
+
+
+class TestNewSessionBlockParsing:
+    """The `date:` header form builds a TrainingSession."""
+
+    def test_full_header(self):
+        session = _parse_session(
+            "@session\n"
+            "date: 2025-01-06\n"
+            "name: Lower Strength\n"
+            "completed: false\n"
+            "format: 5/3/1 wave\n"
+            "srpe: 5 PT45M\n"
+            "squat: 155lb 4x5\n"
+            'note: "good day"\n'
+            "@end\n"
+        )
+        assert session.date == datetime(2025, 1, 6).date()
+        assert session.name == "Lower Strength"
+        assert session.completed is False
+        assert session.format == "5/3/1 wave"
+        assert session.srpe_rating == 5
+        assert [m.name for m in session.movements] == ["squat"]
+        assert [n.text for n in session.notes] == ["good day"]
+
+    def test_ad_hoc_session_has_no_name(self):
+        session = _parse_session(
+            "@session\ndate: 2025-01-10\npullups: BW 3x10\npushups: BW 3x15\n@end\n"
+        )
+        assert session.name is None
+        assert [m.name for m in session.movements] == ["pullups", "pushups"]
+
+    def test_completed_defaults_to_true(self):
+        session = _parse_session("@session\ndate: 2025-01-10\npullups: BW 3x10\n@end\n")
+        assert session.completed is True
+
+    def test_completed_true_is_read(self):
+        session = _parse_session(
+            "@session\ndate: 2025-01-10\ncompleted: true\npullups: BW 3x10\n@end\n"
+        )
+        assert session.completed is True
+
+    def test_lines_may_follow_in_any_order(self):
+        session = _parse_session(
+            "@session\n"
+            "date: 2025-01-06\n"
+            "squat: 155lb 4x5\n"
+            "name: Lower\n"
+            "completed: false\n"
+            "@end\n"
+        )
+        assert session.name == "Lower"
+        assert session.completed is False
+
+    def test_format_defaults_to_none(self):
+        session = _parse_session("@session\ndate: 2025-01-10\npullups: BW 3x10\n@end\n")
+        assert session.format is None
+
+
+class TestOldSessionBlockStillParses:
+    """The positional header keeps building sessions until commit 16."""
+
+    def test_completed(self):
+        session = _parse_session(
+            "@session\n2025-01-11 * Upper Day\nbench-press: 135lb 5x5\n@end\n"
+        )
+        assert session.name == "Upper Day"
+        assert session.completed is True
+
+    def test_planned(self):
+        session = _parse_session(
+            "@session\n2025-01-11 ! Upper Day\nbench-press: 135lb 5x5\n@end\n"
+        )
+        assert session.completed is False
+
+    def test_has_no_format(self):
+        session = _parse_session(
+            "@session\n2025-01-11 * Upper Day\nbench-press: 135lb 5x5\n@end\n"
+        )
+        assert session.format is None
+
+
+class TestSingleLineIsAdHoc:
+    """Single-line entries carry no session name, so they round-trip as lines."""
+
+    @pytest.mark.parametrize("marker", ["T", "*"])
+    def test_no_session_name(self, marker):
+        session = _parse_session(f"2025-01-10 {marker} pullups: BW 5x10\n")
+        assert session.name is None
+        assert session.movements[0].name == "pullups"
+
+    def test_round_trips_as_one_line(self):
+        session = _parse_session("2025-01-10 T pullups: BW 5x10\n")
+        assert session.to_ox() == "2025-01-10 T pullups: BW 5x10"
+
+    def test_old_marker_normalizes_to_t(self):
+        session = _parse_session("2025-01-10 * pullups: BW 5x10\n")
+        assert session.to_ox() == "2025-01-10 T pullups: BW 5x10"
 
 
 class TestSrpeParsing:

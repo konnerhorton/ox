@@ -29,11 +29,13 @@ def get_flag(raw_entry: Node) -> str:
 
 
 def flag_to_completed(flag: str) -> bool:
-    """Map the grammar's `*` / `!` flag onto the completed bool.
+    """Map a single-line entry's marker onto the completed bool.
 
-    Transitional: slice C replaces the flag with an explicit `completed:` line.
+    `T` is the new type marker and always means completed — planning is
+    expressed only by a session block's `completed: false`. Transitional:
+    `*` and `!` are the old state flags, dropped in commit 16.
     """
-    return flag == "*"
+    return flag in ("*", "T")
 
 
 def get_name(raw_entry: Node) -> str:
@@ -285,6 +287,14 @@ def process_singleline_completed_session(
     return date, movement
 
 
+def _line_value(raw_entry: Node, line_type: str, field_name: str) -> str | None:
+    """Return a header line's field text, or None if the block has no such line."""
+    line = next((c for c in raw_entry.children if c.type == line_type), None)
+    if line is None:
+        return None
+    return line.child_by_field_name(field_name).text.decode("utf-8").strip()
+
+
 def process_session_block_completed(
     raw_entry: Node,
 ) -> tuple[
@@ -321,10 +331,11 @@ def process_singleline_entry(raw_entry: Node) -> TrainingSession | None:
     """
     flag = get_flag(raw_entry)
 
-    if flag in ["*", "!"]:
+    if flag in ["*", "!", "T"]:
         date, movement = process_singleline_completed_session(raw_entry)
+        # A single-line entry is ad hoc: it has no session name of its own, so
+        # to_ox() can put it back on one line instead of promoting it a block.
         return TrainingSession(
-            name=movement[0].name,
             date=date,
             completed=flag_to_completed(flag),
             movements=movement,
@@ -332,38 +343,50 @@ def process_singleline_entry(raw_entry: Node) -> TrainingSession | None:
     return None
 
 
-def process_session_block_pending(raw_entry: Node) -> TrainingSession | None:
-    """Process a pending session block (completed=False).
-
-    Deferred: planned sessions are parsed but not materialized for analysis.
-    See SPEC.md "What's incomplete".
-    """
-    return None
-
-
 def process_session_block(raw_entry: Node) -> TrainingSession | None:
-    """Process a session block node.
+    """Process a session block node, in either header form.
+
+    The new form carries its metadata on `date:` / `name:` / `completed:` /
+    `format:` lines. The old positional header is read from the block's own
+    date/flag/name fields; commit 16 removes that fallback.
 
     Returns:
-        TrainingSession or None (for pending sessions)
+        TrainingSession
     """
-    flag = get_flag(raw_entry)
-
-    if flag in ["*", "!"]:
-        date, name, movements, notes, srpe = process_session_block_completed(raw_entry)
-        srpe_rating, srpe_duration, srpe_note = srpe
-        return TrainingSession(
-            name=name,
-            completed=flag_to_completed(flag),
-            date=date,
-            movements=tuple(movements),
-            notes=notes,
-            srpe_rating=srpe_rating,
-            srpe_duration=srpe_duration,
-            srpe_note=srpe_note,
-        )
+    date_text = _line_value(raw_entry, "date_line", "date")
+    if date_text is not None:
+        date = datetime.strptime(date_text, DATE_FORMAT).date()
+        name = _line_value(raw_entry, "name_line", "name")
+        completed_text = _line_value(raw_entry, "completed_line", "value")
+        completed = completed_text != "false"
+        session_format = _line_value(raw_entry, "format_line", "value")
     else:
-        return process_session_block_pending(raw_entry)
+        date = get_date(raw_entry)
+        name = get_name(raw_entry)
+        completed = flag_to_completed(get_flag(raw_entry))
+        session_format = None
+
+    movements = []
+    for m in (c for c in raw_entry.children if c.type == "item_line"):
+        sets, note = process_details(get_details(m))
+        movements.append(Movement(name=get_item(m), sets=sets, note=note))
+
+    notes = tuple(
+        Note(text=get_note_text(n)) for n in raw_entry.children if n.type == "note_line"
+    )
+    srpe_rating, srpe_duration, srpe_note = get_srpe(raw_entry)
+
+    return TrainingSession(
+        date=date,
+        completed=completed,
+        name=name,
+        movements=tuple(movements),
+        notes=notes,
+        format=session_format,
+        srpe_rating=srpe_rating,
+        srpe_duration=srpe_duration,
+        srpe_note=srpe_note,
+    )
 
 
 def process_note_entry(node: Node) -> Note:

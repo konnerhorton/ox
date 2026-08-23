@@ -46,10 +46,11 @@ def test_training_session_to_ox_with_notes():
     result = session.to_ox()
     lines = result.splitlines()
     assert lines[0] == "@session"
-    assert lines[1] == "2025-01-11 * Upper Day"
-    assert lines[2] == 'note: "Cycle 1 Week 1"'
-    assert lines[3].startswith("bench-press:")
-    assert lines[4] == "@end"
+    assert lines[1] == "date: 2025-01-11"
+    assert lines[2] == "name: Upper Day"
+    assert lines[3] == 'note: "Cycle 1 Week 1"'
+    assert lines[4].startswith("bench-press:")
+    assert lines[5] == "@end"
 
 
 def test_training_session_to_ox_no_notes():
