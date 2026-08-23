@@ -45,7 +45,7 @@ module.exports = grammar({
     singleline_entry: ($) =>
       prec.right(seq(
         field("date", $.date),
-        field("flag", $.flag),
+        "T",
         field("item", $.item),
         ":",
         optional(field("details", $.details)),
@@ -82,14 +82,12 @@ module.exports = grammar({
         optional("\n")
       )),
 
-    // @session block. Transitional: accepts either the old positional header
-    // (date flag name) or the new `date:` line, so both syntaxes parse while
-    // slice C converts the fixtures. Commit 16 deletes the positional form.
+    // @session block
     session_block: ($) =>
       prec.right(seq(
         "@session",
         "\n",
-        choice($._positional_header, $.date_line),
+        $.date_line,
         repeat(choice(
           $.item_line,
           $.note_line,
@@ -102,17 +100,8 @@ module.exports = grammar({
         optional("\n")
       )),
 
-    // Old header: the date, flag, and name share one positional line.
-    _positional_header: ($) =>
-      seq(
-        field("date", $.date),
-        field("flag", $.flag),
-        field("name", $.name),
-        "\n"
-      ),
-
-    // New header lines. `date:` must come first; the rest are free to follow
-    // in any order alongside the movement and note lines.
+    // Header lines. `date:` must come first; the rest are free to follow in
+    // any order alongside the movement and note lines.
     date_line: ($) => seq("date:", field("date", $.date), "\n"),
 
     name_line: ($) => seq("name:", field("name", $.name), "\n"),
@@ -189,10 +178,6 @@ module.exports = grammar({
     date: ($) => /\d{4}-\d{2}-\d{2}/,
 
     boolean: ($) => choice("true", "false"),
-
-    // Transitional: "T" is the new type marker, "*"/"!" the old state flags.
-    // Slice C drops the old two once nothing emits them.
-    flag: ($) => choice("*", "!", "T"),
 
     // Item name (before colon)
     item: ($) => /[^\s:]+/,

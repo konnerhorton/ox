@@ -98,11 +98,6 @@
     "fields": {}
   },
   {
-    "type": "flag",
-    "named": true,
-    "fields": {}
-  },
-  {
     "type": "format_line",
     "named": true,
     "fields": {
@@ -340,41 +335,10 @@
   {
     "type": "session_block",
     "named": true,
-    "fields": {
-      "date": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "date",
-            "named": true
-          }
-        ]
-      },
-      "flag": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "flag",
-            "named": true
-          }
-        ]
-      },
-      "name": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "name",
-            "named": true
-          }
-        ]
-      }
-    },
+    "fields": {},
     "children": {
       "multiple": true,
-      "required": false,
+      "required": true,
       "types": [
         {
           "type": "completed_line",
@@ -427,16 +391,6 @@
         "types": [
           {
             "type": "details",
-            "named": true
-          }
-        ]
-      },
-      "flag": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "flag",
             "named": true
           }
         ]
@@ -627,15 +581,7 @@
     "named": false
   },
   {
-    "type": "!",
-    "named": false
-  },
-  {
     "type": "\"",
-    "named": false
-  },
-  {
-    "type": "*",
     "named": false
   },
   {

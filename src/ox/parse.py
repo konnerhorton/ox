@@ -23,21 +23,6 @@ def get_or_last(lst, i):
     return lst[min(i, len(lst) - 1)]
 
 
-def get_flag(raw_entry: Node) -> str:
-    """Extract flag from node."""
-    return raw_entry.child_by_field_name("flag").text.decode("utf-8")
-
-
-def flag_to_completed(flag: str) -> bool:
-    """Map a single-line entry's marker onto the completed bool.
-
-    `T` is the new type marker and always means completed — planning is
-    expressed only by a session block's `completed: false`. Transitional:
-    `*` and `!` are the old state flags, dropped in commit 16.
-    """
-    return flag in ("*", "T")
-
-
 def get_name(raw_entry: Node) -> str:
     """Extract session name from node."""
     return raw_entry.child_by_field_name("name").text.decode("utf-8").strip().strip('"')
@@ -323,48 +308,32 @@ def process_session_block_completed(
     return date, name, movements, notes, get_srpe(raw_entry)
 
 
-def process_singleline_entry(raw_entry: Node) -> TrainingSession | None:
+def process_singleline_entry(raw_entry: Node) -> TrainingSession:
     """Process a single-line entry node.
 
-    Returns:
-        TrainingSession or None (for weigh-ins, not yet implemented)
+    A single-line entry is always completed — planning is expressed only by a
+    session block's `completed: false` — and always ad hoc, carrying no session
+    name of its own, so `to_ox()` can put it back on one line.
     """
-    flag = get_flag(raw_entry)
-
-    if flag in ["*", "!", "T"]:
-        date, movement = process_singleline_completed_session(raw_entry)
-        # A single-line entry is ad hoc: it has no session name of its own, so
-        # to_ox() can put it back on one line instead of promoting it a block.
-        return TrainingSession(
-            date=date,
-            completed=flag_to_completed(flag),
-            movements=movement,
-        )
-    return None
+    date, movement = process_singleline_completed_session(raw_entry)
+    return TrainingSession(date=date, completed=True, movements=movement)
 
 
-def process_session_block(raw_entry: Node) -> TrainingSession | None:
-    """Process a session block node, in either header form.
+def process_session_block(raw_entry: Node) -> TrainingSession:
+    """Process a session block node.
 
-    The new form carries its metadata on `date:` / `name:` / `completed:` /
-    `format:` lines. The old positional header is read from the block's own
-    date/flag/name fields; commit 16 removes that fallback.
+    The block's metadata lives on its `date:` / `name:` / `completed:` /
+    `format:` lines; `completed:` defaults to true when absent.
 
     Returns:
         TrainingSession
     """
-    date_text = _line_value(raw_entry, "date_line", "date")
-    if date_text is not None:
-        date = datetime.strptime(date_text, DATE_FORMAT).date()
-        name = _line_value(raw_entry, "name_line", "name")
-        completed_text = _line_value(raw_entry, "completed_line", "value")
-        completed = completed_text != "false"
-        session_format = _line_value(raw_entry, "format_line", "value")
-    else:
-        date = get_date(raw_entry)
-        name = get_name(raw_entry)
-        completed = flag_to_completed(get_flag(raw_entry))
-        session_format = None
+    date = datetime.strptime(
+        _line_value(raw_entry, "date_line", "date"), DATE_FORMAT
+    ).date()
+    name = _line_value(raw_entry, "name_line", "name")
+    session_format = _line_value(raw_entry, "format_line", "value")
+    completed = _line_value(raw_entry, "completed_line", "value") != "false"
 
     movements = []
     for m in (c for c in raw_entry.children if c.type == "item_line"):

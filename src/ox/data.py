@@ -122,7 +122,8 @@ class Entry:
     Attributes:
         date: Entry date
         completed: Whether the training actually happened. False marks a
-            planned session. Serializes as the `*` / `!` flag.
+            planned session and forces the block form, since a single-line
+            entry has no way to say it.
     """
 
     date: datetime.date

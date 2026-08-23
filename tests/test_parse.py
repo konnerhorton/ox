@@ -10,7 +10,6 @@ import pytest
 from datetime import datetime, timedelta
 
 from ox.parse import (
-    flag_to_completed,
     weight_text_to_quantity,
     process_weights,
     process_distances,
@@ -530,20 +529,15 @@ def _block_lines(content: str) -> list[str]:
 
 
 class TestTypeMarker:
-    """Single-line entries accept the new `T` marker beside the old flags."""
+    """`T` is the only marker a single-line entry takes."""
 
-    @pytest.mark.parametrize("marker", ["T", "*", "!"])
-    def test_accepted(self, marker):
-        _, diags = _parse_str(f"2025-01-10 {marker} pullups: BW 5x10\n")
+    def test_accepted(self):
+        _, diags = _parse_str("2025-01-10 T pullups: BW 5x10\n")
         assert not diags
 
-    def test_marker_is_the_flag_field(self):
-        tree, _ = _parse_str("2025-01-10 T pullups: BW 5x10\n")
-        entry = tree.root_node.children[0]
-        assert entry.child_by_field_name("flag").text.decode("utf-8") == "T"
-
-    def test_unknown_marker_rejected(self):
-        _, diags = _parse_str("2025-01-10 X pullups: BW 5x10\n")
+    @pytest.mark.parametrize("marker", ["*", "!", "X"])
+    def test_other_markers_rejected(self, marker):
+        _, diags = _parse_str(f"2025-01-10 {marker} pullups: BW 5x10\n")
         assert len(diags) > 0
 
 
@@ -616,43 +610,27 @@ class TestNewSessionHeader:
         _, diags = _parse_str(content)
         assert len(diags) > 0
 
+    def test_positional_header_rejected(self):
+        """The old `date flag name` header is gone."""
+        content = "@session\n2025-01-11 * Upper Day\nbench-press: 135lb 5x5\n@end\n"
+        _, diags = _parse_str(content)
+        assert len(diags) > 0
+
     def test_srpe_line_coexists(self):
         content = "@session\ndate: 2025-01-06\nsrpe: 5 PT45M\nsquat: 155lb 4x5\n@end\n"
         assert _block_lines(content) == ["date_line", "srpe_line", "item_line"]
 
 
-class TestOldSessionHeaderStillParses:
-    """The positional header survives until commit 16 retires it."""
+class TestCompletedIsAlwaysTrueForEntries:
+    """A single-line entry cannot express planning."""
 
-    def test_positional_header(self):
-        content = "@session\n2025-01-11 * Upper Day\nbench-press: 135lb 5x5\n@end\n"
-        assert _block_lines(content) == ["item_line"]
-
-    def test_fields_still_reachable(self):
-        content = "@session\n2025-01-11 ! Upper Day\nbench-press: 135lb 5x5\n@end\n"
-        tree, diags = _parse_str(content)
-        assert not diags
-        block = tree.root_node.children[0]
-        assert block.child_by_field_name("date").text.decode("utf-8") == "2025-01-11"
-        assert block.child_by_field_name("flag").text.decode("utf-8") == "!"
-        name = block.child_by_field_name("name").text.decode("utf-8")
-        assert name.strip() == "Upper Day"
-
-
-class TestFlagToCompleted:
-    """The grammar's flag maps onto the completed bool."""
-
-    def test_star_is_completed(self):
-        assert flag_to_completed("*") is True
-
-    def test_bang_is_planned(self):
-        assert flag_to_completed("!") is False
-
-    def test_singleline_entry(self):
-        assert _parse_session("2025-01-10 * pullups: BW 5x10\n").completed is True
+    def test_singleline_entry_is_completed(self):
+        assert _parse_session("2025-01-10 T pullups: BW 5x10\n").completed is True
 
     def test_planned_session_block(self):
-        content = "@session\n2025-01-10 ! Lower Day\nsquat: 155lb 4x5\n@end\n"
+        content = (
+            "@session\ndate: 2025-01-10\ncompleted: false\nsquat: 155lb 4x5\n@end\n"
+        )
         assert _parse_session(content).completed is False
 
 
@@ -713,44 +691,16 @@ class TestNewSessionBlockParsing:
         assert session.format is None
 
 
-class TestOldSessionBlockStillParses:
-    """The positional header keeps building sessions until commit 16."""
-
-    def test_completed(self):
-        session = _parse_session(
-            "@session\n2025-01-11 * Upper Day\nbench-press: 135lb 5x5\n@end\n"
-        )
-        assert session.name == "Upper Day"
-        assert session.completed is True
-
-    def test_planned(self):
-        session = _parse_session(
-            "@session\n2025-01-11 ! Upper Day\nbench-press: 135lb 5x5\n@end\n"
-        )
-        assert session.completed is False
-
-    def test_has_no_format(self):
-        session = _parse_session(
-            "@session\n2025-01-11 * Upper Day\nbench-press: 135lb 5x5\n@end\n"
-        )
-        assert session.format is None
-
-
 class TestSingleLineIsAdHoc:
     """Single-line entries carry no session name, so they round-trip as lines."""
 
-    @pytest.mark.parametrize("marker", ["T", "*"])
-    def test_no_session_name(self, marker):
-        session = _parse_session(f"2025-01-10 {marker} pullups: BW 5x10\n")
+    def test_no_session_name(self):
+        session = _parse_session("2025-01-10 T pullups: BW 5x10\n")
         assert session.name is None
         assert session.movements[0].name == "pullups"
 
     def test_round_trips_as_one_line(self):
         session = _parse_session("2025-01-10 T pullups: BW 5x10\n")
-        assert session.to_ox() == "2025-01-10 T pullups: BW 5x10"
-
-    def test_old_marker_normalizes_to_t(self):
-        session = _parse_session("2025-01-10 * pullups: BW 5x10\n")
         assert session.to_ox() == "2025-01-10 T pullups: BW 5x10"
 
 
