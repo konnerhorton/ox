@@ -513,6 +513,132 @@ def _parse_session(content: str):
     return parse_file(f).sessions[0]
 
 
+def _block_lines(content: str) -> list[str]:
+    """Parse a .ox string and return the node types inside its session block."""
+    tree, diags = _parse_str(content)
+    assert not diags, f"unexpected syntax error in {content!r}"
+    kinds = []
+
+    def walk(node):
+        if node.type.endswith("_line"):
+            kinds.append(node.type)
+        for child in node.children:
+            walk(child)
+
+    walk(tree.root_node)
+    return kinds
+
+
+class TestTypeMarker:
+    """Single-line entries accept the new `T` marker beside the old flags."""
+
+    @pytest.mark.parametrize("marker", ["T", "*", "!"])
+    def test_accepted(self, marker):
+        _, diags = _parse_str(f"2025-01-10 {marker} pullups: BW 5x10\n")
+        assert not diags
+
+    def test_marker_is_the_flag_field(self):
+        tree, _ = _parse_str("2025-01-10 T pullups: BW 5x10\n")
+        entry = tree.root_node.children[0]
+        assert entry.child_by_field_name("flag").text.decode("utf-8") == "T"
+
+    def test_unknown_marker_rejected(self):
+        _, diags = _parse_str("2025-01-10 X pullups: BW 5x10\n")
+        assert len(diags) > 0
+
+
+class TestNewSessionHeader:
+    """The session block accepts `date:` / `name:` / `completed:` / `format:`."""
+
+    def test_full_header(self):
+        content = (
+            "@session\n"
+            "date: 2025-01-06\n"
+            "name: Lower Strength\n"
+            "completed: true\n"
+            "format: 5/3/1 wave\n"
+            "squat: 155lb 4x5\n"
+            "@end\n"
+        )
+        assert _block_lines(content) == [
+            "date_line",
+            "name_line",
+            "completed_line",
+            "format_line",
+            "item_line",
+        ]
+
+    def test_date_only_is_enough(self):
+        """An ad hoc session needs no name."""
+        content = "@session\ndate: 2025-01-10\npullups: BW 3x10\n@end\n"
+        assert _block_lines(content) == ["date_line", "item_line"]
+
+    @pytest.mark.parametrize("value", ["true", "false"])
+    def test_completed_values(self, value):
+        content = f"@session\ndate: 2025-01-10\ncompleted: {value}\n@end\n"
+        tree, diags = _parse_str(content)
+        assert not diags
+
+        found = []
+
+        def walk(node):
+            if node.type == "completed_line":
+                found.append(node.child_by_field_name("value").text.decode("utf-8"))
+            for child in node.children:
+                walk(child)
+
+        walk(tree.root_node)
+        assert found == [value]
+
+    def test_non_boolean_completed_rejected(self):
+        content = "@session\ndate: 2025-01-10\ncompleted: maybe\n@end\n"
+        _, diags = _parse_str(content)
+        assert len(diags) > 0
+
+    def test_lines_may_follow_in_any_order(self):
+        content = (
+            "@session\n"
+            "date: 2025-01-06\n"
+            "squat: 155lb 4x5\n"
+            "name: Lower\n"
+            "completed: false\n"
+            "@end\n"
+        )
+        assert _block_lines(content) == [
+            "date_line",
+            "item_line",
+            "name_line",
+            "completed_line",
+        ]
+
+    def test_date_must_come_first(self):
+        content = "@session\nname: Lower\ndate: 2025-01-06\n@end\n"
+        _, diags = _parse_str(content)
+        assert len(diags) > 0
+
+    def test_srpe_line_coexists(self):
+        content = "@session\ndate: 2025-01-06\nsrpe: 5 PT45M\nsquat: 155lb 4x5\n@end\n"
+        assert _block_lines(content) == ["date_line", "srpe_line", "item_line"]
+
+
+class TestOldSessionHeaderStillParses:
+    """The positional header survives until commit 16 retires it."""
+
+    def test_positional_header(self):
+        content = "@session\n2025-01-11 * Upper Day\nbench-press: 135lb 5x5\n@end\n"
+        assert _block_lines(content) == ["item_line"]
+
+    def test_fields_still_reachable(self):
+        content = "@session\n2025-01-11 ! Upper Day\nbench-press: 135lb 5x5\n@end\n"
+        tree, diags = _parse_str(content)
+        assert not diags
+        block = tree.root_node.children[0]
+        assert block.child_by_field_name("date").text.decode("utf-8") == "2025-01-11"
+        assert block.child_by_field_name("flag").text.decode("utf-8") == "!"
+        name = block.child_by_field_name("name").text.decode("utf-8")
+        assert name.strip() == "Upper Day"
+
+
 class TestFlagToCompleted:
     """The grammar's flag maps onto the completed bool."""
 

@@ -393,32 +393,17 @@
             "value": "\n"
           },
           {
-            "type": "FIELD",
-            "name": "date",
-            "content": {
-              "type": "SYMBOL",
-              "name": "date"
-            }
-          },
-          {
-            "type": "FIELD",
-            "name": "flag",
-            "content": {
-              "type": "SYMBOL",
-              "name": "flag"
-            }
-          },
-          {
-            "type": "FIELD",
-            "name": "name",
-            "content": {
-              "type": "SYMBOL",
-              "name": "name"
-            }
-          },
-          {
-            "type": "STRING",
-            "value": "\n"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "_positional_header"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "date_line"
+              }
+            ]
           },
           {
             "type": "REPEAT",
@@ -436,6 +421,18 @@
                 {
                   "type": "SYMBOL",
                   "name": "srpe_line"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "name_line"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "completed_line"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "format_line"
                 }
               ]
             }
@@ -458,6 +455,123 @@
           }
         ]
       }
+    },
+    "_positional_header": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "date",
+          "content": {
+            "type": "SYMBOL",
+            "name": "date"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "flag",
+          "content": {
+            "type": "SYMBOL",
+            "name": "flag"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "name"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "date_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "date:"
+        },
+        {
+          "type": "FIELD",
+          "name": "date",
+          "content": {
+            "type": "SYMBOL",
+            "name": "date"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "name_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "name:"
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "name"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "completed_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "completed:"
+        },
+        {
+          "type": "FIELD",
+          "name": "value",
+          "content": {
+            "type": "SYMBOL",
+            "name": "boolean"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "format_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "format:"
+        },
+        {
+          "type": "FIELD",
+          "name": "value",
+          "content": {
+            "type": "SYMBOL",
+            "name": "text_until_newline"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
     },
     "movement_block": {
       "type": "PREC_RIGHT",
@@ -716,6 +830,19 @@
       "type": "PATTERN",
       "value": "\\d{4}-\\d{2}-\\d{2}"
     },
+    "boolean": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "true"
+        },
+        {
+          "type": "STRING",
+          "value": "false"
+        }
+      ]
+    },
     "flag": {
       "type": "CHOICE",
       "members": [
@@ -726,6 +853,10 @@
         {
           "type": "STRING",
           "value": "!"
+        },
+        {
+          "type": "STRING",
+          "value": "T"
         }
       ]
     },

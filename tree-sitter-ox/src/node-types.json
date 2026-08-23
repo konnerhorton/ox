@@ -1,5 +1,42 @@
 [
   {
+    "type": "boolean",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "completed_line",
+    "named": true,
+    "fields": {
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "boolean",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "date_line",
+    "named": true,
+    "fields": {
+      "date": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "date",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "details",
     "named": true,
     "fields": {
@@ -64,6 +101,22 @@
     "type": "flag",
     "named": true,
     "fields": {}
+  },
+  {
+    "type": "format_line",
+    "named": true,
+    "fields": {
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "text_until_newline",
+            "named": true
+          }
+        ]
+      }
+    }
   },
   {
     "type": "identifier",
@@ -175,6 +228,22 @@
     "fields": {}
   },
   {
+    "type": "name_line",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "name",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "note_entry",
     "named": true,
     "fields": {
@@ -274,7 +343,7 @@
     "fields": {
       "date": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "date",
@@ -284,7 +353,7 @@
       },
       "flag": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "flag",
@@ -294,7 +363,7 @@
       },
       "name": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "name",
@@ -308,7 +377,23 @@
       "required": false,
       "types": [
         {
+          "type": "completed_line",
+          "named": true
+        },
+        {
+          "type": "date_line",
+          "named": true
+        },
+        {
+          "type": "format_line",
+          "named": true
+        },
+        {
           "type": "item_line",
+          "named": true
+        },
+        {
+          "type": "name_line",
           "named": true
         },
         {
@@ -582,6 +667,10 @@
     "named": false
   },
   {
+    "type": "T",
+    "named": false
+  },
+  {
     "type": "W",
     "named": false
   },
@@ -590,8 +679,16 @@
     "named": true
   },
   {
+    "type": "completed:",
+    "named": false
+  },
+  {
     "type": "date",
     "named": true
+  },
+  {
+    "type": "date:",
+    "named": false
   },
   {
     "type": "distance",
@@ -600,6 +697,18 @@
   {
     "type": "duration",
     "named": true
+  },
+  {
+    "type": "false",
+    "named": false
+  },
+  {
+    "type": "format:",
+    "named": false
+  },
+  {
+    "type": "name:",
+    "named": false
   },
   {
     "type": "note",
@@ -628,6 +737,10 @@
   {
     "type": "time_of_day",
     "named": true
+  },
+  {
+    "type": "true",
+    "named": false
   },
   {
     "type": "weight",

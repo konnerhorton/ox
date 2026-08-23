@@ -82,19 +82,45 @@ module.exports = grammar({
         optional("\n")
       )),
 
-    // @session block
+    // @session block. Transitional: accepts either the old positional header
+    // (date flag name) or the new `date:` line, so both syntaxes parse while
+    // slice C converts the fixtures. Commit 16 deletes the positional form.
     session_block: ($) =>
       prec.right(seq(
         "@session",
         "\n",
-        field("date", $.date),
-        field("flag", $.flag),
-        field("name", $.name),
-        "\n",
-        repeat(choice($.item_line, $.note_line, $.srpe_line)),
+        choice($._positional_header, $.date_line),
+        repeat(choice(
+          $.item_line,
+          $.note_line,
+          $.srpe_line,
+          $.name_line,
+          $.completed_line,
+          $.format_line
+        )),
         "@end",
         optional("\n")
       )),
+
+    // Old header: the date, flag, and name share one positional line.
+    _positional_header: ($) =>
+      seq(
+        field("date", $.date),
+        field("flag", $.flag),
+        field("name", $.name),
+        "\n"
+      ),
+
+    // New header lines. `date:` must come first; the rest are free to follow
+    // in any order alongside the movement and note lines.
+    date_line: ($) => seq("date:", field("date", $.date), "\n"),
+
+    name_line: ($) => seq("name:", field("name", $.name), "\n"),
+
+    completed_line: ($) => seq("completed:", field("value", $.boolean), "\n"),
+
+    // Free-text stub for future @template linkage, unvalidated for now.
+    format_line: ($) => seq("format:", field("value", $.text_until_newline), "\n"),
 
     // @movement block
     movement_block: ($) =>
@@ -162,7 +188,11 @@ module.exports = grammar({
 
     date: ($) => /\d{4}-\d{2}-\d{2}/,
 
-    flag: ($) => choice("*", "!"),
+    boolean: ($) => choice("true", "false"),
+
+    // Transitional: "T" is the new type marker, "*"/"!" the old state flags.
+    // Slice C drops the old two once nothing emits them.
+    flag: ($) => choice("*", "!", "T"),
 
     // Item name (before colon)
     item: ($) => /[^\s:]+/,
