@@ -71,8 +71,11 @@ examples/
 ```
 # Comments start with #
 
-# Single-line entry: date flag movement: weight reps "note"
+# Single-line entry: date flag movement: weight distance duration reps "note"
 2025-01-10 * pullups: BW 5x10
+2025-01-10 * plank: BW PT45S 3x1
+2025-01-10 * run: 5km PT25M
+2025-01-10 * farmer-carry: 32kg 40m 4x1
 
 # Session block
 @session
@@ -112,9 +115,14 @@ movement: details
 # Weight units: kg, lb, g, oz, stone, grain, and more (any pint-compatible mass unit)
 # Weight formats: 24kg, BW, 24kg+32kg (combined), 24kg/32kg/48kg (progressive), 160/185/210lb (implied unit)
 # Rep formats: 5x5 (sets x reps), 5/5/5 (per-set reps)
-# Duration: ISO 8601 (PT30M, PT1H30M15S)
-# Distance: numeric + unit (m, km, ft, mi, etc.)
+# Duration: ISO 8601 (PT30M, PT1H30M15S), progressive PT30S/PT25S/PT20S
+# Distance: numeric + unit (m, km, ft, mi, etc.), progressive 100m/200m/400m or 100/200/400m
 ```
+
+Weight, duration, and distance are independent per-set fields — a set may carry all of them at once.
+Given once, a field broadcasts across every set; given as a `/`-list, it maps one value per set.
+Set count comes from the rep scheme (`5x1` is five sets of one rep). With no rep scheme, the count is
+the length of the longest `/`-list, defaulting to one set — so `run: PT30M` is a single 30-minute set.
 
 ## Conventions
 

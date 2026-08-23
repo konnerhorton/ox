@@ -43,6 +43,10 @@ Full docs at [konnerhorton.github.io/ox](https://konnerhorton.github.io/ox):
 # Single-line entry
 2025-01-14 * squat: 135lb 5x5 "felt good"
 
+# Timed and measured work
+2025-01-14 * plank: BW PT45S 3x1
+2025-01-14 * run: 5km PT25M
+
 # Session block
 @session
 2025-01-15 * Lower Body
@@ -77,9 +81,13 @@ note: back squat
 
 **Reps:** `5x5` (sets x reps), `5/3/1` (per-set)
 
-**Duration:** ISO 8601 (`PT30M`, `PT1H30M15S`)
+**Duration:** ISO 8601 (`PT30M`, `PT1H30M15S`), progressive `PT30S/PT25S/PT20S`
 
-**Distance:** `5km`, `3mi`, `400m`
+**Distance:** `5km`, `3mi`, `400m`, progressive `100m/200m/400m` (or `100/200/400m`)
+
+Weight, duration, and distance are independent per-set fields, so a set can carry all of them.
+Given once a field applies to every set; given as a `/`-list it maps one value per set. The rep
+scheme sets the count (`5x1` is five sets of one rep); with none, `run: PT30M` is a single set.
 
 **Movement names:** no spaces (`kb-oh-press`, `bb-back-squat`)
 

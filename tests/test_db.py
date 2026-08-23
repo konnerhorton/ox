@@ -291,6 +291,21 @@ class TestDurationAndDistanceColumns:
         ).fetchone()[0]
         assert count > 0
 
+    def test_example_log_has_measured_sets(self, example_db):
+        """The example log exercises the distance columns too."""
+        count = example_db.execute(
+            "SELECT COUNT(*) FROM training WHERE distance_magnitude IS NOT NULL"
+        ).fetchone()[0]
+        assert count > 0
+
+    def test_example_log_combines_distance_and_duration(self, example_db):
+        """`run: 5km PT25M` puts both on one set."""
+        count = example_db.execute(
+            "SELECT COUNT(*) FROM training"
+            " WHERE distance_magnitude IS NOT NULL AND duration_seconds IS NOT NULL"
+        ).fetchone()[0]
+        assert count > 0
+
 
 class TestUserQueries:
     """Test realistic SQL queries a user would write."""

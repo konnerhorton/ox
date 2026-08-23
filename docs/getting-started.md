@@ -76,6 +76,36 @@ Any [pint](https://pint.readthedocs.io/)-compatible mass unit works (`g`, `oz`, 
 10/8/6/4/2        pyramid
 ```
 
+### Duration and distance
+
+Work measured by time or ground covered rather than reps:
+
+```
+PT45S             45 seconds (ISO 8601)
+PT1H30M15S        an hour, thirty minutes, fifteen seconds
+PT30S/PT25S/PT20S per-set durations
+400m              metres
+3mi               miles
+100m/200m/400m    per-set distances
+100/200/400m      same, with the unit implied from the last value
+```
+
+Any pint-compatible length unit works (`m`, `km`, `ft`, `yd`, `mi`, `nmi`, …).
+
+Weight, duration, and distance are independent — a set may carry all three:
+
+```
+plank: BW PT45S 3x1           3 sets, 45-second hold each
+weighted-plank: 45lb PT30S 3x1
+run: 5km PT25M                one set, 5km in 25 minutes
+farmer-carry: 32kg 40m 4x1    4 carries of 40m with a 32kg bell
+sprint: 100m/200m/400m        3 sets, one per distance
+```
+
+A field written once applies to every set; written as a `/`-list it maps one value per set. The rep
+scheme decides how many sets there are — `5x1` means five sets of a single rep. With no rep scheme the
+count comes from the longest `/`-list, or one set if there is none, so `run: PT30M` is a single set.
+
 ### Movement names
 
 No spaces — hyphens are common but any non-space format works:

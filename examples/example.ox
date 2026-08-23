@@ -87,6 +87,27 @@ url: https://www.runnersworld.com/training/
 note: comfortable pace unless noted, focus on form
 @end
 
+@movement sprint
+equipment: cardio
+tag: speed
+url: https://www.scienceforsport.com/sprint-training/
+note: full recovery between efforts, quality over quantity
+@end
+
+@movement plank
+equipment: bodyweight
+tag: core
+url: https://www.strongerbyscience.com/how-to-plank/
+note: hold for time, ribs down, glutes squeezed
+@end
+
+@movement farmer-carry
+equipment: kettlebell
+tag: carry
+url: https://www.strongfirst.com/the-farmer-carry/
+note: carry for distance, tall posture, do not shrug
+@end
+
 # Week 1 - Strength Focus
 @session
 2024-01-15 * Lower Strength
@@ -110,7 +131,7 @@ kb-clean-and-press: 24kg 5x3 "each arm"
 kb-turkish-getup: 24kg 5x1 "each arm"
 @end
 
-2024-01-18 * run: PT30M "easy pace"
+2024-01-18 * run: 5km PT30M "easy pace"
 
 @session
 2024-01-19 * Full Body
@@ -118,9 +139,10 @@ squat: 165lb 4x8
 bench-press: 135lb 4x8
 pullup: BW 4x8
 kb-swing: 24kg 4x20
+plank: BW PT45S 3x1
 @end
 
-2024-01-20 * run: PT45M "long slow distance"
+2024-01-20 * run: 8km PT45M "long slow distance"
 
 # Week 2 - Volume Phase
 @session
@@ -142,9 +164,10 @@ pullup: BW 5x8
 burpee: BW 10x10
 kb-swing: 32kg 10x15
 box-jump: BW 10x5
+plank: BW PT60S 3x1
 @end
 
-2024-01-25 * run: PT25M
+2024-01-25 * run: 4km PT25M
 
 @session
 2024-01-26 * KB Focus
@@ -152,6 +175,7 @@ kb-snatch: 24kg 8x5 "each arm"
 kb-clean-and-press: 24kg 6x3 "each arm"
 kb-turkish-getup: 24kg 6x1 "each arm"
 kb-swing: 32kg 5x20
+farmer-carry: 32kg 40m 4x1
 @end
 
 # Week 3 - Progressive Overload
@@ -196,7 +220,7 @@ kb-turkish-getup: 32kg 5x1 "each arm"
 kb-snatch: 32kg 5x3 "each arm"
 @end
 
-2024-02-04 * run: PT40M "tempo run"
+2024-02-04 * run: 7km PT40M "tempo run"
 
 @session
 2024-02-05 * Circuit Training
@@ -204,6 +228,7 @@ burpee: BW 5x15
 squat: 135lb 5x10
 kb-swing: 24kg 5x20
 box-jump: BW 5x8
+plank: PT60S/PT45S/PT30S
 @end
 
 # Week 5 - Pyramid Work
@@ -250,7 +275,7 @@ kb-swing: 24kg 5x15
 kb-turkish-getup: 24kg 5x1 "each arm"
 @end
 
-2024-02-15 * run: PT20M "easy"
+2024-02-15 * run: 3km PT20M "easy"
 
 # Week 7 - 5/3/1 Cycle 1 Week 1
 @session
@@ -275,7 +300,7 @@ deadlift: 185lb/210lb/235lb 5/5/8
 kb-swing: 32kg 5x15
 @end
 
-2024-02-22 * run: PT35M
+2024-02-22 * run: 6km PT35M
 
 @session
 2024-02-23 * KB & Plyometrics
@@ -338,14 +363,17 @@ note: "Cycle 1 Week 3"
 deadlift: 215lb/240lb/265lb 5/3/8 "grip was tough on the last set"
 @end
 
-2024-03-07 * run: PT45M "felt strong"
+2024-03-07 * run: 8km PT45M "felt strong"
 
 @session
 2024-03-08 * Conditioning
 burpee: BW 8x12
 kb-swing: 32kg 8x20
 box-jump: BW 8x5
+plank: 25lb PT45S 3x1 "plate on back"
 @end
+
+2024-03-09 * sprint: 100m 8x1 "track intervals, full recovery"
 
 # Week 10 - 5/3/1 Cycle 1 Week 4 (Deload)
 @session
@@ -398,7 +426,7 @@ deadlift: 195lb/220lb/245lb 5/5/10
 kb-swing: 32kg 5x20
 @end
 
-2024-03-21 * run: PT30M
+2024-03-21 * run: 5km PT30M
 
 @session
 2024-03-22 * KB Workout
@@ -461,7 +489,7 @@ deadlift: 225lb/250lb/275lb 5/3/10 "new rep PR!"
 kb-swing: 32kg 5x20
 @end
 
-2024-04-04 * run: PT35M
+2024-04-04 * run: 6km PT35M
 
 @session
 2024-04-05 * KB & Plyometrics
@@ -469,7 +497,10 @@ kb-snatch: 32kg 5x4 "each arm"
 kb-clean-and-press: 32kg 5x4 "each arm"
 kb-turkish-getup: 32kg 5x1 "each arm"
 box-jump: BW 5x5
+farmer-carry: 32kg 40m/40m/30m/20m
 @end
+
+2024-04-06 * sprint: 100m/200m/400m "ladder"
 
 # Week 14 - Bodyweight Focus
 @session
@@ -487,7 +518,7 @@ box-jump: BW 8x5
 burpee: BW 5x20
 @end
 
-2024-04-10 * run: PT50M "long run"
+2024-04-10 * run: 9km PT50M "long run"
 
 @session
 2024-04-11 * KB Intensive
@@ -495,6 +526,8 @@ kb-swing: 32kg 10x20 "every 90 seconds"
 kb-snatch: 24kg 8x6 "each arm"
 kb-clean-and-press: 24kg 8x4 "each arm"
 kb-turkish-getup: 24kg 8x1 "each arm"
+farmer-carry: 40kg 30m 4x1
+plank: BW PT90S 3x1
 @end
 
 @session
@@ -515,7 +548,7 @@ pullup: 30lb 5x3
 @session
 2024-04-16 * Lower Power
 squat: 205lb 5x3
-deadlift: 45/245lb 5x3
+deadlift: 245lb 5x3
 box-jump: BW 5x3
 @end
 
@@ -551,7 +584,7 @@ overhead-press: 95lb 5x10
 pullup: BW 5x10
 @end
 
-2024-04-24 * run: PT45M
+2024-04-24 * run: 8km PT45M
 
 @session
 2024-04-25 * KB & Bodyweight
@@ -589,7 +622,7 @@ deadlift: 155lb/185lb/215lb/245lb/275lb/285lb 5/5/3/3/1/1 "new 1RM: 285lb"
 kb-swing: 32kg 5x15
 @end
 
-2024-05-02 * run: PT30M "recovery"
+2024-05-02 * run: 5km PT30M "recovery"
 
 @session
 2024-05-03 * KB Celebration
