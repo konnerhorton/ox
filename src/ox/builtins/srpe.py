@@ -3,9 +3,8 @@
 Computes training load in arbitrary units (AU) from sRPE entries.
 AU = rating × duration_minutes.
 
-sRPE data is extracted from:
-- Session metadata movements: `srpe: "4; PT30M"` (parsed as a movement named "srpe")
-- Single-line entry notes: `"srpe: 4; PT50M"` (embedded in the movement note)
+sRPE is a first-class session field, written as `srpe: <rating> <duration>`
+inside a session block and stored on the sessions table.
 
 Usage:
     srpe
@@ -17,47 +16,11 @@ Usage:
 """
 
 import math
-import re
 from collections import defaultdict
 from datetime import date as _date, timedelta as _timedelta
 
 from ox import plot
 from ox.plugins import PlotResult, PluginContext, TableResult
-
-_SRPE_PATTERN = re.compile(
-    r"srpe:\s*(\d+(?:\.\d+)?)\s*[;,]\s*(PT[\dHMShms]+)", re.IGNORECASE
-)
-
-
-def _parse_iso_duration_minutes(duration_str: str) -> float:
-    """Parse an ISO 8601 duration string into total minutes.
-
-    Supports PT#H#M#S format (e.g., PT30M, PT1H30M, PT1H, PT90S).
-    """
-    m = re.match(
-        r"PT(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?$",
-        duration_str,
-        re.IGNORECASE,
-    )
-    if not m:
-        raise ValueError(f"Invalid ISO 8601 duration: {duration_str}")
-    hours = float(m.group(1) or 0)
-    minutes = float(m.group(2) or 0)
-    seconds = float(m.group(3) or 0)
-    return hours * 60 + minutes + seconds / 60
-
-
-def _parse_srpe(text: str) -> tuple[float, float, float] | None:
-    """Parse an sRPE string and return (rating, duration_minutes, AU).
-
-    Returns None if the string doesn't contain a valid sRPE entry.
-    """
-    m = _SRPE_PATTERN.search(text)
-    if not m:
-        return None
-    rating = float(m.group(1))
-    duration_min = _parse_iso_duration_minutes(m.group(2))
-    return rating, duration_min, rating * duration_min
 
 
 def _extract_srpe_data(ctx: PluginContext) -> list[tuple[str, float, float, float]]:
@@ -65,44 +28,19 @@ def _extract_srpe_data(ctx: PluginContext) -> list[tuple[str, float, float, floa
 
     Returns list of (date, rating, duration_minutes, AU).
     """
+    rows = ctx.db.execute(
+        """
+        SELECT date, srpe_rating, srpe_duration_seconds
+        FROM sessions
+        WHERE srpe_rating IS NOT NULL AND srpe_duration_seconds IS NOT NULL
+        ORDER BY date
+        """
+    ).fetchall()
+
     results = []
-
-    # Case 1: srpe as a movement name in a session (srpe: "4; PT30M")
-    # The note field contains the value like "4; PT30M"
-    rows = ctx.db.execute(
-        """
-        SELECT s.date, m.note
-        FROM movements m
-        JOIN sessions s ON m.session_id = s.id
-        WHERE LOWER(m.name) = 'srpe' AND m.note IS NOT NULL
-        ORDER BY s.date
-        """
-    ).fetchall()
-
-    for date_str, note in rows:
-        parsed = _parse_srpe(f"srpe: {note}")
-        if parsed:
-            results.append((date_str, *parsed))
-
-    # Case 2: srpe embedded in a movement note (e.g., "srpe: 4; PT50M")
-    rows = ctx.db.execute(
-        """
-        SELECT s.date, m.note
-        FROM movements m
-        JOIN sessions s ON m.session_id = s.id
-        WHERE LOWER(m.name) != 'srpe'
-          AND m.note IS NOT NULL
-          AND LOWER(m.note) LIKE '%srpe:%'
-        ORDER BY s.date
-        """
-    ).fetchall()
-
-    for date_str, note in rows:
-        parsed = _parse_srpe(note)
-        if parsed:
-            results.append((date_str, *parsed))
-
-    results.sort(key=lambda r: r[0])
+    for date_str, rating, duration_seconds in rows:
+        duration_min = duration_seconds / 60
+        results.append((date_str, float(rating), duration_min, rating * duration_min))
     return results
 
 

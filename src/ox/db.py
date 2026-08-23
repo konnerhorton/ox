@@ -13,7 +13,11 @@ CREATE TABLE sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT NOT NULL,
     completed INTEGER NOT NULL DEFAULT 1,
-    name TEXT
+    name TEXT,
+    format TEXT,
+    srpe_rating INTEGER,
+    srpe_duration_seconds REAL,
+    srpe_note TEXT
 );
 
 CREATE TABLE movements (
@@ -84,6 +88,9 @@ SELECT
     s.date,
     s.completed,
     s.name AS session_name,
+    s.format AS session_format,
+    s.srpe_rating,
+    s.srpe_duration_seconds,
     m.id AS movement_id,
     m.name AS movement_name,
     m.note AS movement_note,
@@ -129,8 +136,21 @@ def create_db(log: TrainingLog) -> sqlite3.Connection:
 
     for session in log.sessions:
         cursor = conn.execute(
-            "INSERT INTO sessions (date, completed, name) VALUES (?, ?, ?)",
-            (session.date.isoformat(), int(session.completed), session.name),
+            "INSERT INTO sessions (date, completed, name, format,"
+            " srpe_rating, srpe_duration_seconds, srpe_note)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                session.date.isoformat(),
+                int(session.completed),
+                session.name,
+                session.format,
+                session.srpe_rating,
+                # `is not None`: a zero timedelta is falsy but real
+                session.srpe_duration.total_seconds()
+                if session.srpe_duration is not None
+                else None,
+                session.srpe_note,
+            ),
         )
         session_id = cursor.lastrowid
 

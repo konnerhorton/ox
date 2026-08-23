@@ -188,6 +188,9 @@ class TestTrainingView:
             "date",
             "completed",
             "session_name",
+            "session_format",
+            "srpe_rating",
+            "srpe_duration_seconds",
             "movement_id",
             "movement_name",
             "movement_note",
@@ -231,6 +234,66 @@ class TestEdgeCases:
         ).fetchall()
         assert len(rows) >= 1
         assert isinstance(rows[0][0], str)
+
+
+class TestSessionMetadataColumns:
+    """Session-level name, format, and sRPE reach the database."""
+
+    @pytest.fixture
+    def sessions_db(self, tmp_path):
+        f = tmp_path / "sessions.ox"
+        f.write_text(
+            "@session\n"
+            "date: 2025-01-06\n"
+            "name: Lower Strength\n"
+            "format: 5/3/1 wave\n"
+            'srpe: 5 PT45M "felt strong"\n'
+            "squat: 155lb 4x5\n"
+            "@end\n"
+            "\n"
+            "@session\n"
+            "date: 2025-01-07\n"
+            "completed: false\n"
+            "bench-press: 135lb 5x5\n"
+            "@end\n"
+        )
+        conn = create_db(parse_file(f))
+        yield conn
+        conn.close()
+
+    def test_srpe_columns(self, sessions_db):
+        row = sessions_db.execute(
+            "SELECT srpe_rating, srpe_duration_seconds, srpe_note"
+            " FROM sessions WHERE date = '2025-01-06'"
+        ).fetchone()
+        assert row == (5, 2700.0, "felt strong")
+
+    def test_format_column(self, sessions_db):
+        row = sessions_db.execute(
+            "SELECT format FROM sessions WHERE date = '2025-01-06'"
+        ).fetchone()
+        assert row[0] == "5/3/1 wave"
+
+    def test_null_when_absent(self, sessions_db):
+        row = sessions_db.execute(
+            "SELECT name, format, srpe_rating, srpe_duration_seconds, srpe_note"
+            " FROM sessions WHERE date = '2025-01-07'"
+        ).fetchone()
+        assert row == (None, None, None, None, None)
+
+    def test_name_is_nullable(self, sessions_db):
+        """An ad hoc session has no name, and the schema allows that."""
+        count = sessions_db.execute(
+            "SELECT COUNT(*) FROM sessions WHERE name IS NULL"
+        ).fetchone()[0]
+        assert count == 1
+
+    def test_view_exposes_srpe(self, sessions_db):
+        row = sessions_db.execute(
+            "SELECT DISTINCT srpe_rating, srpe_duration_seconds, session_format"
+            " FROM training WHERE date = '2025-01-06'"
+        ).fetchone()
+        assert row == (5, 2700.0, "5/3/1 wave")
 
 
 class TestDurationAndDistanceColumns:
