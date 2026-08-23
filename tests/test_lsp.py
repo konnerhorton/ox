@@ -9,8 +9,10 @@ import tree_sitter_ox
 
 from ox import lsp as ox_lsp
 from ox.lsp import (
+    SESSION_KEYWORDS,
     _collect_movement_names,
     _cursor_wants_movement,
+    _enclosing_block,
     _get_all_diagnostics,
     _validate_includes,
     completion,
@@ -113,7 +115,7 @@ class TestCollectMovementNames:
 
 class TestCursorWantsMovement:
     def test_after_singleline_prefix_true(self):
-        text = "2025-01-10 * \n"
+        text = "2025-01-10 T \n"
         tree = _parse_tree(text)
         assert _cursor_wants_movement(text, 0, 13, tree) is True
 
@@ -257,13 +259,58 @@ class TestFoldingRange:
         assert ranges[0].end_line == 1
 
 
+class TestKeywordLines:
+    """A session's own keyword lines are never movement contexts."""
+
+    SESSION = (
+        "@session\n"
+        "date: 2025-01-11\n"
+        "name: Upper Day\n"
+        "completed: false\n"
+        "format: 5/3/1 wave\n"
+        "srpe: 5 PT45M\n"
+        'note: "felt strong"\n'
+        "bench-press: 135lb 5x5\n"
+        "@end\n"
+    )
+
+    @pytest.mark.parametrize("row", [1, 2, 3, 4, 5, 6])
+    def test_keyword_lines_are_not_movement_context(self, row):
+        tree = _parse_tree(self.SESSION)
+        assert _cursor_wants_movement(self.SESSION, row, 2, tree) is False
+
+    def test_movement_line_still_is(self):
+        tree = _parse_tree(self.SESSION)
+        assert _cursor_wants_movement(self.SESSION, 7, 2, tree) is True
+
+    def test_movement_named_like_a_keyword_prefix_still_completes(self):
+        """`formation` is not `format:`, so the line stays a movement context."""
+        text = "@session\ndate: 2025-01-11\nform\n@end\n"
+        tree = _parse_tree(text)
+        assert _cursor_wants_movement(text, 2, 4, tree) is True
+
+
+class TestEnclosingBlock:
+    def test_inside_session(self):
+        text = "@session\ndate: 2025-01-11\nbench-press: 135lb 5x5\n@end\n"
+        assert _enclosing_block(_parse_tree(text), 2, 0) == "session_block"
+
+    def test_inside_template(self):
+        text = '@template "t"\nbench-press: 135lb 5x5\n@end\n'
+        assert _enclosing_block(_parse_tree(text), 1, 0) == "template_block"
+
+    def test_outside_any_block(self):
+        text = "2025-01-10 T pullups: BW 5x10\n"
+        assert _enclosing_block(_parse_tree(text), 0, 13) is None
+
+
 class TestCompletion:
     def test_returns_movements_in_context(self, stub_workspace, tmp_path):
         uri = f"file://{tmp_path / 'a.ox'}"
         stub_workspace[uri] = (
             "2025-01-10 T pullups: BW 5x10\n"
             "2025-01-11 T bench-press: 135lb 5x5\n"
-            "2025-01-12 * \n"
+            "2025-01-12 T \n"
         )
         params = lsp.CompletionParams(
             text_document=lsp.TextDocumentIdentifier(uri=uri),
@@ -276,6 +323,35 @@ class TestCompletion:
         for item in result.items:
             assert item.insert_text.endswith(": ")
             assert item.kind == lsp.CompletionItemKind.Value
+
+    def test_session_keywords_offered_in_a_block(self, stub_workspace, tmp_path):
+        uri = f"file://{tmp_path / 'a.ox'}"
+        stub_workspace[uri] = (
+            "@session\ndate: 2025-01-11\nbench-press: 135lb 5x5\n\n@end\n"
+        )
+        params = lsp.CompletionParams(
+            text_document=lsp.TextDocumentIdentifier(uri=uri),
+            position=lsp.Position(line=3, character=0),
+        )
+        result = completion(params)
+        labels = [i.label for i in result.items]
+        assert set(SESSION_KEYWORDS) <= set(labels)
+        assert "bench-press" in labels
+        keywords = [i for i in result.items if i.kind == lsp.CompletionItemKind.Keyword]
+        assert {i.label for i in keywords} == set(SESSION_KEYWORDS)
+        assert all(i.insert_text.endswith(": ") for i in keywords)
+
+    def test_session_keywords_not_offered_outside_a_block(
+        self, stub_workspace, tmp_path
+    ):
+        uri = f"file://{tmp_path / 'a.ox'}"
+        stub_workspace[uri] = "2025-01-10 T pullups: BW 5x10\n2025-01-12 T \n"
+        params = lsp.CompletionParams(
+            text_document=lsp.TextDocumentIdentifier(uri=uri),
+            position=lsp.Position(line=1, character=13),
+        )
+        result = completion(params)
+        assert not set(SESSION_KEYWORDS) & {i.label for i in result.items}
 
     def test_empty_outside_context(self, stub_workspace, tmp_path):
         uri = f"file://{tmp_path / 'a.ox'}"
