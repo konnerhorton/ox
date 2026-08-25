@@ -26,12 +26,13 @@ Developers and power users comfortable with text files and CLIs.
 - **Tree-sitter grammar** (`tree-sitter-ox/grammar.js`) — parses `.ox` files into syntax trees; supports many mass units (kg, lb, oz, stone, grain, etc.), ISO 8601 durations, and distance units
 - **Python parser** (`src/ox/parse.py`) — tree-sitter nodes → dataclasses
 - **Data model** (`src/ox/data.py`) — `TrainingSet`, `Movement`, `TrainingSession`, `TrainingLog`, `Note`, `WeighIn`, `StoredQuery`, `Diagnostic`
+- **Set fields** — reps, weight, duration, and distance are independent per-set fields; a set may carry all four
 - **SQLite query layer** (`src/ox/db.py`) — in-memory DB with `sessions`, `movements`, `sets`, `notes`, `session_notes`, `weigh_ins`, `queries` tables and `training` view
 - **Plugin system** (`src/ox/plugins.py`) — built-in plugins plus user plugins loaded via `@plugin` directives in `.ox` files
 - **Built-in reports** (`src/ox/reports.py`) — `volume` (volume over time) and `matrix` (session count per movement)
 - **Built-in plugins** — `e1rm` (estimated 1RM via Brzycki/Epley), `weighin` (weight tracking with stats/plot/rolling average), `wendler531` (5/3/1 cycle generator)
 - **CLI** (`src/ox/cli.py`) — interactive REPL with `report`, `generate`, `query`, `tables`, `lint`, `reload` commands and tab completion
-- **LSP** (`src/ox/lsp.py`) — diagnostics (syntax errors + include validation), movement name completion, comment folding ranges
+- **LSP** (`src/ox/lsp.py`) — diagnostics (syntax errors + include validation), movement name and session-field completion, comment folding ranges
 - **Weigh-in tracking** — full pipeline: parse → `WeighIn` dataclass → DB → builtin report with table/plot/stats output
 - **Notes** — standalone and session-level notes, parse → `Note` dataclass → DB, `to_ox()` round-trip
 - **Stored queries** — named SQL queries embedded in `.ox` files, accessible via CLI `query` command
@@ -39,14 +40,15 @@ Developers and power users comfortable with text files and CLIs.
 - **Lint** (`src/ox/lint.py`) — parse error collection for CLI and LSP
 - **VSCode extension** — syntax highlighting
 - **MkDocs documentation site** (`docs/`)
+- **First-class sRPE** — `srpe: <rating> <duration> ["note"]` on a session, stored on the `sessions` table and read directly by the `srpe` plugin
+- **Migration** (`scripts/migrate_ox.py`) — converts pre-0.6 logs to the current syntax
 - **Round-trip serialization** — `to_ox()` methods write data back to `.ox` format
-- **Unit handling** — weights tracked as `pint.Quantity`
+- **Unit handling** — weights and distances tracked as `pint.Quantity`, durations as `timedelta`
 
 ### What's incomplete
 
-- Planned sessions (`!` flag) — parsed but ignored in analysis
-- Template blocks (`@template`) — grammar exists, no processing
-- Progressive implied weights (e.g. `160/185/210lbs`) — known parsing bug
+- Planned sessions (`completed: false`) — parsed and queryable, but no analysis treats them specially
+- Template blocks (`@template`) — grammar exists, no processing; `format:` is a free-text stub with no linkage to them
 - CLI movement autocompletion (tab-complete movement names, not just commands)
 
 ## Direction
@@ -55,7 +57,7 @@ Developers and power users comfortable with text files and CLIs.
 
 - Cycle tracking — micro/meso/macro periodization
 - Movement definitions feeding into analysis (e.g. grouping by movement tag)
-- `pint.Quantity` for time/distance — enables derived units like pace and speed
+- Derived units from the stored duration and distance — pace, speed, and work rate
 
 ### Better editor experience
 

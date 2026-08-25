@@ -9,10 +9,11 @@ Inspired by [Beancount](https://github.com/beancount/beancount) (plain text acco
 Create `training.ox`:
 
 ```
-2025-01-14 * pullups: 24kg 5/5/5
+2025-01-14 T pullups: 24kg 5/5/5
 
 @session
-2025-01-15 * Upper Volume
+date: 2025-01-15
+name: Upper Volume
 bench-press: 135lb 5x10
 overhead-press: 85lb 4x10
 pullup: BW 5x8
@@ -41,18 +42,27 @@ Full docs at [konnerhorton.github.io/ox](https://konnerhorton.github.io/ox):
 
 ```
 # Single-line entry
-2025-01-14 * squat: 135lb 5x5 "felt good"
+2025-01-14 T squat: 135lb 5x5 "felt good"
 
 # Timed and measured work
-2025-01-14 * plank: BW PT45S 3x1
-2025-01-14 * run: 5km PT25M
+2025-01-14 T plank: BW PT45S 3x1
+2025-01-14 T run: 5km PT25M
 
-# Session block
+# Session block — only `date:` is required, and it must come first
 @session
-2025-01-15 * Lower Body
+date: 2025-01-15
+name: Lower Body
+srpe: 6 PT50M
 squat: 135lb 5x5
 deadlift: 185lb 3x5
 note: "easy day"
+@end
+
+# Ad hoc session — no name, and planned work with `completed: false`
+@session
+date: 2025-01-16
+pullups: BW 3x10
+pushups: BW 3x15
 @end
 
 # Weigh-in
@@ -75,7 +85,11 @@ note: back squat
 @plugin "plugins/my_plugin.py"
 ```
 
-**Flags:** `*` completed, `!` planned, `W` weigh-in
+**Markers:** `T` training entry, `W` weigh-in
+
+**Session fields:** `date:` (required, first), `name:`, `completed:`, `format:`, `srpe:`, `note:`
+
+**Session RPE:** `srpe: 6 PT50M "note"` — a rating and how long the session ran
 
 **Weights:** `24kg`, `135lb`, `BW`, `24kg+32kg` (combined), `24/32/48kg` (progressive, with implied units)
 
@@ -90,6 +104,9 @@ Given once a field applies to every set; given as a `/`-list it maps one value p
 scheme sets the count (`5x1` is five sets of one rep); with none, `run: PT30M` is a single set.
 
 **Movement names:** no spaces (`kb-oh-press`, `bb-back-squat`)
+
+Planning is expressed only by a session's `completed: false` — a single-line entry always records
+training that happened. Logs in the pre-0.6 flag syntax convert with `scripts/migrate_ox.py`.
 
 ## Installation
 

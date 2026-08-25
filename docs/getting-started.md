@@ -15,7 +15,7 @@ pip install ox
 Create `training.ox`:
 
 ```
-2024-01-15 * squat: 135lb 5x5
+2024-01-15 T squat: 135lb 5x5
 ```
 
 Run it:
@@ -30,17 +30,21 @@ ox> query SELECT * FROM training LIMIT 10
 ### Single-line entries
 
 ```
-2024-01-15 * squat: 135lb 5x5
-2024-01-15 * run: 5km PT25M
+2024-01-15 T squat: 135lb 5x5
+2024-01-15 T run: 5km PT25M
 2024-01-15 W 185lb T06:30 "home"
 2024-01-15 note "deload week"
 ```
 
 ### Session blocks
 
+A session groups movements done in one sitting. Only `date:` is required, and it must be the first
+line; everything else may follow in any order.
+
 ```
 @session
-2024-01-16 * Upper Body
+date: 2024-01-16
+name: Upper Body
 bench-press: 135lb 5x5
 overhead-press: 95lb 3x8
 pullup: BW 4x10
@@ -48,10 +52,58 @@ note: "felt strong today"
 @end
 ```
 
+Drop the name for a session you do not want to name — a few things done in the same window, grouped
+so you write the date once:
+
+```
+@session
+date: 2024-01-16
+pullups: BW 3x10
+pushups: BW 3x15
+jump-rope: PT10M
+@end
+```
+
+### Session fields
+
+| Field | Meaning |
+|---|---|
+| `date:` | Required, and must be the first line |
+| `name:` | Optional; omit for an ad hoc session |
+| `completed:` | `true` (default) or `false` for planned work |
+| `format:` | Free text naming the session's shape, e.g. `5/3/1 wave` |
+| `srpe:` | Session RPE — see below |
+| `note:` | Freeform note attached to the session |
+
+Planning is expressed only by `completed: false`. A single-line entry always records training that
+happened, so plans that never happen are simply never written:
+
+```
+@session
+date: 2024-01-20
+name: Upper Day
+completed: false
+bench-press: 185lb 5x5
+@end
+```
+
+### Session RPE
+
+Rate the whole session from 1 to 10 and record how long it ran. The `srpe` plugin turns these into
+training load (AU = rating x minutes), with ACWR, monotony, and strain reports:
+
+```
+@session
+date: 2024-01-16
+name: Upper Body
+srpe: 6 PT50M "hard but clean"
+bench-press: 135lb 5x5
+@end
+```
+
 ### Entry types
 
-- `*` — completed
-- `!` — planned
+- `T` — a training entry
 - `W` — weigh-in
 - `note` — freeform note
 - `query` — stored SQL query
@@ -106,6 +158,18 @@ A field written once applies to every set; written as a `/`-list it maps one val
 scheme decides how many sets there are — `5x1` means five sets of a single rep. With no rep scheme the
 count comes from the longest `/`-list, or one set if there is none, so `run: PT30M` is a single set.
 
+### Migrating an older log
+
+Logs written before 0.6 used `*` / `!` flags, a positional session header, and `srpe: "5; PT45M"`.
+Convert one with:
+
+```bash
+python scripts/migrate_ox.py training.ox --in-place
+```
+
+The script refuses to guess: planned single-line entries and fractional sRPE ratings stop it with a
+message naming the line, so you can decide what those should become.
+
 ### Movement names
 
 No spaces — hyphens are common but any non-space format works:
@@ -134,7 +198,8 @@ Inside a `@session` block, a `note:` line attaches to the session (not to any on
 
 ```
 @session
-2025-01-16 * Upper Body
+date: 2025-01-16
+name: Upper Body
 bench-press: 135lb 5x5
 note: "felt strong today"
 @end
@@ -173,15 +238,18 @@ Split logs across files:
 # Week 1
 
 @session
-2024-01-15 * Lower Body
+date: 2024-01-15
+name: Lower Body
+srpe: 7 PT55M
 squat: 135lb 5x5
 deadlift: 185lb 3x5
 @end
 
-2024-01-16 * run: 5km PT28M "felt good"
+2024-01-16 T run: 5km PT28M "felt good"
 
 @session
-2024-01-17 * Upper Body
+date: 2024-01-17
+name: Upper Body
 bench-press: 135lb 5x5
 overhead-press: 95lb 3x8
 pullup: BW 4x10
