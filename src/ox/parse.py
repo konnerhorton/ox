@@ -61,15 +61,15 @@ def get_srpe(
 
     Returns:
         Tuple of (rating, duration, note), all None when the block has no
-        srpe_line. The rating node's text carries the keyword ("srpe: 5"),
-        since the grammar fuses them into one token — see grammar.js.
+        well-formed srpe_line.
     """
     line = next((c for c in raw_entry.children if c.type == "srpe_line"), None)
-    if line is None:
+    # A malformed line (e.g. the pre-0.6 `srpe: "5; PT45M"`) still recovers a
+    # rating and duration; don't record values from a line lint rejects.
+    if line is None or line.has_error:
         return None, None, None
 
-    rating_text = line.child_by_field_name("rating").text.decode("utf-8")
-    rating = int(rating_text.split(":", 1)[1])
+    rating = int(line.child_by_field_name("rating").text.decode("utf-8"))
     duration = parse_iso_duration(
         line.child_by_field_name("duration").text.decode("utf-8")
     )

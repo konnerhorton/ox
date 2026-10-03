@@ -686,6 +686,10 @@
       "type": "SEQ",
       "members": [
         {
+          "type": "STRING",
+          "value": "srpe:"
+        },
+        {
           "type": "FIELD",
           "name": "rating",
           "content": {
@@ -724,24 +728,8 @@
       ]
     },
     "srpe_rating": {
-      "type": "TOKEN",
-      "content": {
-        "type": "SEQ",
-        "members": [
-          {
-            "type": "STRING",
-            "value": "srpe:"
-          },
-          {
-            "type": "PATTERN",
-            "value": "[ \\t]*"
-          },
-          {
-            "type": "PATTERN",
-            "value": "\\d+"
-          }
-        ]
-      }
+      "type": "PATTERN",
+      "value": "\\d+"
     },
     "metadata_line": {
       "type": "SEQ",

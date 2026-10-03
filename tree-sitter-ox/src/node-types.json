@@ -677,6 +677,10 @@
     "named": true
   },
   {
+    "type": "srpe:",
+    "named": false
+  },
+  {
     "type": "srpe_rating",
     "named": true
   },

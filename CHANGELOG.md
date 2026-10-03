@@ -13,7 +13,9 @@ became a first-class field instead of a movement named `srpe`. The syntax change
 - **The positional session header is gone.** `@session` is followed by `date:`, then any of `name:`,
   `completed:`, `format:`, `srpe:`, `note:`, and movement lines in any order.
 - **`srpe: "5; PT45M"` is no longer a movement.** Write `srpe: 5 PT45M "optional note"`. Ratings must
-  be whole numbers; the old regex accepted fractions.
+  be whole numbers; the old regex accepted fractions. The old quoted form is now a syntax error, and
+  `lint` (and the LSP) flags it with a pointer to the migration script. A malformed `srpe:` line
+  records no sRPE.
 - **A movement cannot be named `date`, `name`, `completed`, `format`, or `srpe`** inside a session
   block — those now start keyword lines.
 - **`Entry.flag: str` is now `Entry.completed: bool`.** In SQL, `sessions.flag TEXT` became

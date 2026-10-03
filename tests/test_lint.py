@@ -58,6 +58,24 @@ class TestCollectDiagnostics:
         tree = _parse_tree(text)
         assert collect_diagnostics(tree) == ()
 
+    def test_old_srpe_form_gets_migration_hint(self):
+        text = (
+            '@session\ndate: 2025-01-11\n  srpe: "5; PT45M"\nsquat: 135lb 5x5\n@end\n'
+        )
+        diagnostics = collect_diagnostics(_parse_tree(text))
+        assert len(diagnostics) == 1
+        d = diagnostics[0]
+        assert "Old sRPE syntax" in d.message
+        assert "migrate_ox.py" in d.message
+        assert (d.line, d.col) == (3, 2)
+        assert (d.end_line, d.end_col) == (3, 18)
+
+    def test_other_malformed_srpe_keeps_generic_message(self):
+        text = "@session\ndate: 2025-01-11\nsrpe: 5.5 PT45M\n@end\n"
+        diagnostics = collect_diagnostics(_parse_tree(text))
+        assert diagnostics
+        assert all("Old sRPE" not in d.message for d in diagnostics)
+
 
 class TestTrainingLogDiagnostics:
     def test_parse_file_valid_log_no_diagnostics(self, simple_log_file):

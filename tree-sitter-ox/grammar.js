@@ -41,7 +41,7 @@ module.exports = grammar({
 
     comment: ($) => /#[^\n]*/,
 
-    // Single-line entry: date flag item: details
+    // Single-line entry: date T item: details
     singleline_entry: ($) =>
       prec.right(seq(
         field("date", $.date),
@@ -151,20 +151,18 @@ module.exports = grammar({
       ),
 
     // Session RPE line within a session block: srpe: <rating> <duration> ["note"]
-    // The keyword is fused to its rating so the token only fires on this form.
-    // A bare "srpe:" literal would outrun the generic `item` token and capture
-    // the transitional `srpe: "5; PT45M"` movement hack, which must keep
-    // lexing as an item_line until slice C retires it.
+    // "srpe:" outlexes the generic `item` token, so the pre-0.6 quoted form
+    // `srpe: "5; PT45M"` is a syntax error rather than a movement named srpe.
     srpe_line: ($) =>
       seq(
+        "srpe:",
         field("rating", $.srpe_rating),
         field("duration", $.duration),
         optional(field("note", $.quoted_string)),
         "\n"
       ),
 
-    // Keyword and rating in one token: "srpe: 5". The parser strips the prefix.
-    srpe_rating: ($) => token(seq("srpe:", /[ \t]*/, /\d+/)),
+    srpe_rating: ($) => /\d+/,
 
     // Metadata line within definition blocks: key: value
     metadata_line: ($) =>

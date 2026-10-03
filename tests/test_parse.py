@@ -437,21 +437,20 @@ class TestSrpeLine:
 
     def test_rating_and_duration(self):
         fields = _srpe_lines(_session("srpe: 5 PT45M"))
-        assert fields == [{"rating": "srpe: 5", "duration": "PT45M"}]
+        assert fields == [{"rating": "5", "duration": "PT45M"}]
 
     def test_with_note(self):
         fields = _srpe_lines(_session('srpe: 5 PT45M "felt strong"'))
-        assert fields == [
-            {"rating": "srpe: 5", "duration": "PT45M", "note": '"felt strong"'}
-        ]
+        assert fields == [{"rating": "5", "duration": "PT45M", "note": '"felt strong"'}]
 
-    def test_no_space_after_keyword(self):
-        assert _srpe_lines(_session("srpe:5 PT45M"))[0]["rating"] == "srpe:5"
+    @pytest.mark.parametrize("line", ["srpe:5 PT45M", "srpe:   5 PT45M"])
+    def test_spacing_after_keyword(self, line):
+        assert _srpe_lines(_session(line))[0]["rating"] == "5"
 
     @pytest.mark.parametrize("rating", ["1", "5", "10"])
     def test_rating_values(self, rating):
         fields = _srpe_lines(_session(f"srpe: {rating} PT45M"))
-        assert fields[0]["rating"] == f"srpe: {rating}"
+        assert fields[0]["rating"] == rating
 
     @pytest.mark.parametrize("duration", ["PT45M", "PT1H", "PT1H30M", "PT90S"])
     def test_duration_forms(self, duration):
@@ -464,7 +463,7 @@ class TestSrpeLine:
             "srpe: 8 PT1H",
             'note: "hard"',
         )
-        assert _srpe_lines(content)[0]["rating"] == "srpe: 8"
+        assert _srpe_lines(content)[0]["rating"] == "8"
 
     def test_movements_still_parse_alongside(self):
         tree, _ = _parse_str(_session("srpe: 5 PT45M", "squat: 155lb 4x5"))
@@ -483,22 +482,26 @@ class TestSrpeLine:
         _, diags = _parse_str(_session("srpe: 5"))
         assert len(diags) > 0
 
-    def test_old_quoted_form_stays_an_item_line(self):
-        """The transitional `srpe: "5; PT45M"` hack must keep lexing as a movement."""
+    def test_old_quoted_form_is_a_syntax_error(self):
+        """The pre-0.6 `srpe: "5; PT45M"` form no longer parses as a movement."""
         tree, diags = _parse_str(_session('srpe: "5; PT45M"'))
-        assert not diags
-        assert _srpe_lines(_session('srpe: "5; PT45M"')) == []
+        assert len(diags) == 1
+        assert "Old sRPE syntax" in diags[0].message
 
         kinds = []
 
         def walk(node):
-            if node.type in ("srpe_line", "item_line"):
+            if node.type == "item_line":
                 kinds.append(node.type)
             for child in node.children:
                 walk(child)
 
         walk(tree.root_node)
-        assert kinds == ["item_line"]
+        assert kinds == []
+
+    def test_movement_name_starting_with_srpe_is_an_item(self):
+        """Only the exact `srpe:` keyword is reserved, not the prefix."""
+        assert _block_lines(_session("srpe-test: 5x5"))[-1] == "item_line"
 
 
 def _parse_session(content: str):
@@ -741,11 +744,16 @@ class TestSrpeParsing:
         session = _parse_session(_session("squat: 155lb 4x5", "srpe: 6 PT30M"))
         assert session.srpe_rating == 6
 
-    def test_old_movement_hack_is_not_read_as_srpe(self):
-        """`srpe: "5; PT45M"` stays a movement until slice C retires it."""
-        session = _parse_session(_session('srpe: "5; PT45M"'))
+    def test_old_quoted_form_is_not_recorded(self):
+        """Error recovery salvages a rating from `srpe: "5; PT45M"`; it is dropped."""
+        session = _parse_session(_session('srpe: "5; PT45M"', "squat: 155lb 4x5"))
         assert session.srpe_rating is None
-        assert [m.name for m in session.movements] == ["srpe"]
+        assert session.srpe_duration is None
+        assert [m.name for m in session.movements] == ["squat"]
+
+    def test_fractional_rating_is_not_recorded(self):
+        session = _parse_session(_session("srpe: 5.5 PT45M"))
+        assert session.srpe_rating is None
 
 
 class TestWeighInEntry:

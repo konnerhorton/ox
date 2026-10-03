@@ -29,9 +29,8 @@ Developers and power users comfortable with text files and CLIs.
 - **Set fields** — reps, weight, duration, and distance are independent per-set fields; a set may carry all four
 - **SQLite query layer** (`src/ox/db.py`) — in-memory DB with `sessions`, `movements`, `sets`, `notes`, `session_notes`, `weigh_ins`, `queries` tables and `training` view
 - **Plugin system** (`src/ox/plugins.py`) — built-in plugins plus user plugins loaded via `@plugin` directives in `.ox` files
-- **Built-in reports** (`src/ox/reports.py`) — `volume` (volume over time) and `matrix` (session count per movement)
-- **Built-in plugins** — `e1rm` (estimated 1RM via Brzycki/Epley), `weighin` (weight tracking with stats/plot/rolling average), `wendler531` (5/3/1 cycle generator)
-- **CLI** (`src/ox/cli.py`) — interactive REPL with `report`, `generate`, `query`, `tables`, `lint`, `reload` commands and tab completion
+- **Built-in plugins** (`src/ox/builtins/`) — `volume` (volume over time), `e1rm` (estimated 1RM via Brzycki/Epley), `weighin` (weight tracking with stats/plot/rolling average), `srpe` (session RPE training load), `wendler531` (5/3/1 cycle generator)
+- **CLI** (`src/ox/cli.py`) — interactive REPL with `plugins`, `query`, `tables`, `lint`, `reload` commands, plugins invoked by name, and tab completion
 - **LSP** (`src/ox/lsp.py`) — diagnostics (syntax errors + include validation), movement name and session-field completion, comment folding ranges
 - **Weigh-in tracking** — full pipeline: parse → `WeighIn` dataclass → DB → builtin report with table/plot/stats output
 - **Notes** — standalone and session-level notes, parse → `Note` dataclass → DB, `to_ox()` round-trip
