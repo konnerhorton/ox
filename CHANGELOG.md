@@ -84,6 +84,15 @@ sprint: 100m/200m/400m        # per-set distances, or 100/200/400m
 Error recovery often wraps a whole session block in one error, so each broken line in it gets its
 own diagnostic instead of the block reporting once at its first line.
 
+`lint` also warns about lines that parse but would silently lose or invent data:
+
+- a repeated `name:`, `completed:`, `format:`, or `srpe:` line in one session (only the first is used)
+- an sRPE rating outside 1–10
+- a `/`-list whose length disagrees with the set count, e.g. `PT30S/PT20S/PT10S 2x1`
+
+Warnings are labelled as such in `lint` output and reach the LSP at warning severity. The parser
+no longer prints "potentially incomplete entry" to stdout for the last case.
+
 ## Fixes
 
 - **Quoted strings no longer span lines.** An unclosed quote used to run on to the next `"` in the

@@ -40,6 +40,10 @@ class TestGetDiagnostics:
         assert d.severity == lsp.DiagnosticSeverity.Error
         assert d.source == "ox"
 
+    def test_lint_warning_keeps_warning_severity(self):
+        diags = get_diagnostics("2025-01-10 T run: 100m/200m 3x1\n")
+        assert [d.severity for d in diags] == [lsp.DiagnosticSeverity.Warning]
+
     def test_positions_are_zero_based(self):
         # Bad entry on line 2 (1-based) of file -> line 1 in LSP
         text = "2025-01-10 T pullups: BW 5x10\n2025-01-11 T squat: 225lbs 3x5\n"

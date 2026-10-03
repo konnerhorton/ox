@@ -243,11 +243,137 @@ def _enclosing_block_row(lines: list[str], row: int) -> Optional[int]:
     return None
 
 
+# Semantic checks run on lines that parse cleanly but don't mean what they
+# appear to. The parser still loads them, dropping or inventing values, so each
+# is a warning rather than an error.
+
+HEADER_KEYS = {
+    "name_line": "name:",
+    "completed_line": "completed:",
+    "format_line": "format:",
+    "srpe_line": "srpe:",
+}
+SRPE_RANGE = range(1, 11)
+MEASURES = ("weight", "duration", "distance")
+
+
+def _repeated_headers(block):
+    seen = set()
+    for child in block.children:
+        key = HEADER_KEYS.get(child.type)
+        if key is None:
+            continue
+        if key in seen:
+            yield child, f"Repeated `{key}` line: only the first in a session is used"
+        seen.add(key)
+
+
+def _srpe_out_of_range(line):
+    rating = line.child_by_field_name("rating")
+    if int(rating.text) not in SRPE_RANGE:
+        yield rating, "sRPE rating must be between 1 and 10"
+
+
+def _set_count(rep_scheme: str) -> int:
+    if "x" in rep_scheme:
+        return int(rep_scheme.split("x")[0])
+    return rep_scheme.count("/") + 1
+
+
+def _list_length_mismatch(entry):
+    """A `/`-list whose length disagrees with the set count.
+
+    A single value broadcasts across every set, so only lists are checked.
+    With a rep scheme, a short list repeats its last value and a long one is
+    truncated. Without one, the longest list sets the count and every shorter
+    list repeats its last value.
+    """
+    details = entry.child_by_field_name("details")
+    if details is None:
+        return
+    fields = {
+        details.field_name_for_child(i): child
+        for i, child in enumerate(details.children)
+    }
+    lists = {
+        name: (fields[name], fields[name].text.count(b"/") + 1)
+        for name in MEASURES
+        if name in fields and b"/" in fields[name].text
+    }
+    if not lists:
+        return
+
+    if "rep_scheme" in fields:
+        sets = _set_count(fields["rep_scheme"].text.decode("utf-8"))
+        for name, (node, length) in lists.items():
+            if length != sets:
+                effect = "extras are ignored" if length > sets else "the last repeats"
+                yield node, f"{name} lists {length} values for {sets} sets; {effect}"
+        return
+
+    sets = max(length for _, length in lists.values())
+    for name, (node, length) in lists.items():
+        if length < sets:
+            yield (
+                node,
+                (
+                    f"{name} lists {length} values but another list sets {sets} sets; "
+                    "the last repeats"
+                ),
+            )
+
+
+def _char_span(node, lines: list[str]) -> tuple[int, Span]:
+    """A single-line node's row and character span (tree-sitter counts bytes)."""
+    row = node.start_point[0]
+    line = lines[row].encode("utf-8")
+
+    def to_char(byte_col: int) -> int:
+        return len(line[:byte_col].decode("utf-8", errors="ignore"))
+
+    return row, (to_char(node.start_point[1]), to_char(node.end_point[1]))
+
+
+def _semantic_warnings(root, lines: list[str]) -> list[Diagnostic]:
+    warnings = []
+
+    def visit(node):
+        if node.has_error and node.type != "source_file":
+            return  # fix the syntax error first; its values may not load
+        if node.type == "session_block":
+            found = _repeated_headers(node)
+        elif node.type == "srpe_line":
+            found = _srpe_out_of_range(node)
+        elif node.type in ("singleline_entry", "item_line"):
+            found = _list_length_mismatch(node)
+        else:
+            found = ()
+        for target, message in found:
+            row, (start, end) = _char_span(target, lines)
+            warnings.append(
+                Diagnostic(
+                    line=row + 1,
+                    col=start,
+                    end_line=row + 1,
+                    end_col=end,
+                    message=message,
+                    severity="warning",
+                )
+            )
+        for child in node.children:
+            visit(child)
+
+    visit(root)
+    return warnings
+
+
 def collect_diagnostics(tree) -> tuple[Diagnostic, ...]:
     """Walk a tree-sitter tree and collect ERROR/MISSING nodes as Diagnostics.
 
     Lines with a recognized mistake get one targeted diagnostic each (columns
     in characters); other errors fall back to "Syntax error" / "Missing X".
+    Lines that parse but lose or invent data (see `_semantic_warnings`) are
+    reported as warnings.
     """
     lines = tree.root_node.text.decode("utf-8").split("\n")
     errors, missing = [], []
@@ -309,4 +435,5 @@ def collect_diagnostics(tree) -> tuple[Diagnostic, ...]:
         for node, message in generic
         if node.start_point[0] not in hints
     )
+    diagnostics.extend(_semantic_warnings(tree.root_node, lines))
     return tuple(sorted(diagnostics, key=lambda d: (d.line, d.col)))

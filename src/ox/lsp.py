@@ -16,9 +16,14 @@ server = LanguageServer(name="ox-lsp", version="0.1.0")
 _language = Language(tree_sitter_ox.language())
 _parser = Parser(_language)
 
+_SEVERITY = {
+    "error": lsp.DiagnosticSeverity.Error,
+    "warning": lsp.DiagnosticSeverity.Warning,
+}
+
 
 def get_diagnostics(text: str) -> list[lsp.Diagnostic]:
-    """Parse text and return diagnostics for any errors."""
+    """Parse text and return diagnostics for any errors and warnings."""
     tree = _parser.parse(bytes(text, encoding="utf-8"))
     ox_diagnostics = _collect_diagnostics(tree)
     return [
@@ -28,7 +33,7 @@ def get_diagnostics(text: str) -> list[lsp.Diagnostic]:
                 end=lsp.Position(line=d.end_line - 1, character=d.end_col),
             ),
             message=d.message,
-            severity=lsp.DiagnosticSeverity.Error,
+            severity=_SEVERITY[d.severity],
             source="ox",
         )
         for d in ox_diagnostics

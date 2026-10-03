@@ -195,6 +195,80 @@ class TestLintHints:
         )
 
 
+def _warning(text: str) -> Diagnostic:
+    d = _only(text)
+    assert d.severity == "warning", d
+    return d
+
+
+class TestSemanticWarnings:
+    """Lines that parse but drop or invent values get a warning."""
+
+    @pytest.mark.parametrize("key", ["name: B", "completed: true", "format: x"])
+    def test_repeated_header(self, key):
+        text = _session("name: A", "completed: false", "format: y", key)
+        d = _warning(text)
+        assert d.line == 6
+        assert d.message.startswith(f"Repeated `{key.split()[0]}` line")
+
+    def test_repeated_srpe_flags_only_the_second(self):
+        d = _warning(_session("srpe: 5 PT30M", "srpe: 6 PT40M"))
+        assert d.line == 4
+        assert d.message.startswith("Repeated `srpe:` line")
+
+    @pytest.mark.parametrize("rating", ["0", "11"])
+    def test_srpe_rating_out_of_range(self, rating):
+        d = _warning(_session(f"srpe: {rating} PT30M"))
+        assert d.message == "sRPE rating must be between 1 and 10"
+        assert (d.col, d.end_col) == (6, 6 + len(rating))
+
+    @pytest.mark.parametrize("rating", ["1", "10"])
+    def test_srpe_rating_in_range(self, rating):
+        assert collect_diagnostics(_parse_tree(_session(f"srpe: {rating} PT30M"))) == ()
+
+    def test_list_longer_than_rep_scheme(self):
+        d = _warning("2025-01-12 T run: PT30S/PT20S/PT10S 2x1\n")
+        assert d.message == "duration lists 3 values for 2 sets; extras are ignored"
+        assert (d.col, d.end_col) == (18, 35)
+
+    def test_list_shorter_than_rep_scheme(self):
+        d = _warning("2025-01-12 T squat: 100/110kg 3x5\n")
+        assert d.message == "weight lists 2 values for 3 sets; the last repeats"
+
+    def test_lists_disagree_without_rep_scheme(self):
+        d = _warning("2025-01-12 T run: 100m/200m PT30S/PT20S/PT10S\n")
+        assert d.message == (
+            "distance lists 2 values but another list sets 3 sets; the last repeats"
+        )
+
+    def test_mismatch_inside_session_block(self):
+        d = _warning(_session("run: 100m/200m 3x1"))
+        assert d.line == 3
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "2025-01-12 T squat: 100/110/120kg 3x5",
+            "2025-01-12 T squat: 100kg 5/5/5",
+            "2025-01-12 T run: 100m/200m PT30S/PT20S",
+            "2025-01-12 T run: 400m PT30S/PT20S/PT10S",  # a single value broadcasts
+            "2025-01-12 T carry: 24kg+32kg 40m/60m 2x1",
+        ],
+    )
+    def test_matching_lengths_are_clean(self, line):
+        assert collect_diagnostics(_parse_tree(line + "\n")) == ()
+
+    def test_columns_count_characters_not_bytes(self):
+        d = _warning('2025-01-12 T run: 100m/200m 3x1 "é"\n'.replace("run", "rün"))
+        assert (d.col, d.end_col) == (18, 27)
+
+    def test_block_with_syntax_error_gets_no_warnings(self):
+        diagnostics = collect_diagnostics(
+            _parse_tree(_session("name: A", "name: B", "squat: 135lbs 5x5"))
+        )
+        assert [d.severity for d in diagnostics] == ["error"]
+
+
 class TestTrainingLogDiagnostics:
     def test_parse_file_valid_log_no_diagnostics(self, simple_log_file):
         log = parse_file(simple_log_file)
@@ -246,6 +320,12 @@ class TestLintCommand:
         assert result.exit_code == 0
         assert "Line" in result.output
         assert "Unknown unit `lbs`: use `lb`" in result.output
+
+    def test_lint_labels_warnings(self, tmp_path):
+        log_file = tmp_path / "log.ox"
+        log_file.write_text("2025-01-10 T run: 100m/200m 3x1\n")
+        result = _invoke_repl(log_file, ["lint"])
+        assert "Line 1, col 18: warning: distance lists 2 values" in result.output
 
     def test_load_warning_shown_when_errors(self, tmp_path):
         bad_file = tmp_path / "bad.ox"

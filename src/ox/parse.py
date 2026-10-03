@@ -23,11 +23,6 @@ def get_or_last(lst, i):
     return lst[min(i, len(lst) - 1)]
 
 
-def get_name(raw_entry: Node) -> str:
-    """Extract session name from node."""
-    return raw_entry.child_by_field_name("name").text.decode("utf-8").strip().strip('"')
-
-
 def get_date(raw_entry: Node) -> datetime.date:
     """Extract and parse date from node."""
     date_str = raw_entry.child_by_field_name("date").text.decode("utf-8")
@@ -232,11 +227,11 @@ def process_details(details: dict[str, str]) -> tuple[list[TrainingSet], str | N
         process_distances(details["distance"]) if "distance" in details else None
     )
 
+    # A /-list whose length disagrees with the set count is padded or truncated
+    # here; lint warns about it (see ox.lint._list_length_mismatch).
     measures = [m for m in (weights, durations, distances) if m]
     if reps is not None:
         set_count = len(reps)
-        if any(len(m) > 1 and len(m) != set_count for m in measures):
-            print("potentially incomplete entry, assume same value across sets")
     elif measures:
         # No rep scheme: one set per progressive value, each a single rep.
         set_count = max(len(m) for m in measures)
@@ -278,34 +273,6 @@ def _line_value(raw_entry: Node, line_type: str, field_name: str) -> str | None:
     if line is None:
         return None
     return line.child_by_field_name(field_name).text.decode("utf-8").strip()
-
-
-def process_session_block_completed(
-    raw_entry: Node,
-) -> tuple[
-    datetime.date,
-    str,
-    list[Movement],
-    tuple[Note, ...],
-    tuple[int | None, timedelta | None, str | None],
-]:
-    """Process a completed session block.
-
-    Returns:
-        Tuple of (date, name, movements, notes, srpe)
-    """
-    movements = []
-    date = get_date(raw_entry)
-    name = get_name(raw_entry)
-    item_lines = [c for c in raw_entry.children if c.type == "item_line"]
-    for m in item_lines:
-        item = get_item(m)
-        details = get_details(m)
-        sets, note = process_details(details)
-        movements.append(Movement(name=item, sets=sets, note=note))
-    note_lines = [c for c in raw_entry.children if c.type == "note_line"]
-    notes = tuple(Note(text=get_note_text(n)) for n in note_lines)
-    return date, name, movements, notes, get_srpe(raw_entry)
 
 
 def process_singleline_entry(raw_entry: Node) -> TrainingSession:

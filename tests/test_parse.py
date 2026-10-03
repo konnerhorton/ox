@@ -291,7 +291,7 @@ class TestProcessDetails:
 
 
 def _parse_str(content: str):
-    """Parse a raw .ox string and return (tree, diagnostics)."""
+    """Parse a raw .ox string and return (tree, syntax-error diagnostics)."""
     import tree_sitter_ox
     from tree_sitter import Language, Parser
     from ox.lint import collect_diagnostics
@@ -299,7 +299,7 @@ def _parse_str(content: str):
     language = Language(tree_sitter_ox.language())
     parser = Parser(language)
     tree = parser.parse(bytes(content, encoding="utf-8"))
-    return tree, collect_diagnostics(tree)
+    return tree, tuple(d for d in collect_diagnostics(tree) if d.severity == "error")
 
 
 class TestDurationToken:

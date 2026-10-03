@@ -476,7 +476,10 @@ def cli(file):
                     console.print("[green]No parse errors found.[/green]\n")
                 else:
                     for d in log.diagnostics:
-                        console.print(f"Line {d.line}, col {d.col}: {d.message}")
+                        prefix = "warning: " if d.severity == "warning" else ""
+                        console.print(
+                            f"Line {d.line}, col {d.col}: {prefix}{d.message}"
+                        )
                     console.print()
 
             elif command in PLUGINS:
