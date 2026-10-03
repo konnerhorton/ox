@@ -6,15 +6,32 @@ icon: material/puzzle
 
 ## VSCode Extension
 
-Syntax highlighting for `.ox` files. Located in `editors/vscode`.
+Syntax highlighting, diagnostics, and completions for `.ox` files. Source lives in `editors/vscode`.
 
 ### Install
 
+Install **Ox** (`konnerhorton.ox-training-log`) from the VS Code Marketplace, or search for "Ox"
+in the Extensions view. VSCodium, Cursor, and other Open VSX editors can install it from
+[open-vsx.org](https://open-vsx.org).
+
+To run it from a source checkout instead:
+
 ```bash
-ln -s /path/to/ox/editors/vscode ~/.vscode/extensions/ox
+cd /path/to/ox/editors/vscode && npm install
+ln -s "$PWD" ~/.vscode/extensions/ox
 ```
 
-Reload VSCode (`Ctrl+Shift+P` → "Developer: Reload Window").
+Then reload VSCode (`Ctrl+Shift+P` → "Developer: Reload Window").
+
+Highlighting needs no setup. Diagnostics and completions need `ox-lsp` (see [below](#language-server-lsp)).
+The extension looks for it in this order:
+
+1. The `ox.lsp.path` setting
+2. A `.venv` in the workspace or the open file's directory (or up to five parent directories)
+3. Your `PATH`
+
+If it can't find `ox-lsp`, it shows a one-time notice. Run **Ox: Restart Language Server** after
+installing `ox-lsp` or changing the setting.
 
 ### Features
 
@@ -28,7 +45,11 @@ Reload VSCode (`Ctrl+Shift+P` → "Developer: Reload Window").
 
 ## Language Server (LSP)
 
-`ox-lsp` provides real-time editor integration via stdio.
+`ox-lsp` provides real-time editor integration via stdio. It is installed with the `ox` package:
+
+```bash
+uv tool install git+https://github.com/konnerhorton/ox
+```
 
 ### Features
 
@@ -38,7 +59,9 @@ Reload VSCode (`Ctrl+Shift+P` → "Developer: Reload Window").
 
 ### Editor Configuration
 
-**VSCode** — use a generic LSP client extension pointing to `ox-lsp`.
+**VSCode**: the Ox extension above starts `ox-lsp` for you.
+
+**Other editors**: point any LSP client at the `ox-lsp` command (stdio, no arguments) for `.ox` files.
 
 ## Tree-sitter Grammar
 
