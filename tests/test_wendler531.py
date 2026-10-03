@@ -99,7 +99,7 @@ def test_wendler531_has_four_weeks():
 
 def test_wendler531_all_sessions_planned():
     result = wendler531(_ctx(), movements="squat:300", start_date="2026-01-05")
-    assert result.text.count(" ! ") >= 4
+    assert result.text.count("completed: false") >= 4
 
 
 def test_wendler531_week1_weights_lb():

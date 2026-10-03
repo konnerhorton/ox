@@ -4,8 +4,9 @@ import sqlite3
 
 import pytest
 
+from ox.cli import parse_file
 from ox.data import TrainingLog
-from ox.db import create_db, _decompose_weight
+from ox.db import create_db, _decompose_quantity
 from ox.units import ureg
 
 
@@ -38,34 +39,44 @@ class TestSchema:
             )
 
 
-class TestDecomposeWeight:
-    """Verify _decompose_weight splits Quantity objects correctly."""
+class TestDecomposeQuantity:
+    """Verify _decompose_quantity splits Quantity objects correctly."""
 
     def test_kg(self):
-        mag, unit = _decompose_weight(24.0 * ureg.kilogram)
+        mag, unit = _decompose_quantity(24.0 * ureg.kilogram)
         assert mag == 24.0
         assert unit == "kilogram"
 
     def test_lbs(self):
-        mag, unit = _decompose_weight(135.0 * ureg.pounds)
+        mag, unit = _decompose_quantity(135.0 * ureg.pounds)
         assert mag == 135.0
         assert unit == "pound"
 
     def test_bodyweight_none(self):
-        mag, unit = _decompose_weight(None)
+        mag, unit = _decompose_quantity(None)
         assert mag is None
         assert unit is None
+
+    def test_metric_distance(self):
+        mag, unit = _decompose_quantity(500.0 * ureg.meter)
+        assert mag == 500.0
+        assert unit == "meter"
+
+    def test_imperial_distance(self):
+        mag, unit = _decompose_quantity(3.0 * ureg.mile)
+        assert mag == 3.0
+        assert unit == "mile"
 
 
 class TestDataLoading:
     """Verify data is loaded correctly from TrainingLog.
 
     The simple_log_content fixture has:
-    - 1 single-line entry: 2025-01-10 * pullups: BW 5x10 (5 sets, no weight)
-    - 1 completed session: 2025-01-11 * Upper Day
+    - 1 single-line entry: 2025-01-10 T pullups: BW 5x10 (5 sets, no weight)
+    - 1 completed session: 2025-01-11 Upper Day
         - bench-press: 135lbs 5x5 (5 sets)
         - kb-oh-press: 24kg 5/5/5 (3 sets)
-    - 1 planned session: 2025-01-12 ! Lower Day
+    - 1 planned session: 2025-01-12 Lower Day (completed: false)
         - squat: 185lbs 3x5 (3 sets)
     """
 
@@ -90,14 +101,14 @@ class TestDataLoading:
         ]
         assert dates == ["2025-01-10", "2025-01-11", "2025-01-12"]
 
-    def test_session_flags(self, simple_db):
-        flags = [
+    def test_session_completed(self, simple_db):
+        values = [
             r[0]
             for r in simple_db.execute(
-                "SELECT flag FROM sessions ORDER BY date"
+                "SELECT completed FROM sessions ORDER BY date"
             ).fetchall()
         ]
-        assert flags == ["*", "*", "!"]
+        assert values == [1, 1, 0]
 
     def test_movement_names(self, simple_db):
         names = sorted(
@@ -105,12 +116,12 @@ class TestDataLoading:
         )
         assert names == ["bench-press", "kb-oh-press", "pullups", "squat"]
 
-    def test_session_name_from_movement(self, simple_db):
-        """Single-line entries use movement name as session name."""
+    def test_singleline_entry_has_no_session_name(self, simple_db):
+        """A single-line entry is ad hoc; the movement carries the only name."""
         row = simple_db.execute(
             "SELECT name FROM sessions WHERE date = '2025-01-10'"
         ).fetchone()
-        assert row[0] == "pullups"
+        assert row[0] is None
 
     def test_session_name_present(self, simple_db):
         row = simple_db.execute(
@@ -143,7 +154,7 @@ class TestWeightInDatabase:
         from ox.cli import parse_file
 
         f = tmp_path / "combined.ox"
-        f.write_text("2025-01-10 * db-press: 24kg+32kg 5x5\n")
+        f.write_text("2025-01-10 T db-press: 24kg+32kg 5x5\n")
         conn = create_db(parse_file(f))
         rows = conn.execute(
             "SELECT weight_magnitude, weight_unit FROM training "
@@ -175,8 +186,11 @@ class TestTrainingView:
         assert columns == [
             "session_id",
             "date",
-            "flag",
+            "completed",
             "session_name",
+            "session_format",
+            "srpe_rating",
+            "srpe_duration_seconds",
             "movement_id",
             "movement_name",
             "movement_note",
@@ -184,6 +198,9 @@ class TestTrainingView:
             "reps",
             "weight_magnitude",
             "weight_unit",
+            "duration_seconds",
+            "distance_magnitude",
+            "distance_unit",
         ]
 
     def test_filter_by_movement_name(self, simple_db):
@@ -217,6 +234,140 @@ class TestEdgeCases:
         ).fetchall()
         assert len(rows) >= 1
         assert isinstance(rows[0][0], str)
+
+
+class TestSessionMetadataColumns:
+    """Session-level name, format, and sRPE reach the database."""
+
+    @pytest.fixture
+    def sessions_db(self, tmp_path):
+        f = tmp_path / "sessions.ox"
+        f.write_text(
+            "@session\n"
+            "date: 2025-01-06\n"
+            "name: Lower Strength\n"
+            "format: 5/3/1 wave\n"
+            'srpe: 5 PT45M "felt strong"\n'
+            "squat: 155lb 4x5\n"
+            "@end\n"
+            "\n"
+            "@session\n"
+            "date: 2025-01-07\n"
+            "completed: false\n"
+            "bench-press: 135lb 5x5\n"
+            "@end\n"
+        )
+        conn = create_db(parse_file(f))
+        yield conn
+        conn.close()
+
+    def test_srpe_columns(self, sessions_db):
+        row = sessions_db.execute(
+            "SELECT srpe_rating, srpe_duration_seconds, srpe_note"
+            " FROM sessions WHERE date = '2025-01-06'"
+        ).fetchone()
+        assert row == (5, 2700.0, "felt strong")
+
+    def test_format_column(self, sessions_db):
+        row = sessions_db.execute(
+            "SELECT format FROM sessions WHERE date = '2025-01-06'"
+        ).fetchone()
+        assert row[0] == "5/3/1 wave"
+
+    def test_null_when_absent(self, sessions_db):
+        row = sessions_db.execute(
+            "SELECT name, format, srpe_rating, srpe_duration_seconds, srpe_note"
+            " FROM sessions WHERE date = '2025-01-07'"
+        ).fetchone()
+        assert row == (None, None, None, None, None)
+
+    def test_name_is_nullable(self, sessions_db):
+        """An ad hoc session has no name, and the schema allows that."""
+        count = sessions_db.execute(
+            "SELECT COUNT(*) FROM sessions WHERE name IS NULL"
+        ).fetchone()[0]
+        assert count == 1
+
+    def test_view_exposes_srpe(self, sessions_db):
+        row = sessions_db.execute(
+            "SELECT DISTINCT srpe_rating, srpe_duration_seconds, session_format"
+            " FROM training WHERE date = '2025-01-06'"
+        ).fetchone()
+        assert row == (5, 2700.0, "5/3/1 wave")
+
+
+class TestDurationAndDistanceColumns:
+    """Duration and distance land on sets and are exposed through the view."""
+
+    @pytest.fixture
+    def measures_db(self, tmp_path):
+        f = tmp_path / "measures.ox"
+        f.write_text(
+            "2025-01-10 T run: 5km PT25M\n"
+            "2025-01-11 T plank: PT30S/PT25S/PT20S\n"
+            "2025-01-12 T sprints: 3mi 2x1\n"
+            "2025-01-13 T bench-press: 135lb 5x5\n"
+        )
+        conn = create_db(parse_file(f))
+        yield conn
+        conn.close()
+
+    def test_distance_and_duration_together(self, measures_db):
+        row = measures_db.execute(
+            "SELECT reps, duration_seconds, distance_magnitude, distance_unit"
+            " FROM training WHERE movement_name = 'run'"
+        ).fetchone()
+        assert row == (1, 1500.0, 5.0, "kilometer")
+
+    def test_progressive_duration_is_per_row(self, measures_db):
+        rows = measures_db.execute(
+            "SELECT duration_seconds FROM training WHERE movement_name = 'plank'"
+            " ORDER BY set_id"
+        ).fetchall()
+        assert [r[0] for r in rows] == [30.0, 25.0, 20.0]
+
+    def test_distance_unit_preserved(self, measures_db):
+        """Imperial units are stored as written, not converted."""
+        rows = measures_db.execute(
+            "SELECT distance_magnitude, distance_unit, duration_seconds"
+            " FROM training WHERE movement_name = 'sprints'"
+        ).fetchall()
+        assert rows == [(3.0, "mile", None), (3.0, "mile", None)]
+
+    def test_null_when_absent(self, measures_db):
+        rows = measures_db.execute(
+            "SELECT DISTINCT duration_seconds, distance_magnitude, distance_unit"
+            " FROM training WHERE movement_name = 'bench-press'"
+        ).fetchall()
+        assert rows == [(None, None, None)]
+
+    def test_reps_still_required(self, measures_db):
+        with pytest.raises(sqlite3.IntegrityError):
+            measures_db.execute(
+                "INSERT INTO sets (movement_id, duration_seconds) VALUES (1, 30.0)"
+            )
+
+    def test_example_log_has_timed_sets(self, example_db):
+        """The example log's `run: PT30M` lines reach the database."""
+        count = example_db.execute(
+            "SELECT COUNT(*) FROM training WHERE duration_seconds IS NOT NULL"
+        ).fetchone()[0]
+        assert count > 0
+
+    def test_example_log_has_measured_sets(self, example_db):
+        """The example log exercises the distance columns too."""
+        count = example_db.execute(
+            "SELECT COUNT(*) FROM training WHERE distance_magnitude IS NOT NULL"
+        ).fetchone()[0]
+        assert count > 0
+
+    def test_example_log_combines_distance_and_duration(self, example_db):
+        """`run: 5km PT25M` puts both on one set."""
+        count = example_db.execute(
+            "SELECT COUNT(*) FROM training"
+            " WHERE distance_magnitude IS NOT NULL AND duration_seconds IS NOT NULL"
+        ).fetchone()[0]
+        assert count > 0
 
 
 class TestUserQueries:

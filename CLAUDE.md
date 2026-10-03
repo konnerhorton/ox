@@ -5,7 +5,13 @@ Uses a custom tree-sitter grammar to parse `.ox` log files into structured data 
 
 ## Usage Notes
 - `SPEC.md` is your guide for the goals, non-goals, and roadmap for this repo.
-- If you edit `tree-sitter-ox/grammar.js` run `cd tree-sitter-ox && tree-sitter generate && cd ..` then reinstall with `uv cache clean tree-sitter-ox && uv sync`. The cache clean is required because uv caches built wheels by version number and won't rebuild the C extension otherwise.
+- If you edit `tree-sitter-ox/grammar.js`, regenerate and reinstall:
+  ```bash
+  cd tree-sitter-ox && tree-sitter generate && cd ..
+  uv sync --reinstall-package tree-sitter-ox
+  ```
+  uv keys built wheels by version number, so it will not rebuild the C extension on its own — the package version never changes. `uv cache clean tree-sitter-ox && uv sync` is **not** sufficient: `uv sync` audits, sees the version already installed, and skips the rebuild. `--reinstall-package` is what forces it.
+- Symptom of a stale C extension: a large, scattered wave of "Syntax error" diagnostic failures across `test_parse`/`test_db`/`test_integration` while `git status` is clean and `grammar.js` visibly contains the rule being rejected. Reinstall before investigating further.
 
 ## Commands
 
@@ -65,14 +71,35 @@ examples/
 ```
 # Comments start with #
 
-# Single-line entry: date flag movement: weight reps "note"
-2025-01-10 * pullups: BW 5x10
+# Single-line entry: date T movement: weight distance duration reps "note"
+2025-01-10 T pullups: BW 5x10
+2025-01-10 T plank: BW PT45S 3x1
+2025-01-10 T run: 5km PT25M
+2025-01-10 T farmer-carry: 32kg 40m 4x1
 
-# Session block
+# Session block. Only `date:` is required, and it must come first.
 @session
-2025-01-11 * Upper Day
+date: 2025-01-11
+name: Upper Day
 bench-press: 135lb 5x5
 kb-oh-press: 24kg 5/5/5
+@end
+
+# Ad hoc session: no name needed
+@session
+date: 2025-01-10
+pullups: BW 3x10
+pushups: BW 3x15
+@end
+
+# Planned session, and session RPE: srpe: <rating> <duration> ["note"]
+@session
+date: 2025-01-15
+name: Upper Day
+completed: false
+format: 5/3/1 wave
+srpe: 5 PT45M "felt strong"
+bench-press: 185lb 5x5
 @end
 
 # Weigh-in: date W weight [time] [scale]
@@ -96,19 +123,31 @@ note: back squat
 
 # Template block
 @template "my-template"
-movement: details
+squat: 185lb 5x5
+bench-press: 135lb 5x5
 @end
 
 # Load a plugin
 @plugin "my_plugin.py"
 
-# Flags: * = completed, ! = planned, W = weigh-in
+# Markers: T = training entry, W = weigh-in
+# Session fields: date: (required, first), name:, completed:, format:, srpe:, note:
+# completed: defaults to true; false marks a planned session
 # Weight units: kg, lb, g, oz, stone, grain, and more (any pint-compatible mass unit)
 # Weight formats: 24kg, BW, 24kg+32kg (combined), 24kg/32kg/48kg (progressive), 160/185/210lb (implied unit)
 # Rep formats: 5x5 (sets x reps), 5/5/5 (per-set reps)
-# Duration: ISO 8601 (PT30M, PT1H30M15S)
-# Distance: numeric + unit (m, km, ft, mi, etc.)
+# Duration: ISO 8601 (PT30M, PT1H30M15S), progressive PT30S/PT25S/PT20S
+# Distance: numeric + unit (m, km, ft, mi, etc.), progressive 100m/200m/400m or 100/200/400m
 ```
+
+Weight, duration, and distance are independent per-set fields — a set may carry all of them at once.
+Given once, a field broadcasts across every set; given as a `/`-list, it maps one value per set.
+Set count comes from the rep scheme (`5x1` is five sets of one rep). With no rep scheme, the count is
+the length of the longest `/`-list, defaulting to one set — so `run: PT30M` is a single 30-minute set.
+
+Planning is expressed only by a session block's `completed: false`; a single-line entry always records
+training that happened. Logs written in the pre-0.6 flag syntax (`*`, `!`, positional session headers,
+`srpe: "5; PT45M"`) are converted by `scripts/migrate_ox.py`.
 
 ## Conventions
 

@@ -1,7 +1,7 @@
 """Wendler 5/3/1 cycle generator plugin for ox.
 
 Generates a 4-week training cycle based on Jim Wendler's 5/3/1 program.
-Outputs valid .ox text with planned (!) flag.
+Outputs valid .ox text with `completed: false` sessions.
 
 Usage:
     wendler531 -m squat:315
@@ -88,7 +88,7 @@ def wendler531(ctx: PluginContext, movements, unit="lb", start_date=None, rm="tr
         sessions.append(
             TrainingSession(
                 date=session_date,
-                flag="!",
+                completed=False,
                 name=f"531-week-{week_num}",
                 movements=tuple(week_movements),
             )

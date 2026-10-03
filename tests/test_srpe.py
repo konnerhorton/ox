@@ -9,8 +9,6 @@ from ox.builtins.srpe import (
     _acwr_zone,
     _daily_au,
     _extract_srpe_data,
-    _parse_iso_duration_minutes,
-    _parse_srpe,
     _strain_risk,
     srpe_report,
 )
@@ -19,109 +17,77 @@ from ox.db import create_db
 from ox.plugins import PlotResult, PluginContext, TableResult
 
 
-# --- Duration parsing ---
-
-
-@pytest.mark.parametrize(
-    "duration_str, expected_minutes",
-    [
-        ("PT30M", 30.0),
-        ("PT1H", 60.0),
-        ("PT1H30M", 90.0),
-        ("PT50M", 50.0),
-        ("PT90S", 1.5),
-        ("PT1H15M30S", 75.5),
-        ("PT0M", 0.0),
-    ],
-)
-def test_parse_iso_duration(duration_str, expected_minutes):
-    assert _parse_iso_duration_minutes(duration_str) == expected_minutes
-
-
-def test_parse_iso_duration_invalid():
-    with pytest.raises(ValueError, match="Invalid ISO 8601 duration"):
-        _parse_iso_duration_minutes("30M")
-
-
-# --- sRPE string parsing ---
-
-
-def test_parse_srpe_semicolon():
-    result = _parse_srpe("srpe: 4; PT30M")
-    assert result == (4.0, 30.0, 120.0)
-
-
-def test_parse_srpe_comma():
-    result = _parse_srpe("srpe: 7, PT50M")
-    assert result == (7.0, 50.0, 350.0)
-
-
-def test_parse_srpe_no_space():
-    result = _parse_srpe("srpe:4;PT30M")
-    assert result == (4.0, 30.0, 120.0)
-
-
-def test_parse_srpe_decimal_rating():
-    result = _parse_srpe("srpe: 6.5; PT45M")
-    assert result == (6.5, 45.0, 292.5)
-
-
-def test_parse_srpe_no_match():
-    assert _parse_srpe("just a regular note") is None
-    assert _parse_srpe("rpe: 4") is None
-
-
 # --- Fixtures ---
 
 
 @pytest.fixture
 def srpe_session_log_content():
-    """Log with sRPE as session metadata (item_line in session block)."""
+    """Log with an `srpe:` line in each session block."""
     return (
         "@session\n"
-        "2025-03-10 * Upper EMOM\n"
-        'srpe: "4; PT30M"\n'
+        "date: 2025-03-10\n"
+        "name: Upper EMOM\n"
+        "srpe: 4 PT30M\n"
         "bench-press: 135lb 5x5\n"
         "@end\n"
         "\n"
         "@session\n"
-        "2025-03-12 * Lower EMOM\n"
-        'srpe: "7; PT45M"\n'
+        "date: 2025-03-12\n"
+        "name: Lower EMOM\n"
+        "srpe: 7 PT45M\n"
         "squat: 185lb 3x5\n"
         "@end\n"
         "\n"
         "@session\n"
-        "2025-03-17 * Upper EMOM\n"
-        'srpe: "5, PT30M"\n'
+        "date: 2025-03-17\n"
+        "name: Upper EMOM\n"
+        "srpe: 5 PT30M\n"
         "bench-press: 145lb 5x5\n"
         "@end\n"
     )
 
 
 @pytest.fixture
-def srpe_note_log_content():
-    """Log with sRPE embedded in a single-line entry note."""
+def srpe_ad_hoc_log_content():
+    """Log with sRPE on unnamed sessions, the shape the migration produces."""
     return (
-        '2025-03-10 * run: PT50M "srpe: 4; PT50M"\n'
-        '2025-03-14 * run: PT30M "srpe: 6; PT30M"\n'
+        "@session\n"
+        "date: 2025-03-10\n"
+        'run: PT50M "easy"\n'
+        "srpe: 4 PT50M\n"
+        "@end\n"
+        "\n"
+        "@session\n"
+        "date: 2025-03-14\n"
+        "run: PT30M\n"
+        "srpe: 6 PT30M\n"
+        "@end\n"
     )
 
 
 @pytest.fixture
 def srpe_mixed_log_content():
-    """Log with sRPE in both session metadata and single-line notes."""
+    """Log mixing named sessions, ad hoc sessions, and entries with no sRPE."""
     return (
         "@session\n"
-        "2025-03-10 * Upper EMOM\n"
-        'srpe: "5; PT30M"\n'
+        "date: 2025-03-10\n"
+        "name: Upper EMOM\n"
+        "srpe: 5 PT30M\n"
         "bench-press: 135lb 5x5\n"
         "@end\n"
         "\n"
-        '2025-03-11 * run: PT40M "srpe: 3; PT40M"\n'
+        "@session\n"
+        "date: 2025-03-11\n"
+        "run: PT40M\n"
+        "srpe: 3 PT40M\n"
+        "@end\n"
+        "\n"
+        "2025-03-13 T pullups: BW 5x10\n"
         "\n"
         "@session\n"
-        "2025-03-17 * Upper EMOM\n"
-        'srpe: "6; PT30M"\n'
+        "date: 2025-03-17\n"
+        "name: Upper EMOM\n"
+        "srpe: 6 PT30M\n"
         "bench-press: 145lb 5x5\n"
         "@end\n"
     )
@@ -150,8 +116,8 @@ def test_extract_srpe_from_session(srpe_session_log_content, tmp_path):
     assert data[2] == ("2025-03-17", 5.0, 30.0, 150.0)
 
 
-def test_extract_srpe_from_note(srpe_note_log_content, tmp_path):
-    ctx = _make_ctx(srpe_note_log_content, tmp_path)
+def test_extract_srpe_from_ad_hoc_session(srpe_ad_hoc_log_content, tmp_path):
+    ctx = _make_ctx(srpe_ad_hoc_log_content, tmp_path)
     data = _extract_srpe_data(ctx)
     assert len(data) == 2
     assert data[0] == ("2025-03-10", 4.0, 50.0, 200.0)
@@ -159,11 +125,31 @@ def test_extract_srpe_from_note(srpe_note_log_content, tmp_path):
 
 
 def test_extract_srpe_mixed(srpe_mixed_log_content, tmp_path):
+    """Sessions without an sRPE line contribute nothing."""
     ctx = _make_ctx(srpe_mixed_log_content, tmp_path)
     data = _extract_srpe_data(ctx)
     assert len(data) == 3
     dates = [d[0] for d in data]
     assert dates == ["2025-03-10", "2025-03-11", "2025-03-17"]
+
+
+def test_extract_srpe_reads_the_sessions_table(srpe_session_log_content, tmp_path):
+    """The data comes from session columns, not from a movement named srpe."""
+    ctx = _make_ctx(srpe_session_log_content, tmp_path)
+    movements = ctx.db.execute(
+        "SELECT COUNT(*) FROM movements WHERE LOWER(name) = 'srpe'"
+    ).fetchone()[0]
+    assert movements == 0
+    assert len(_extract_srpe_data(ctx)) == 3
+
+
+def test_sub_minute_duration(tmp_path):
+    """Durations are stored in seconds and converted on read."""
+    ctx = _make_ctx(
+        "@session\ndate: 2025-03-10\nsrpe: 4 PT90S\nsquat: 135lb 3x5\n@end\n",
+        tmp_path,
+    )
+    assert _extract_srpe_data(ctx) == [("2025-03-10", 4.0, 1.5, 6.0)]
 
 
 # --- Plugin output: table ---
@@ -280,7 +266,7 @@ def srpe_multiweek_content():
         ("2025-02-07", 4, "PT30M"),  # Fri
     ]:
         lines.append(
-            f'@session\n{dt} * Training\nsrpe: "{rpe}; {dur}"\nsquat: 135lb 3x5\n@end\n'
+            f"@session\ndate: {dt}\nname: Training\nsrpe: {rpe} {dur}\nsquat: 135lb 3x5\n@end\n"
         )
     # Week 2
     for dt, rpe, dur in [
@@ -289,7 +275,7 @@ def srpe_multiweek_content():
         ("2025-02-14", 5, "PT35M"),
     ]:
         lines.append(
-            f'@session\n{dt} * Training\nsrpe: "{rpe}; {dur}"\nsquat: 145lb 3x5\n@end\n'
+            f"@session\ndate: {dt}\nname: Training\nsrpe: {rpe} {dur}\nsquat: 145lb 3x5\n@end\n"
         )
     # Week 3
     for dt, rpe, dur in [
@@ -298,7 +284,7 @@ def srpe_multiweek_content():
         ("2025-02-21", 6, "PT40M"),
     ]:
         lines.append(
-            f'@session\n{dt} * Training\nsrpe: "{rpe}; {dur}"\nsquat: 155lb 3x5\n@end\n'
+            f"@session\ndate: {dt}\nname: Training\nsrpe: {rpe} {dur}\nsquat: 155lb 3x5\n@end\n"
         )
     # Week 4
     for dt, rpe, dur in [
@@ -307,7 +293,7 @@ def srpe_multiweek_content():
         ("2025-02-28", 6, "PT40M"),
     ]:
         lines.append(
-            f'@session\n{dt} * Training\nsrpe: "{rpe}; {dur}"\nsquat: 165lb 3x5\n@end\n'
+            f"@session\ndate: {dt}\nname: Training\nsrpe: {rpe} {dur}\nsquat: 165lb 3x5\n@end\n"
         )
     # Week 5: higher intensity spike
     for dt, rpe, dur in [
@@ -316,7 +302,7 @@ def srpe_multiweek_content():
         ("2025-03-07", 7, "PT45M"),
     ]:
         lines.append(
-            f'@session\n{dt} * Training\nsrpe: "{rpe}; {dur}"\nsquat: 175lb 3x5\n@end\n'
+            f"@session\ndate: {dt}\nname: Training\nsrpe: {rpe} {dur}\nsquat: 175lb 3x5\n@end\n"
         )
     # Week 6: deload
     for dt, rpe, dur in [
@@ -324,7 +310,7 @@ def srpe_multiweek_content():
         ("2025-03-12", 4, "PT30M"),
     ]:
         lines.append(
-            f'@session\n{dt} * Training\nsrpe: "{rpe}; {dur}"\nsquat: 95lb 3x5\n@end\n'
+            f"@session\ndate: {dt}\nname: Training\nsrpe: {rpe} {dur}\nsquat: 95lb 3x5\n@end\n"
         )
     return "\n".join(lines)
 

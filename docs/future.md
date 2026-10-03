@@ -23,7 +23,7 @@ If I have a specific circuit, I want to see how my total volume or top weights h
 To do that, we need named sessions, which we have.
 And, some way to track exertion, which we can use [sRPE](#session-rate-of-perceived-exertion).
 It would also be good to be able to categorize sessions based on their specific protocol ([protocol metadata](#protocol-metadata)), like emom, tababta, amrap, etc.
-sRPE is now available via a plugin, so I'll probaly do a similar string/note based plugin for protocol first, them promote it to first-class later once I work out the kinks.
+sRPE is now a first-class session field (`srpe: 5 PT45M`), and sessions have a free-text `format:` field as a first step toward protocol metadata.
 
 Eventually, I need to build a plugin that allows me to compare across a single named session.
 For a given alt-emom, I want to see how I have progressed over time, mainly based on total volume within the session and resultant srpe.
@@ -49,7 +49,7 @@ Typically that will probably be weeks and months.
 
 Syntax is the big question though, should I track these using first class citizens in `ox` or just use something like `spre: "4, PT30M"`
 I'll do the above for now, until I figure out the path forward.
-The srpe builtin provides this in the short term.
+As of 0.6 this is first-class: `srpe: <rating> <duration> ["note"]` inside a session block, read by the `srpe` builtin.
 
 ## Cardio zones
 

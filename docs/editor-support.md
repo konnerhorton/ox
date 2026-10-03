@@ -18,7 +18,8 @@ Reload VSCode (`Ctrl+Shift+P` → "Developer: Reload Window").
 
 ### Features
 
-- Syntax highlighting for dates, flags (`*`, `!`, `W`), weights, reps, strings, and comments
+- Syntax highlighting for dates, markers (`T`, `W`), session fields (`date:`, `name:`,
+  `completed:`, `format:`, `srpe:`), weights, reps, durations, distances, strings, and comments
 - Block directives (`@session`, `@movement`, `@template`, `@end`) and top-level directives (`@include`, `@plugin`)
 - `note` and `query` entry highlighting; `equipment`/`tags`/`note`/`url` fields inside `@movement` blocks
 - Comment toggling (`#`)
@@ -31,7 +32,7 @@ Reload VSCode (`Ctrl+Shift+P` → "Developer: Reload Window").
 
 ### Features
 
-- **Diagnostics** — syntax errors and invalid `@include` paths
+- **Diagnostics** — syntax errors (with a hint for common mistakes, the same as `lint`) and invalid `@include` paths
 - **Completions** — movement name autocomplete, populated from `@movement` blocks in the parsed log
 - **Folding** — collapse comment sections
 

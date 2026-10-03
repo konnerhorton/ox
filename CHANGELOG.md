@@ -1,3 +1,110 @@
+# v0.6.0
+
+A data model release. Sessions gained a real header, sets gained duration and distance, and sRPE
+became a first-class field instead of a movement named `srpe`. The syntax change is a clean break —
+`scripts/migrate_ox.py` converts an existing log.
+
+## Breaking changes
+
+- **The `*` / `!` flags are gone.** A single-line entry is now `date T movement: details`. `T` marks
+  a training entry, parallel to `W` for a weigh-in. It is a type marker, not a state flag.
+- **Planning moved to the session block.** There is no single-line form for planned work; write
+  `completed: false` on a session instead. Plans that never happen are simply never written.
+- **The positional session header is gone.** `@session` is followed by `date:`, then any of `name:`,
+  `completed:`, `format:`, `srpe:`, `note:`, and movement lines in any order.
+- **`srpe: "5; PT45M"` is no longer a movement.** Write `srpe: 5 PT45M "optional note"`. Ratings must
+  be whole numbers; the old regex accepted fractions. The old quoted form is now a syntax error, and
+  `lint` (and the LSP) flags it with a pointer to the migration script. A malformed `srpe:` line
+  records no sRPE.
+- **A movement cannot be named `date`, `name`, `completed`, `format`, or `srpe`** inside a session
+  block — those now start keyword lines.
+- **`Entry.flag: str` is now `Entry.completed: bool`.** In SQL, `sessions.flag TEXT` became
+  `completed INTEGER NOT NULL DEFAULT 1`.
+- **Single-line entries no longer borrow their movement's name** as the session name. They are ad hoc,
+  so `sessions.name` is NULL for them.
+
+Convert an existing log with:
+
+```bash
+python scripts/migrate_ox.py training.ox --in-place
+```
+
+The script refuses to guess. Planned single-line entries, fractional sRPE ratings, and sRPE buried
+mid-note stop it with a message naming the line.
+
+## Sessions
+
+- **Names are optional.** `@session` with only a `date:` records a few things done in the same window
+  without inventing a name for them.
+- **`completed:`** — `true` by default, `false` for planned work. `to_ox()` leaves true implicit.
+- **`format:`** — a free-text stub naming a session's shape, e.g. `5/3/1 wave`. No `@template`
+  linkage yet.
+
+## Duration and distance as set fields
+
+Reps, weight, duration, and distance are independent per-set fields, and a set may carry all four.
+Previously the grammar parsed `duration` and `distance` but the parser discarded both, so every
+`run: PT30M` line produced a movement with zero sets.
+
+```
+plank: BW PT45S 3x1           # 3 sets, 45-second hold each
+weighted-plank: 45lb PT30S 3x1
+run: 5km PT25M                # one set, 5km in 25 minutes
+farmer-carry: 32kg 40m 4x1
+plank: PT30S/PT25S/PT20S      # per-set durations
+sprint: 100m/200m/400m        # per-set distances, or 100/200/400m
+```
+
+- A field given once applies to every set; given as a `/`-list it maps one value per set.
+- Set count comes from the rep scheme. With none, it is the length of the longest `/`-list, or one.
+- Durations are ISO 8601 and stored as `timedelta`; distances are `pint.Quantity` and keep the unit
+  as written, so `3mi` stays in miles.
+- New SQL columns: `sets.duration_seconds`, `sets.distance_magnitude`, `sets.distance_unit`.
+
+## First-class sRPE
+
+- `srpe: <rating> <duration> ["note"]` on a session, in any position within the block.
+- Stored as `sessions.srpe_rating`, `srpe_duration_seconds`, `srpe_note`, and exposed in the
+  `training` view — queryable without the plugin.
+- The `srpe` plugin reads those columns in one query. `_SRPE_PATTERN`, `_parse_srpe`, and
+  `_parse_iso_duration_minutes` are gone along with both note-scanning paths.
+
+## Lint hints
+
+`lint` and the LSP now name common mistakes instead of reporting a bare "Syntax error":
+
+- curly quotes (`“` `”`) used in place of `"`
+- the pre-0.6 syntax: `*` / `!` entry flags, positional session headers, and `srpe: "5; PT45M"`,
+  each with a pointer to `scripts/migrate_ox.py`
+- malformed `srpe:` lines (fractional ratings, missing durations, placeholders)
+- `135lbs` / `24kgs` (use `lb` / `kg`) and non-ISO durations like `25min` (use `PT25M`)
+- unclosed quotes, single-line entries missing `T`, and invalid `completed:` / `date:` values
+- session blocks that don't start with `date:`, and blocks missing `@end`
+
+Error recovery often wraps a whole session block in one error, so each broken line in it gets its
+own diagnostic instead of the block reporting once at its first line.
+
+`lint` also warns about lines that parse but would silently lose or invent data:
+
+- a repeated `name:`, `completed:`, `format:`, or `srpe:` line in one session (only the first is used)
+- an sRPE rating outside 1–10
+- a `/`-list whose length disagrees with the set count, e.g. `PT30S/PT20S/PT10S 2x1`
+
+Warnings are labelled as such in `lint` output and reach the LSP at warning severity. The parser
+no longer prints "potentially incomplete entry" to stdout for the last case.
+
+## Fixes
+
+- **Quoted strings no longer span lines.** An unclosed quote used to run on to the next `"` in the
+  file, silently absorbing every entry in between into one note. It is now an error on its own line.
+
+## Editor support
+
+- Movement completion no longer fires on a session's keyword lines. The old check assumed a one-line
+  header and excluded by line arithmetic; it now excludes by keyword.
+- Session fields are offered as completions inside a `@session` block.
+- The VSCode grammar highlights `T`, the session fields, and the `srpe:` line.
+
 # v0.5.0
 
 First release after v0.2.0. This is a large jump — the reports system has been replaced by a proper plugin architecture, parsing has grown in several directions, and the CLI, LSP, and docs have all been reworked. The notes below group changes by theme rather than by commit.

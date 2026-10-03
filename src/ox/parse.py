@@ -1,7 +1,8 @@
 """Parse tree-sitter nodes into training data structures."""
 
 from tree_sitter import Node
-from datetime import datetime
+from datetime import datetime, timedelta
+from ox.duration import parse_iso_duration
 from ox.data import (
     DATE_FORMAT,
     Movement,
@@ -20,16 +21,6 @@ from ox.units import ureg
 def get_or_last(lst, i):
     """Return the ith element if it exists, else the last element."""
     return lst[min(i, len(lst) - 1)]
-
-
-def get_flag(raw_entry: Node) -> str:
-    """Extract flag from node."""
-    return raw_entry.child_by_field_name("flag").text.decode("utf-8")
-
-
-def get_name(raw_entry: Node) -> str:
-    """Extract session name from node."""
-    return raw_entry.child_by_field_name("name").text.decode("utf-8").strip().strip('"')
 
 
 def get_date(raw_entry: Node) -> datetime.date:
@@ -58,21 +49,94 @@ def get_note_text(node: Node) -> str:
     return node.child_by_field_name("text").text.decode("utf-8").strip('"')
 
 
-def weight_text_to_quantity(weight_text: str) -> Quantity:
-    """Convert weight string like "24kg" to Quantity."""
-    match = re.match(r"^(\d+(?:\.\d+)?)(\w+)$", weight_text)
-    if match:
-        magnitude = float(match[1])
-        unit_str = match[2]
-        try:
-            unit = ureg.parse_units(unit_str)
-            if not unit.dimensionality == ureg.kilogram.dimensionality:
-                return None
-            return magnitude * unit
-        except Exception:
-            return None
-    else:
+def get_srpe(
+    raw_entry: Node,
+) -> tuple[int | None, timedelta | None, str | None]:
+    """Extract the session RPE from a session block's `srpe_line`, if it has one.
+
+    Returns:
+        Tuple of (rating, duration, note), all None when the block has no
+        well-formed srpe_line.
+    """
+    line = next((c for c in raw_entry.children if c.type == "srpe_line"), None)
+    # A malformed line (e.g. the pre-0.6 `srpe: "5; PT45M"`) still recovers a
+    # rating and duration; don't record values from a line lint rejects.
+    if line is None or line.has_error:
+        return None, None, None
+
+    rating = int(line.child_by_field_name("rating").text.decode("utf-8"))
+    duration = parse_iso_duration(
+        line.child_by_field_name("duration").text.decode("utf-8")
+    )
+    note_node = line.child_by_field_name("note")
+    note = note_node.text.decode("utf-8").strip('"') if note_node else None
+    return rating, duration, note
+
+
+def _text_to_quantity(text: str, dimension: str) -> Quantity | None:
+    """Convert a "<number><unit>" string to a Quantity of the given dimension.
+
+    The unit is preserved as written — "135lb" stays in pounds, "5mi" in miles.
+    Only the dimension is constrained, and dimensions are unit-system agnostic,
+    so imperial and metric units are equally accepted.
+
+    Args:
+        text: A magnitude immediately followed by a unit, e.g. "24kg" or "5km"
+        dimension: Required pint dimension, "[mass]" or "[length]"
+
+    Returns:
+        The Quantity, or None if malformed, unknown, or the wrong dimension
+    """
+    match = re.match(r"^(\d+(?:\.\d+)?)(\w+)$", text)
+    if not match:
         return None
+    magnitude = float(match[1])
+    unit_str = match[2]
+    try:
+        unit = ureg.parse_units(unit_str)
+        if not unit.dimensionality == dimension:
+            return None
+        return magnitude * unit
+    except Exception:
+        return None
+
+
+def weight_text_to_quantity(weight_text: str) -> Quantity:
+    """Convert weight string like "24kg" or "135lb" to Quantity."""
+    return _text_to_quantity(weight_text, "[mass]")
+
+
+def distance_text_to_quantity(distance_text: str) -> Quantity:
+    """Convert distance string like "5km" or "3mi" to Quantity."""
+    return _text_to_quantity(distance_text, "[length]")
+
+
+def _resolve_implied_units(segments: list[str], is_special) -> list[str]:
+    """Resolve omitted units in a progressive sequence.
+
+    A segment without a unit inherits the nearest succeeding unit, so
+    "160/185/210lb" resolves to ["160lb", "185lb", "210lb"]. Segments for which
+    is_special() returns True pass through untouched.
+    """
+    carried_unit = None
+    resolved = [None] * len(segments)
+    for i in range(len(segments) - 1, -1, -1):
+        segment = segments[i]
+        if is_special(segment):
+            resolved[i] = segment
+            continue
+        m = re.match(r"^(\d+(?:\.\d+)?)(\w+)?$", segment)
+        if not m:
+            resolved[i] = segment
+            continue
+        num, unit = m.group(1), m.group(2)
+        if unit is None:
+            # No succeeding unit to inherit: leave as-is, fails downstream.
+            resolved[i] = segment if carried_unit is None else f"{num}{carried_unit}"
+        else:
+            carried_unit = unit
+            resolved[i] = segment
+    return resolved
 
 
 def process_weights(weight_str: str) -> list[Quantity]:
@@ -84,28 +148,10 @@ def process_weights(weight_str: str) -> list[Quantity]:
     nearest succeeding unit. E.g. "160/185/210lb" → three lb weights;
     "60/70kg/160/180lb" → [60kg, 70kg, 160lb, 180lb].
     """
-    weight_str_split = weight_str.split("/")
-    # Right-to-left pass to resolve implied units.
-    carried_unit = None
-    resolved = [None] * len(weight_str_split)
-    for i in range(len(weight_str_split) - 1, -1, -1):
-        w = weight_str_split[i]
-        if w == "BW" or "+" in w:
-            resolved[i] = w
-            continue
-        m = re.match(r"^(\d+(?:\.\d+)?)(\w+)?$", w)
-        if not m:
-            resolved[i] = w
-            continue
-        num, unit = m.group(1), m.group(2)
-        if unit is None:
-            if carried_unit is None:
-                resolved[i] = w  # will fail to parse downstream
-            else:
-                resolved[i] = f"{num}{carried_unit}"
-        else:
-            carried_unit = unit
-            resolved[i] = w
+    resolved = _resolve_implied_units(
+        weight_str.split("/"),
+        is_special=lambda w: w == "BW" or "+" in w,
+    )
 
     weight_objs = []
     for w in resolved:
@@ -119,8 +165,36 @@ def process_weights(weight_str: str) -> list[Quantity]:
     return weight_objs
 
 
+def process_distances(distance_str: str) -> list[Quantity]:
+    """Parse distance string into list of Quantity objects.
+
+    Handles "5km" and progressive forms like "100m/200m/400m". As with weights,
+    a segment may omit its unit and inherits the nearest succeeding one, so
+    "100/200/400m" → three metre distances.
+    """
+    resolved = _resolve_implied_units(
+        distance_str.split("/"),
+        is_special=lambda d: False,
+    )
+    return [distance_text_to_quantity(d) for d in resolved]
+
+
+def process_durations(duration_str: str) -> list[timedelta]:
+    """Parse duration string into list of timedeltas.
+
+    Handles "PT30M" and progressive forms like "PT30S/PT25S/PT20S".
+    """
+    return [parse_iso_duration(d) for d in duration_str.split("/")]
+
+
 def process_details(details: dict[str, str]) -> tuple[list[TrainingSet], str | None]:
     """Parse item details into training sets and notes.
+
+    The rep scheme determines the set count when present. Otherwise the count is
+    the longest of the progressive weight/duration/distance lists, defaulting to
+    a single set — so "run: PT30M" is one 30-minute set. Each of weight,
+    duration, and distance broadcasts across the sets: given once it applies to
+    all, given as a /-list it maps per set.
 
     Args:
         details: Dict of detail field names to values
@@ -128,32 +202,51 @@ def process_details(details: dict[str, str]) -> tuple[list[TrainingSet], str | N
     Returns:
         Tuple of (sets, note)
     """
-    weights = None
-    reps = None
     note = None
-    sets = []
-    if "rep_scheme" in details.keys():
-        reps_raw = details["rep_scheme"]
-        if "/" in reps_raw:
-            reps = [int(r) for r in details["rep_scheme"].split("/")]
-        elif "x" in reps_raw:
-            s, r = reps_raw.split("x")
-            reps = [int(r) for i in range(int(s))]
-
-    if "weight" in details.keys():
-        weights = process_weights(details["weight"])
-    if weights and reps:
-        if len(weights) > 1 and len(weights) != len(reps):
-            print("potentially incomplete entry, assume same weight across sets")
-        for i, r in enumerate(reps):
-            training_set = TrainingSet(reps=r, weight=get_or_last(weights, i))
-            sets.append(training_set)
     if "note" in details.keys():
         note = re.sub(
             "'|\"",
             "",
             details["note"],
         ).strip()
+
+    reps = None
+    if "rep_scheme" in details.keys():
+        reps_raw = details["rep_scheme"]
+        if "/" in reps_raw:
+            reps = [int(r) for r in reps_raw.split("/")]
+        elif "x" in reps_raw:
+            s, r = reps_raw.split("x")
+            reps = [int(r) for _ in range(int(s))]
+
+    weights = process_weights(details["weight"]) if "weight" in details else None
+    durations = (
+        process_durations(details["duration"]) if "duration" in details else None
+    )
+    distances = (
+        process_distances(details["distance"]) if "distance" in details else None
+    )
+
+    # A /-list whose length disagrees with the set count is padded or truncated
+    # here; lint warns about it (see ox.lint._list_length_mismatch).
+    measures = [m for m in (weights, durations, distances) if m]
+    if reps is not None:
+        set_count = len(reps)
+    elif measures:
+        # No rep scheme: one set per progressive value, each a single rep.
+        set_count = max(len(m) for m in measures)
+    else:
+        return [], note
+
+    sets = [
+        TrainingSet(
+            reps=get_or_last(reps, i) if reps is not None else 1,
+            weight=get_or_last(weights, i) if weights else None,
+            duration=get_or_last(durations, i) if durations else None,
+            distance=get_or_last(distances, i) if distances else None,
+        )
+        for i in range(set_count)
+    ]
 
     return sets, note
 
@@ -174,68 +267,62 @@ def process_singleline_completed_session(
     return date, movement
 
 
-def process_session_block_completed(
-    raw_entry: Node,
-) -> tuple[datetime.date, str, list[Movement], tuple[Note, ...]]:
-    """Process a completed session block.
-
-    Returns:
-        Tuple of (date, name, movements, notes)
-    """
-    movements = []
-    date = get_date(raw_entry)
-    name = get_name(raw_entry)
-    item_lines = [c for c in raw_entry.children if c.type == "item_line"]
-    for m in item_lines:
-        item = get_item(m)
-        details = get_details(m)
-        sets, note = process_details(details)
-        movements.append(Movement(name=item, sets=sets, note=note))
-    note_lines = [c for c in raw_entry.children if c.type == "note_line"]
-    notes = tuple(Note(text=get_note_text(n)) for n in note_lines)
-    return date, name, movements, notes
+def _line_value(raw_entry: Node, line_type: str, field_name: str) -> str | None:
+    """Return a header line's field text, or None if the block has no such line."""
+    line = next((c for c in raw_entry.children if c.type == line_type), None)
+    if line is None:
+        return None
+    return line.child_by_field_name(field_name).text.decode("utf-8").strip()
 
 
-def process_singleline_entry(raw_entry: Node) -> TrainingSession | None:
+def process_singleline_entry(raw_entry: Node) -> TrainingSession:
     """Process a single-line entry node.
 
-    Returns:
-        TrainingSession or None (for weigh-ins, not yet implemented)
+    A single-line entry is always completed — planning is expressed only by a
+    session block's `completed: false` — and always ad hoc, carrying no session
+    name of its own, so `to_ox()` can put it back on one line.
     """
-    flag = get_flag(raw_entry)
-
-    if flag in ["*", "!"]:
-        date, movement = process_singleline_completed_session(raw_entry)
-        return TrainingSession(
-            name=movement[0].name, date=date, flag=flag, movements=movement
-        )
-    return None
+    date, movement = process_singleline_completed_session(raw_entry)
+    return TrainingSession(date=date, completed=True, movements=movement)
 
 
-def process_session_block_pending(raw_entry: Node) -> TrainingSession | None:
-    """Process a pending session block (flag='!').
-
-    Deferred: planned sessions are parsed but not materialized for analysis.
-    See SPEC.md "What's incomplete".
-    """
-    return None
-
-
-def process_session_block(raw_entry: Node) -> TrainingSession | None:
+def process_session_block(raw_entry: Node) -> TrainingSession:
     """Process a session block node.
 
-    Returns:
-        TrainingSession or None (for pending sessions)
-    """
-    flag = get_flag(raw_entry)
+    The block's metadata lives on its `date:` / `name:` / `completed:` /
+    `format:` lines; `completed:` defaults to true when absent.
 
-    if flag in ["*", "!"]:
-        date, name, movements, notes = process_session_block_completed(raw_entry)
-        return TrainingSession(
-            name=name, flag=flag, date=date, movements=tuple(movements), notes=notes
-        )
-    else:
-        return process_session_block_pending(raw_entry)
+    Returns:
+        TrainingSession
+    """
+    date = datetime.strptime(
+        _line_value(raw_entry, "date_line", "date"), DATE_FORMAT
+    ).date()
+    name = _line_value(raw_entry, "name_line", "name")
+    session_format = _line_value(raw_entry, "format_line", "value")
+    completed = _line_value(raw_entry, "completed_line", "value") != "false"
+
+    movements = []
+    for m in (c for c in raw_entry.children if c.type == "item_line"):
+        sets, note = process_details(get_details(m))
+        movements.append(Movement(name=get_item(m), sets=sets, note=note))
+
+    notes = tuple(
+        Note(text=get_note_text(n)) for n in raw_entry.children if n.type == "note_line"
+    )
+    srpe_rating, srpe_duration, srpe_note = get_srpe(raw_entry)
+
+    return TrainingSession(
+        date=date,
+        completed=completed,
+        name=name,
+        movements=tuple(movements),
+        notes=notes,
+        format=session_format,
+        srpe_rating=srpe_rating,
+        srpe_duration=srpe_duration,
+        srpe_note=srpe_note,
+    )
 
 
 def process_note_entry(node: Node) -> Note:

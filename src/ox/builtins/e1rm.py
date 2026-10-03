@@ -70,7 +70,7 @@ def estimated_1rm(
             t.weight_unit
         FROM training t
         WHERE t.movement_name = ?
-          AND t.flag IS '*'
+          AND t.completed = 1
           AND t.movement_note LIKE '%^rm%'
           AND t.weight_magnitude IS NOT NULL
         ORDER BY t.date, t.weight_magnitude DESC

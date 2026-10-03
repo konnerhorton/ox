@@ -11,7 +11,11 @@
     { "include": "#singleline-entry" },
     { "include": "#note-entry" },
     { "include": "#weigh-in-entry" },
-    { "include": "#session-header" },
+    { "include": "#session-date" },
+    { "include": "#session-name" },
+    { "include": "#session-completed" },
+    { "include": "#session-format" },
+    { "include": "#srpe-line" },
     { "include": "#item-line" },
     { "include": "#metadata-line" }
   ],
@@ -48,10 +52,10 @@
       }
     },
     "singleline-entry": {
-      "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+([*!])\\s+([^#@:\\s][^:]*):\\s*(.*)$",
+      "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+(T)\\s+([^#@:\\s][^:]*):\\s*(.*)$",
       "captures": {
         "1": { "name": "constant.numeric.date.ox" },
-        "2": { "name": "keyword.operator.flag.ox" },
+        "2": { "name": "keyword.operator.marker.ox" },
         "3": { "name": "entity.name.function.ox" },
         "4": { "patterns": [{ "include": "#details" }] }
       }
@@ -68,16 +72,45 @@
       "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+(W)\\s+(.*)$",
       "captures": {
         "1": { "name": "constant.numeric.date.ox" },
-        "2": { "name": "keyword.operator.flag.ox" },
+        "2": { "name": "keyword.operator.marker.ox" },
         "3": { "patterns": [{ "include": "#details" }] }
       }
     },
-    "session-header": {
-      "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+([*!])\\s+(.+)$",
+    "session-date": {
+      "match": "^\\s*(date):\\s*(\\d{4}-\\d{2}-\\d{2})\\s*$",
       "captures": {
-        "1": { "name": "constant.numeric.date.ox" },
-        "2": { "name": "keyword.operator.flag.ox" },
-        "3": { "name": "entity.name.section.ox" }
+        "1": { "name": "support.type.property-name.ox" },
+        "2": { "name": "constant.numeric.date.ox" }
+      }
+    },
+    "session-name": {
+      "match": "^\\s*(name):\\s*(.+)$",
+      "captures": {
+        "1": { "name": "support.type.property-name.ox" },
+        "2": { "name": "entity.name.section.ox" }
+      }
+    },
+    "session-completed": {
+      "match": "^\\s*(completed):\\s*(true|false)\\s*$",
+      "captures": {
+        "1": { "name": "support.type.property-name.ox" },
+        "2": { "name": "constant.language.boolean.ox" }
+      }
+    },
+    "session-format": {
+      "match": "^\\s*(format):\\s*(.+)$",
+      "captures": {
+        "1": { "name": "support.type.property-name.ox" },
+        "2": { "name": "string.unquoted.ox" }
+      }
+    },
+    "srpe-line": {
+      "match": "^\\s*(srpe):\\s*(\\d+)\\s+(\\S+)\\s*(\"[^\"]*\")?\\s*$",
+      "captures": {
+        "1": { "name": "support.type.property-name.ox" },
+        "2": { "name": "constant.numeric.rating.ox" },
+        "3": { "patterns": [{ "include": "#time" }] },
+        "4": { "name": "string.quoted.double.ox" }
       }
     },
     "item-line": {

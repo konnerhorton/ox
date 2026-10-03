@@ -34,7 +34,7 @@ def test_note_to_ox_no_date():
 def test_training_session_to_ox_with_notes():
     session = TrainingSession(
         date=date(2025, 1, 11),
-        flag="*",
+        completed=True,
         name="Upper Day",
         movements=(
             Movement(
@@ -46,16 +46,17 @@ def test_training_session_to_ox_with_notes():
     result = session.to_ox()
     lines = result.splitlines()
     assert lines[0] == "@session"
-    assert lines[1] == "2025-01-11 * Upper Day"
-    assert lines[2] == 'note: "Cycle 1 Week 1"'
-    assert lines[3].startswith("bench-press:")
-    assert lines[4] == "@end"
+    assert lines[1] == "date: 2025-01-11"
+    assert lines[2] == "name: Upper Day"
+    assert lines[3] == 'note: "Cycle 1 Week 1"'
+    assert lines[4].startswith("bench-press:")
+    assert lines[5] == "@end"
 
 
 def test_training_session_to_ox_no_notes():
     session = TrainingSession(
         date=date(2025, 1, 11),
-        flag="*",
+        completed=True,
         name="Upper Day",
         movements=(
             Movement(
@@ -76,7 +77,8 @@ def test_training_session_to_ox_no_notes():
 def log_with_session_notes(tmp_path):
     content = """\
 @session
-2025-01-11 * Upper Day
+date: 2025-01-11
+name: Upper Day
 note: "Cycle 1 Week 1"
 bench-press: 135lb 5x5
 @end
@@ -108,7 +110,7 @@ def test_parse_session_note_not_in_movements(log_with_session_notes):
 def log_with_standalone_note(tmp_path):
     content = """\
 2025-01-10 note "rest day"
-2025-01-11 * pullups: BW 5x10
+2025-01-11 T pullups: BW 5x10
 """
     f = tmp_path / "test.ox"
     f.write_text(content)
@@ -135,7 +137,7 @@ def test_parse_standalone_note_not_session(log_with_standalone_note):
 @pytest.fixture
 def log_without_notes(tmp_path):
     content = """\
-2025-01-11 * pullups: BW 5x10
+2025-01-11 T pullups: BW 5x10
 """
     f = tmp_path / "test.ox"
     f.write_text(content)
@@ -161,7 +163,8 @@ def db_with_notes(tmp_path):
 2025-01-10 note "rest day"
 
 @session
-2025-01-11 * Upper Day
+date: 2025-01-11
+name: Upper Day
 note: "Cycle 1 Week 1"
 bench-press: 135lb 5x5
 @end

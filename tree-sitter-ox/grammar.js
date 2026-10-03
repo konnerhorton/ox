@@ -41,11 +41,11 @@ module.exports = grammar({
 
     comment: ($) => /#[^\n]*/,
 
-    // Single-line entry: date flag item: details
+    // Single-line entry: date T item: details
     singleline_entry: ($) =>
       prec.right(seq(
         field("date", $.date),
-        field("flag", $.flag),
+        "T",
         field("item", $.item),
         ":",
         optional(field("details", $.details)),
@@ -87,14 +87,29 @@ module.exports = grammar({
       prec.right(seq(
         "@session",
         "\n",
-        field("date", $.date),
-        field("flag", $.flag),
-        field("name", $.name),
-        "\n",
-        repeat(choice($.item_line, $.note_line)),
+        $.date_line,
+        repeat(choice(
+          $.item_line,
+          $.note_line,
+          $.srpe_line,
+          $.name_line,
+          $.completed_line,
+          $.format_line
+        )),
         "@end",
         optional("\n")
       )),
+
+    // Header lines. `date:` must come first; the rest are free to follow in
+    // any order alongside the movement and note lines.
+    date_line: ($) => seq("date:", field("date", $.date), "\n"),
+
+    name_line: ($) => seq("name:", field("name", $.name), "\n"),
+
+    completed_line: ($) => seq("completed:", field("value", $.boolean), "\n"),
+
+    // Free-text stub for future @template linkage, unvalidated for now.
+    format_line: ($) => seq("format:", field("value", $.text_until_newline), "\n"),
 
     // @movement block
     movement_block: ($) =>
@@ -135,6 +150,20 @@ module.exports = grammar({
         "\n"
       ),
 
+    // Session RPE line within a session block: srpe: <rating> <duration> ["note"]
+    // "srpe:" outlexes the generic `item` token, so the pre-0.6 quoted form
+    // `srpe: "5; PT45M"` is a syntax error rather than a movement named srpe.
+    srpe_line: ($) =>
+      seq(
+        "srpe:",
+        field("rating", $.srpe_rating),
+        field("duration", $.duration),
+        optional(field("note", $.quoted_string)),
+        "\n"
+      ),
+
+    srpe_rating: ($) => /\d+/,
+
     // Metadata line within definition blocks: key: value
     metadata_line: ($) =>
       seq(
@@ -146,7 +175,7 @@ module.exports = grammar({
 
     date: ($) => /\d{4}-\d{2}-\d{2}/,
 
-    flag: ($) => choice("*", "!"),
+    boolean: ($) => choice("true", "false"),
 
     // Item name (before colon)
     item: ($) => /[^\s:]+/,
@@ -184,16 +213,26 @@ module.exports = grammar({
 
     rep_scheme: ($) => /(\d+x\d+)|(\d+(\/\d+)+)/,  // 4x4 or 5/5/5
 
-    // ISO 8601 duration: PT followed by at least one component
-    // Examples: PT30M, PT30M15S, PT1H, PT1H30M, PT1H30M15S, PT30M15.5S
-    duration: ($) => /PT(\d+H(\d+M(\d+(\.\d+)?S)?)?|\d+M(\d+(\.\d+)?S)?|\d+(\.\d+)?S)/,
+
+    // ISO 8601 duration: PT followed by at least one component.
+    // Single: PT30M, PT30M15S, PT1H, PT1H30M, PT1H30M15S, PT30M15.5S
+    // Progressive (per-set durations): PT30S/PT25S/PT20S
+    duration: ($) => /PT(\d+H(\d+M(\d+(\.\d+)?S)?)?|\d+M(\d+(\.\d+)?S)?|\d+(\.\d+)?S)(\/PT(\d+H(\d+M(\d+(\.\d+)?S)?)?|\d+M(\d+(\.\d+)?S)?|\d+(\.\d+)?S))*/,
 
     // 24-hour time of day with T prefix: T06:30
     time_of_day: ($) => /T\d{2}:\d{2}/,
 
     // Distance units: curated from pint's default_en.txt
-    distance: ($) => /\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)/,
+    // Mass and distance unit sets are disjoint, so the progressive form below
+    // cannot be captured by weight's progressive branch (which requires a mass
+    // unit on its final element).
+    distance: ($) => token(choice(
+      /((\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)?)\/)+(\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi))/,  // progressive (incl. implied units): 100m/200m/400m, 100/200/400m
+      /\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)/  // single: 5km
+    )),
 
-    quoted_string: ($) => /"[^"]*"/,
+    // Single-line only: an unclosed quote must fail on its own line, not
+    // swallow everything up to the next `"` further down the file.
+    quoted_string: ($) => /"[^"\n]*"/,
   },
 });

@@ -42,7 +42,7 @@ ox> e1rm -m squat --formula epley --output plot
 Mark max-effort sets in your log with `^rm`:
 
 ```
-deadlift: 315lb 1x3 "^rm top set"
+2025-01-10 T deadlift: 315lb 1x3 "^rm top set"
 ```
 
 ### `weighin`
@@ -65,7 +65,7 @@ Supports multiple scales — `stats` output shows per-scale breakdowns.
 
 ### `srpe`
 
-Training load analysis from session RPE (sRPE). Computes arbitrary units (AU = rating × duration in minutes) from sRPE entries recorded as session metadata or movement notes.
+Training load analysis from session RPE (sRPE). Computes arbitrary units (AU = rating × duration in minutes) from the `srpe:` line on each session.
 
 ```
 ox> srpe
@@ -91,21 +91,40 @@ ox> srpe -o strain
 
 **Recording sRPE in your log:**
 
+An `srpe:` line takes a 1–10 rating, how long the session ran, and an optional note. It can sit
+anywhere in the block.
+
 ```
-# As session metadata (movement named "srpe")
 @session
-2025-01-06 * Lower Strength
-srpe: "5; PT45M"
+date: 2025-01-06
+name: Lower Strength
+srpe: 5 PT45M "legs felt heavy"
 squat: 155lb 4x5
 @end
+```
 
-# Embedded in a movement note
-2025-01-08 * run: PT30M "easy pace, srpe: 3; PT30M"
+A session with no name works the same way, which is what a single run or a bit of grease-the-groove
+work becomes when it needs a rating:
+
+```
+@session
+date: 2025-01-08
+run: PT30M "easy pace"
+srpe: 3 PT30M
+@end
+```
+
+The rating is stored on the session itself (`sessions.srpe_rating`, `srpe_duration_seconds`,
+`srpe_note`), so it is queryable directly:
+
+```sql
+SELECT date, srpe_rating, srpe_duration_seconds / 60 AS minutes FROM sessions
+WHERE srpe_rating IS NOT NULL ORDER BY date
 ```
 
 ### `wendler531`
 
-Generates a 4-week Wendler 5/3/1 cycle as planned sessions.
+Generates a 4-week Wendler 5/3/1 cycle as planned sessions (`completed: false`).
 
 ```
 ox> wendler531 -m squat:315,bench:225

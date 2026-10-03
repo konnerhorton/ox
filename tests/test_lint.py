@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+import pytest
+
 from click.testing import CliRunner
 
 from ox.cli import cli, parse_file
@@ -20,13 +22,13 @@ def _parse_tree(text: str):
 
 class TestCollectDiagnostics:
     def test_valid_file_no_diagnostics(self):
-        text = "2025-01-10 * pullups: BW 5x10\n"
+        text = "2025-01-10 T pullups: BW 5x10\n"
         tree = _parse_tree(text)
         assert collect_diagnostics(tree) == ()
 
     def test_lbs_unit_produces_diagnostic(self):
         # "lbs" is not a valid unit; valid unit is "lb"
-        text = "2025-01-10 * bench-press: 135lbs 5x5\n"
+        text = "2025-01-10 T bench-press: 135lbs 5x5\n"
         tree = _parse_tree(text)
         diagnostics = collect_diagnostics(tree)
         assert len(diagnostics) == 1
@@ -36,13 +38,14 @@ class TestCollectDiagnostics:
         assert d.severity == "error"
 
     def test_multiple_errors_all_collected(self):
-        text = "2025-01-10 * bench-press: 135lbs 5x5\n2025-01-11 * squat: 225lbs 3x5\n"
+        text = "2025-01-10 T bench-press: 135lbs 5x5\n2025-01-11 T squat: 225lbs 3x5\n"
         tree = _parse_tree(text)
         diagnostics = collect_diagnostics(tree)
         assert len(diagnostics) >= 2
 
     def test_diagnostic_fields(self):
-        text = "2025-01-10 * bench-press: 135lbs 5x5\n"
+        # An unknown unit with no hint falls back to the generic message
+        text = "2025-01-10 T bench-press: 135zz 5x5\n"
         tree = _parse_tree(text)
         diagnostics = collect_diagnostics(tree)
         assert len(diagnostics) >= 1
@@ -54,9 +57,216 @@ class TestCollectDiagnostics:
         assert d.severity == "error"
 
     def test_multiline_session_valid(self):
-        text = "@session\n2025-01-11 * Upper Day\nbench-press: 135lb 5x5\n@end\n"
+        text = "@session\ndate: 2025-01-11\nname: Upper Day\nbench-press: 135lb 5x5\n@end\n"
         tree = _parse_tree(text)
         assert collect_diagnostics(tree) == ()
+
+
+def _session(*lines: str) -> str:
+    body = "".join(f"{line}\n" for line in lines)
+    return f"@session\ndate: 2025-01-11\n{body}@end\n"
+
+
+def _only(text: str) -> Diagnostic:
+    """The single diagnostic `text` produces."""
+    diagnostics = collect_diagnostics(_parse_tree(text))
+    assert len(diagnostics) == 1, diagnostics
+    return diagnostics[0]
+
+
+class TestLintHints:
+    """Recognized mistakes get one targeted message instead of "Syntax error"."""
+
+    @pytest.mark.parametrize(
+        "text, line, message",
+        [
+            # Curly quotes, standing in for one or both straight quotes
+            ("2025-01-10 note “knee sore”\n", 1, "Curly quote"),
+            (_session("note: “sore”"), 3, "Curly quote"),
+            (_session('deadlift: 245lb 3x3 “tm 350"'), 3, "Curly quote"),
+            (_session('note: "bow.”', "srpe: 3 PT60M"), 3, "Curly quote"),
+            # Pre-0.6 syntax
+            ("2025-01-10 * pullups: BW 5x10\n", 1, "replace `*` with `T`"),
+            ("2025-01-10 ! squat: 100kg 5x5\n", 1, "replace `!` with `T`"),
+            ('@session\ndate: 2025-01-11\n  srpe: "5; PT45M"\n@end\n', 3, "Old sRPE"),
+            # sRPE lines
+            (_session("srpe: 5.5 PT45M"), 3, "whole number"),
+            (_session("srpe: X PTXXM"), 3, "sRPE line is"),
+            (_session("srpe: 5", "squat: 5x5"), 3, "sRPE line is"),
+            # Values
+            (_session("completed: yes", "squat: 5x5"), 3, "`completed:` takes"),
+            ("@session\ndate: 2025-1-10\nsquat: 5x5\n@end\n", 2, "YYYY-MM-DD"),
+            ("2025-01-10 T bench-press: 135lbs 5x5\n", 1, "use `lb`"),
+            (_session("squat: 100kgs 5x5", "bench: 60kg 5x5"), 3, "use `kg`"),
+            ("2025-01-10 T run: 5km 25min\n", 1, "write `PT25M`"),
+            (_session("plank: BW 45s 3x1"), 3, "write `PT45S`"),
+            (_session('squat: 100kg 5x5 "felt good', "bench: 60kg 5x5"), 3, "Unclosed"),
+            ("2025-01-10 squat: 100kg 5x5\n", 1, "needs `T`"),
+            # Block structure
+            ("@session\nname: Upper\nsquat: 5x5\n@end\n", 1, "start with a `date:`"),
+            (
+                "@session\nname: Upper\ndate: 2025-01-10\nsquat: 5x5\n@end\n",
+                1,
+                "start with a `date:`",
+            ),
+            (
+                "@session\ndate: 2025-01-10\nsquat: 5x5\n\n"
+                "@session\ndate: 2025-01-11\nbench: 5x5\n@end\n",
+                1,
+                "`@session` block is missing `@end`",
+            ),
+            ("@session\ndate: 2025-01-10\nsquat: 5x5\n", 1, "missing `@end`"),
+        ],
+    )
+    def test_hint(self, text, line, message):
+        d = _only(text)
+        assert d.line == line
+        assert message in d.message
+        assert d.severity == "error"
+
+    def test_old_session_header_hint(self):
+        text = "@session\n2025-01-12 * Lower\nsquat: 100kg 5x5\n@end\n"
+        diagnostics = collect_diagnostics(_parse_tree(text))
+        assert diagnostics[0].line == 2
+        assert "Old session header" in diagnostics[0].message
+        assert all("start with a `date:`" not in d.message for d in diagnostics)
+
+    def test_migration_hints_name_the_script(self):
+        assert "migrate_ox.py" in _only("2025-01-10 * pullups: BW 5x10\n").message
+        assert "migrate_ox.py" in _only(_session('srpe: "5; PT45M"')).message
+
+    def test_hint_columns_cover_the_mistake(self):
+        d = _only("2025-01-10 T bench-press: 135lbs 5x5\n")
+        assert (d.col, d.end_col) == (29, 32)
+        d = _only('@session\ndate: 2025-01-11\n  srpe: "5; PT45M"\n@end\n')
+        assert (d.line, d.col, d.end_line, d.end_col) == (3, 2, 3, 18)
+
+    def test_hint_columns_count_characters_not_bytes(self):
+        # “ is three bytes in UTF-8 but one character for an editor
+        d = _only("2025-01-10 note “knee sore”\n")
+        assert (d.col, d.end_col) == (16, 27)
+
+    def test_unclosed_quote_does_not_swallow_later_lines(self):
+        """A quoted string stops at the end of its line."""
+        text = (
+            _session('note: "half open')
+            + "2025-01-12 T squat: 100kg 5x5\n"
+            + '2025-01-13 T bench: 60kg 5x5 "fine"\n'
+        )
+        diagnostics = collect_diagnostics(_parse_tree(text))
+        assert [d.line for d in diagnostics] == [3]
+        assert "Unclosed" in diagnostics[0].message
+
+    @pytest.mark.parametrize(
+        "breaker, line",
+        [
+            ("completed: yes", 'squat: 100kg 5x5 "he said “go”"'),
+            ("completed: yes", 'squat: 100kg 5x5 "30 minutes, 135lbs bar"'),
+            ("completed: yes", "plank: BW PT45S 3x1"),
+            ("completed: yes", "completed: false"),
+            ("srpe: 5", "srpe: 3 PT60M"),
+            ("srpe: 5", 'srpe: 3 PT60M "solid"'),
+        ],
+    )
+    def test_valid_lines_inside_an_error_get_no_hint(self, breaker, line):
+        """A broken line can pull its neighbours into one ERROR; they stay quiet."""
+        text = _session(breaker, line)
+        tree = _parse_tree(text)
+
+        covered = set()
+
+        def walk(node):
+            if node.type == "ERROR":
+                end = node.end_point[0] - (node.end_point[1] == 0)
+                covered.update(range(node.start_point[0], end + 1))
+                return
+            for child in node.children:
+                walk(child)
+
+        walk(tree.root_node)
+        assert 3 in covered, "the valid line must sit inside the ERROR node"
+
+        diagnostics = collect_diagnostics(tree)
+        assert [d.line for d in diagnostics] == [3]
+
+    def test_unrecognized_error_stays_generic(self):
+        assert _only("2025-01-10 T bench-press: 135zz 5x5\n").message == (
+            "Syntax error"
+        )
+
+
+def _warning(text: str) -> Diagnostic:
+    d = _only(text)
+    assert d.severity == "warning", d
+    return d
+
+
+class TestSemanticWarnings:
+    """Lines that parse but drop or invent values get a warning."""
+
+    @pytest.mark.parametrize("key", ["name: B", "completed: true", "format: x"])
+    def test_repeated_header(self, key):
+        text = _session("name: A", "completed: false", "format: y", key)
+        d = _warning(text)
+        assert d.line == 6
+        assert d.message.startswith(f"Repeated `{key.split()[0]}` line")
+
+    def test_repeated_srpe_flags_only_the_second(self):
+        d = _warning(_session("srpe: 5 PT30M", "srpe: 6 PT40M"))
+        assert d.line == 4
+        assert d.message.startswith("Repeated `srpe:` line")
+
+    @pytest.mark.parametrize("rating", ["0", "11"])
+    def test_srpe_rating_out_of_range(self, rating):
+        d = _warning(_session(f"srpe: {rating} PT30M"))
+        assert d.message == "sRPE rating must be between 1 and 10"
+        assert (d.col, d.end_col) == (6, 6 + len(rating))
+
+    @pytest.mark.parametrize("rating", ["1", "10"])
+    def test_srpe_rating_in_range(self, rating):
+        assert collect_diagnostics(_parse_tree(_session(f"srpe: {rating} PT30M"))) == ()
+
+    def test_list_longer_than_rep_scheme(self):
+        d = _warning("2025-01-12 T run: PT30S/PT20S/PT10S 2x1\n")
+        assert d.message == "duration lists 3 values for 2 sets; extras are ignored"
+        assert (d.col, d.end_col) == (18, 35)
+
+    def test_list_shorter_than_rep_scheme(self):
+        d = _warning("2025-01-12 T squat: 100/110kg 3x5\n")
+        assert d.message == "weight lists 2 values for 3 sets; the last repeats"
+
+    def test_lists_disagree_without_rep_scheme(self):
+        d = _warning("2025-01-12 T run: 100m/200m PT30S/PT20S/PT10S\n")
+        assert d.message == (
+            "distance lists 2 values but another list sets 3 sets; the last repeats"
+        )
+
+    def test_mismatch_inside_session_block(self):
+        d = _warning(_session("run: 100m/200m 3x1"))
+        assert d.line == 3
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "2025-01-12 T squat: 100/110/120kg 3x5",
+            "2025-01-12 T squat: 100kg 5/5/5",
+            "2025-01-12 T run: 100m/200m PT30S/PT20S",
+            "2025-01-12 T run: 400m PT30S/PT20S/PT10S",  # a single value broadcasts
+            "2025-01-12 T carry: 24kg+32kg 40m/60m 2x1",
+        ],
+    )
+    def test_matching_lengths_are_clean(self, line):
+        assert collect_diagnostics(_parse_tree(line + "\n")) == ()
+
+    def test_columns_count_characters_not_bytes(self):
+        d = _warning('2025-01-12 T run: 100m/200m 3x1 "é"\n'.replace("run", "rün"))
+        assert (d.col, d.end_col) == (18, 27)
+
+    def test_block_with_syntax_error_gets_no_warnings(self):
+        diagnostics = collect_diagnostics(
+            _parse_tree(_session("name: A", "name: B", "squat: 135lbs 5x5"))
+        )
+        assert [d.severity for d in diagnostics] == ["error"]
 
 
 class TestTrainingLogDiagnostics:
@@ -66,7 +276,7 @@ class TestTrainingLogDiagnostics:
 
     def test_parse_file_invalid_log_has_diagnostics(self, tmp_path):
         bad_file = tmp_path / "bad.ox"
-        bad_file.write_text("2025-01-10 * bench-press: 135lbs 5x5\n")
+        bad_file.write_text("2025-01-10 T bench-press: 135lbs 5x5\n")
         log = parse_file(bad_file)
         assert len(log.diagnostics) >= 1
         assert all(isinstance(d, Diagnostic) for d in log.diagnostics)
@@ -74,8 +284,8 @@ class TestTrainingLogDiagnostics:
     def test_diagnostics_correct_line(self, tmp_path):
         content = (
             "# comment\n"
-            "2025-01-10 * pullups: BW 5x10\n"
-            "2025-01-11 * bench-press: 135lbs 5x5\n"
+            "2025-01-10 T pullups: BW 5x10\n"
+            "2025-01-11 T bench-press: 135lbs 5x5\n"
         )
         bad_file = tmp_path / "bad.ox"
         bad_file.write_text(content)
@@ -105,15 +315,21 @@ class TestLintCommand:
 
     def test_lint_shows_errors(self, tmp_path):
         bad_file = tmp_path / "bad.ox"
-        bad_file.write_text("2025-01-10 * bench-press: 135lbs 5x5\n")
+        bad_file.write_text("2025-01-10 T bench-press: 135lbs 5x5\n")
         result = _invoke_repl(bad_file, ["lint"])
         assert result.exit_code == 0
         assert "Line" in result.output
-        assert "Syntax error" in result.output
+        assert "Unknown unit `lbs`: use `lb`" in result.output
+
+    def test_lint_labels_warnings(self, tmp_path):
+        log_file = tmp_path / "log.ox"
+        log_file.write_text("2025-01-10 T run: 100m/200m 3x1\n")
+        result = _invoke_repl(log_file, ["lint"])
+        assert "Line 1, col 18: warning: distance lists 2 values" in result.output
 
     def test_load_warning_shown_when_errors(self, tmp_path):
         bad_file = tmp_path / "bad.ox"
-        bad_file.write_text("2025-01-10 * bench-press: 135lbs 5x5\n")
+        bad_file.write_text("2025-01-10 T bench-press: 135lbs 5x5\n")
         result = _invoke_repl(bad_file, [])
         assert result.exit_code == 0
         assert "parse error" in result.output.lower()

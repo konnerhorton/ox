@@ -16,9 +16,14 @@ server = LanguageServer(name="ox-lsp", version="0.1.0")
 _language = Language(tree_sitter_ox.language())
 _parser = Parser(_language)
 
+_SEVERITY = {
+    "error": lsp.DiagnosticSeverity.Error,
+    "warning": lsp.DiagnosticSeverity.Warning,
+}
+
 
 def get_diagnostics(text: str) -> list[lsp.Diagnostic]:
-    """Parse text and return diagnostics for any errors."""
+    """Parse text and return diagnostics for any errors and warnings."""
     tree = _parser.parse(bytes(text, encoding="utf-8"))
     ox_diagnostics = _collect_diagnostics(tree)
     return [
@@ -28,7 +33,7 @@ def get_diagnostics(text: str) -> list[lsp.Diagnostic]:
                 end=lsp.Position(line=d.end_line - 1, character=d.end_col),
             ),
             message=d.message,
-            severity=lsp.DiagnosticSeverity.Error,
+            severity=_SEVERITY[d.severity],
             source="ox",
         )
         for d in ox_diagnostics
@@ -126,7 +131,24 @@ def _collect_movement_names(tree) -> set[str]:
     return names
 
 
-_SINGLELINE_PREFIX = re.compile(r"^\d{4}-\d{2}-\d{2}\s+[*!]\s+")
+_SINGLELINE_PREFIX = re.compile(r"^\d{4}-\d{2}-\d{2}\s+T\s+")
+
+# Keyword lines inside a session block. A movement can never be named after one
+# of these, so the cursor sitting on one is not a movement context.
+SESSION_KEYWORDS = ("date", "name", "completed", "format", "srpe", "note")
+_KEYWORD_LINE = re.compile(rf"^({'|'.join(SESSION_KEYWORDS)}):")
+
+_BLOCK_TYPES = ("session_block", "template_block")
+
+
+def _enclosing_block(tree, line: int, col: int) -> str | None:
+    """Return the type of the session/template block containing the cursor."""
+    node = tree.root_node.descendant_for_point_range((line, col), (line, col))
+    while node:
+        if node.type in _BLOCK_TYPES:
+            return node.type
+        node = node.parent
+    return None
 
 
 def _cursor_wants_movement(text: str, line: int, col: int, tree) -> bool:
@@ -136,31 +158,17 @@ def _cursor_wants_movement(text: str, line: int, col: int, tree) -> bool:
         return False
     current_line = lines[line]
 
-    # Context A: singleline entry — line matches date+flag prefix, cursor after it
+    # Context A: single-line entry — line matches the date+T prefix, cursor after it
     m = _SINGLELINE_PREFIX.match(current_line)
     if m and col >= m.end():
-        # Make sure we're not inside a session/template block
-        node = tree.root_node.descendant_for_point_range((line, col), (line, col))
-        while node:
-            if node.type in ("session_block", "template_block"):
-                return False
-            node = node.parent
-        return True
+        return _enclosing_block(tree, line, col) is None
 
-    # Context B: inside a session/template block on an item line
+    # Context B: inside a session/template block, on a line that is not a
+    # directive and not one of the block's own keyword lines.
     stripped = current_line.lstrip()
-    if stripped.startswith("@") or stripped.startswith("note:"):
+    if stripped.startswith("@") or _KEYWORD_LINE.match(stripped):
         return False
-    node = tree.root_node.descendant_for_point_range((line, col), (line, col))
-    while node:
-        if node.type in ("session_block", "template_block"):
-            # Exclude the header line (date/flag/name line)
-            header_line = node.start_point[0] + 1  # header is 1 line after @session
-            if line == header_line:
-                return False
-            return True
-        node = node.parent
-    return False
+    return _enclosing_block(tree, line, col) is not None
 
 
 @server.feature(lsp.TEXT_DOCUMENT_FOLDING_RANGE)
@@ -205,7 +213,6 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
     if not _cursor_wants_movement(text, line, col, tree):
         return lsp.CompletionList(is_incomplete=False, items=[])
 
-    names = _collect_movement_names(tree)
     items = [
         lsp.CompletionItem(
             label=name,
@@ -213,8 +220,22 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
             kind=lsp.CompletionItemKind.Value,
             detail="movement",
         )
-        for name in sorted(names)
+        for name in sorted(_collect_movement_names(tree))
     ]
+
+    # A movement line and a keyword line start the same way, so offer the
+    # session keywords alongside the movements while inside a session block.
+    if _enclosing_block(tree, line, col) == "session_block":
+        items += [
+            lsp.CompletionItem(
+                label=keyword,
+                insert_text=keyword + ": ",
+                kind=lsp.CompletionItemKind.Keyword,
+                detail="session field",
+            )
+            for keyword in SESSION_KEYWORDS
+        ]
+
     return lsp.CompletionList(is_incomplete=False, items=items)
 
 

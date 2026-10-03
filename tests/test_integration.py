@@ -36,7 +36,7 @@ class TestParseFile:
         # Check first session (single-line entry)
         session1 = log.sessions[0]
         assert session1.date == date(2025, 1, 10)
-        assert session1.flag == "*"
+        assert session1.completed is True
         assert len(session1.movements) == 1
         assert session1.movements[0].name == "pullups"
 
@@ -60,11 +60,11 @@ class TestParseFile:
         log = parse_file(simple_log_file)
 
         # First two sessions are completed (*)
-        assert log.sessions[0].flag == "*"
-        assert log.sessions[1].flag == "*"
+        assert log.sessions[0].completed is True
+        assert log.sessions[1].completed is True
 
         # Third session is planned (!)
-        assert log.sessions[2].flag == "!"
+        assert log.sessions[2].completed is False
 
     def test_query_movements(self, simple_log_file):
         """Test querying movements from parsed log.
@@ -111,10 +111,10 @@ class TestIncludeDirective:
     def test_single_include_merges_sessions(self, tmp_path):
         """Including another file merges its sessions into the result."""
         child = tmp_path / "child.ox"
-        child.write_text("2025-01-11 * bench-press: 135lb 5x5\n")
+        child.write_text("2025-01-11 T bench-press: 135lb 5x5\n")
 
         main = tmp_path / "main.ox"
-        main.write_text('2025-01-10 * pullups: BW 5x10\n@include "child.ox"\n')
+        main.write_text('2025-01-10 T pullups: BW 5x10\n@include "child.ox"\n')
 
         log = parse_file(main)
         assert len(log.sessions) == 2
@@ -124,13 +124,13 @@ class TestIncludeDirective:
     def test_nested_includes(self, tmp_path):
         """Nested includes (a -> b -> c) all merge."""
         c = tmp_path / "c.ox"
-        c.write_text("2025-01-12 * squat: 185lb 3x5\n")
+        c.write_text("2025-01-12 T squat: 185lb 3x5\n")
 
         b = tmp_path / "b.ox"
-        b.write_text('2025-01-11 * bench-press: 135lb 5x5\n@include "c.ox"\n')
+        b.write_text('2025-01-11 T bench-press: 135lb 5x5\n@include "c.ox"\n')
 
         a = tmp_path / "a.ox"
-        a.write_text('2025-01-10 * pullups: BW 5x10\n@include "b.ox"\n')
+        a.write_text('2025-01-10 T pullups: BW 5x10\n@include "b.ox"\n')
 
         log = parse_file(a)
         assert len(log.sessions) == 3
@@ -139,8 +139,8 @@ class TestIncludeDirective:
         """Circular includes emit diagnostic, no infinite loop."""
         a = tmp_path / "a.ox"
         b = tmp_path / "b.ox"
-        a.write_text('2025-01-10 * pullups: BW 5x10\n@include "b.ox"\n')
-        b.write_text('2025-01-11 * bench-press: 135lb 5x5\n@include "a.ox"\n')
+        a.write_text('2025-01-10 T pullups: BW 5x10\n@include "b.ox"\n')
+        b.write_text('2025-01-11 T bench-press: 135lb 5x5\n@include "a.ox"\n')
 
         log = parse_file(a)
         # Both files' sessions should be present
@@ -152,7 +152,7 @@ class TestIncludeDirective:
     def test_self_include(self, tmp_path):
         """Self-include detected and reported."""
         f = tmp_path / "self.ox"
-        f.write_text('2025-01-10 * pullups: BW 5x10\n@include "self.ox"\n')
+        f.write_text('2025-01-10 T pullups: BW 5x10\n@include "self.ox"\n')
 
         log = parse_file(f)
         assert len(log.sessions) == 1
@@ -162,7 +162,7 @@ class TestIncludeDirective:
     def test_missing_include(self, tmp_path):
         """Missing include file emits diagnostic, other entries still parse."""
         main = tmp_path / "main.ox"
-        main.write_text('2025-01-10 * pullups: BW 5x10\n@include "nonexistent.ox"\n')
+        main.write_text('2025-01-10 T pullups: BW 5x10\n@include "nonexistent.ox"\n')
 
         log = parse_file(main)
         assert len(log.sessions) == 1
@@ -174,10 +174,10 @@ class TestIncludeDirective:
         subdir = tmp_path / "sub"
         subdir.mkdir()
         child = subdir / "child.ox"
-        child.write_text("2025-01-11 * bench-press: 135lb 5x5\n")
+        child.write_text("2025-01-11 T bench-press: 135lb 5x5\n")
 
         main = tmp_path / "main.ox"
-        main.write_text('@include "sub/child.ox"\n2025-01-10 * pullups: BW 5x10\n')
+        main.write_text('@include "sub/child.ox"\n2025-01-10 T pullups: BW 5x10\n')
 
         log = parse_file(main)
         assert len(log.sessions) == 2
@@ -195,7 +195,7 @@ class TestMixedBWWeightProgressive:
         from tree_sitter import Language, Parser
         from ox.lint import collect_diagnostics
 
-        ox_content = "2025-01-10 * pullup: BW/BW/25lb/50lb 1/1/1/1\n"
+        ox_content = "2025-01-10 T pullup: BW/BW/25lb/50lb 1/1/1/1\n"
         language = Language(tree_sitter_ox.language())
         parser = Parser(language)
         tree = parser.parse(bytes(ox_content, encoding="utf-8"))
@@ -209,7 +209,7 @@ class TestMixedBWWeightProgressive:
         from tree_sitter import Language, Parser
         from ox.lint import collect_diagnostics
 
-        ox_content = "2025-01-10 * pullup: BW/25lb 1/1\n"
+        ox_content = "2025-01-10 T pullup: BW/25lb 1/1\n"
         language = Language(tree_sitter_ox.language())
         parser = Parser(language)
         tree = parser.parse(bytes(ox_content, encoding="utf-8"))
@@ -222,7 +222,7 @@ class TestMixedBWWeightProgressive:
         from ox.cli import parse_file
 
         ox_file = tmp_path / "mixed_bw.ox"
-        ox_file.write_text("2025-01-10 * pullup: BW/BW/25lb/50lb 1/1/1/1\n")
+        ox_file.write_text("2025-01-10 T pullup: BW/BW/25lb/50lb 1/1/1/1\n")
 
         log = parse_file(ox_file)
 

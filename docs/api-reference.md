@@ -43,9 +43,12 @@ All are frozen dataclasses with `slots=True`.
 |---|---|
 | `date` | `datetime.date` |
 | `name` | `str \| None` |
-| `flag` | `str` (`"*"`, `"!"`, `"W"`) |
+| `completed` | `bool` (`False` marks a planned session) |
 | `movements` | `tuple[Movement, ...]` |
 | `notes` | `tuple[Note, ...]` |
+| `srpe_rating` | `int \| None` |
+| `srpe_duration` | `datetime.timedelta \| None` |
+| `srpe_note` | `str \| None` |
 
 ### Movement
 

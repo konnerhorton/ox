@@ -165,12 +165,8 @@
             }
           },
           {
-            "type": "FIELD",
-            "name": "flag",
-            "content": {
-              "type": "SYMBOL",
-              "name": "flag"
-            }
+            "type": "STRING",
+            "value": "T"
           },
           {
             "type": "FIELD",
@@ -393,32 +389,8 @@
             "value": "\n"
           },
           {
-            "type": "FIELD",
-            "name": "date",
-            "content": {
-              "type": "SYMBOL",
-              "name": "date"
-            }
-          },
-          {
-            "type": "FIELD",
-            "name": "flag",
-            "content": {
-              "type": "SYMBOL",
-              "name": "flag"
-            }
-          },
-          {
-            "type": "FIELD",
-            "name": "name",
-            "content": {
-              "type": "SYMBOL",
-              "name": "name"
-            }
-          },
-          {
-            "type": "STRING",
-            "value": "\n"
+            "type": "SYMBOL",
+            "name": "date_line"
           },
           {
             "type": "REPEAT",
@@ -432,6 +404,22 @@
                 {
                   "type": "SYMBOL",
                   "name": "note_line"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "srpe_line"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "name_line"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "completed_line"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "format_line"
                 }
               ]
             }
@@ -454,6 +442,90 @@
           }
         ]
       }
+    },
+    "date_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "date:"
+        },
+        {
+          "type": "FIELD",
+          "name": "date",
+          "content": {
+            "type": "SYMBOL",
+            "name": "date"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "name_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "name:"
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "name"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "completed_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "completed:"
+        },
+        {
+          "type": "FIELD",
+          "name": "value",
+          "content": {
+            "type": "SYMBOL",
+            "name": "boolean"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "format_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "format:"
+        },
+        {
+          "type": "FIELD",
+          "name": "value",
+          "content": {
+            "type": "SYMBOL",
+            "name": "text_until_newline"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
     },
     "movement_block": {
       "type": "PREC_RIGHT",
@@ -610,6 +682,55 @@
         }
       ]
     },
+    "srpe_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "srpe:"
+        },
+        {
+          "type": "FIELD",
+          "name": "rating",
+          "content": {
+            "type": "SYMBOL",
+            "name": "srpe_rating"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "duration",
+          "content": {
+            "type": "SYMBOL",
+            "name": "duration"
+          }
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "note",
+              "content": {
+                "type": "SYMBOL",
+                "name": "quoted_string"
+              }
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "STRING",
+          "value": "\n"
+        }
+      ]
+    },
+    "srpe_rating": {
+      "type": "PATTERN",
+      "value": "\\d+"
+    },
     "metadata_line": {
       "type": "SEQ",
       "members": [
@@ -651,16 +772,16 @@
       "type": "PATTERN",
       "value": "\\d{4}-\\d{2}-\\d{2}"
     },
-    "flag": {
+    "boolean": {
       "type": "CHOICE",
       "members": [
         {
           "type": "STRING",
-          "value": "*"
+          "value": "true"
         },
         {
           "type": "STRING",
-          "value": "!"
+          "value": "false"
         }
       ]
     },
@@ -758,19 +879,31 @@
     },
     "duration": {
       "type": "PATTERN",
-      "value": "PT(\\d+H(\\d+M(\\d+(\\.\\d+)?S)?)?|\\d+M(\\d+(\\.\\d+)?S)?|\\d+(\\.\\d+)?S)"
+      "value": "PT(\\d+H(\\d+M(\\d+(\\.\\d+)?S)?)?|\\d+M(\\d+(\\.\\d+)?S)?|\\d+(\\.\\d+)?S)(\\/PT(\\d+H(\\d+M(\\d+(\\.\\d+)?S)?)?|\\d+M(\\d+(\\.\\d+)?S)?|\\d+(\\.\\d+)?S))*"
     },
     "time_of_day": {
       "type": "PATTERN",
       "value": "T\\d{2}:\\d{2}"
     },
     "distance": {
-      "type": "PATTERN",
-      "value": "\\d+(\\.\\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)"
+      "type": "TOKEN",
+      "content": {
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "PATTERN",
+            "value": "((\\d+(\\.\\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)?)\\/)+(\\d+(\\.\\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi))"
+          },
+          {
+            "type": "PATTERN",
+            "value": "\\d+(\\.\\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)"
+          }
+        ]
+      }
     },
     "quoted_string": {
       "type": "PATTERN",
-      "value": "\"[^\"]*\""
+      "value": "\"[^\"\\n]*\""
     }
   },
   "extras": [

@@ -12,8 +12,12 @@ SCHEMA = """
 CREATE TABLE sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT NOT NULL,
-    flag TEXT NOT NULL,
-    name TEXT
+    completed INTEGER NOT NULL DEFAULT 1,
+    name TEXT,
+    format TEXT,
+    srpe_rating INTEGER,
+    srpe_duration_seconds REAL,
+    srpe_note TEXT
 );
 
 CREATE TABLE movements (
@@ -30,6 +34,9 @@ CREATE TABLE sets (
     reps INTEGER NOT NULL,
     weight_magnitude REAL,
     weight_unit TEXT,
+    duration_seconds REAL,
+    distance_magnitude REAL,
+    distance_unit TEXT,
     FOREIGN KEY (movement_id) REFERENCES movements(id)
 );
 
@@ -79,31 +86,38 @@ CREATE VIEW training AS
 SELECT
     s.id AS session_id,
     s.date,
-    s.flag,
+    s.completed,
     s.name AS session_name,
+    s.format AS session_format,
+    s.srpe_rating,
+    s.srpe_duration_seconds,
     m.id AS movement_id,
     m.name AS movement_name,
     m.note AS movement_note,
     t.id AS set_id,
     t.reps,
     t.weight_magnitude,
-    t.weight_unit
+    t.weight_unit,
+    t.duration_seconds,
+    t.distance_magnitude,
+    t.distance_unit
 FROM sessions s
 JOIN movements m ON m.session_id = s.id
 JOIN sets t ON t.movement_id = m.id;
 """
 
 
-def _decompose_weight(
-    weight: Optional[Quantity],
+def _decompose_quantity(
+    quantity: Optional[Quantity],
 ) -> tuple[Optional[float], Optional[str]]:
     """Split a pint Quantity into (magnitude, unit_string) for SQLite storage.
 
-    Returns (None, None) for bodyweight (weight is None).
+    Used for both weights and distances. Returns (None, None) when absent —
+    for weight that means bodyweight.
     """
-    if weight is None:
+    if quantity is None:
         return None, None
-    return float(weight.magnitude), str(weight.units)
+    return float(quantity.magnitude), str(quantity.units)
 
 
 def create_db(log: TrainingLog) -> sqlite3.Connection:
@@ -122,8 +136,21 @@ def create_db(log: TrainingLog) -> sqlite3.Connection:
 
     for session in log.sessions:
         cursor = conn.execute(
-            "INSERT INTO sessions (date, flag, name) VALUES (?, ?, ?)",
-            (session.date.isoformat(), session.flag, session.name),
+            "INSERT INTO sessions (date, completed, name, format,"
+            " srpe_rating, srpe_duration_seconds, srpe_note)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                session.date.isoformat(),
+                int(session.completed),
+                session.name,
+                session.format,
+                session.srpe_rating,
+                # `is not None`: a zero timedelta is falsy but real
+                session.srpe_duration.total_seconds()
+                if session.srpe_duration is not None
+                else None,
+                session.srpe_note,
+            ),
         )
         session_id = cursor.lastrowid
 
@@ -135,10 +162,23 @@ def create_db(log: TrainingLog) -> sqlite3.Connection:
             movement_id = cursor.lastrowid
 
             for training_set in movement.sets:
-                mag, unit = _decompose_weight(training_set.weight)
+                mag, unit = _decompose_quantity(training_set.weight)
+                dist_mag, dist_unit = _decompose_quantity(training_set.distance)
+                duration = training_set.duration
                 conn.execute(
-                    "INSERT INTO sets (movement_id, reps, weight_magnitude, weight_unit) VALUES (?, ?, ?, ?)",
-                    (movement_id, training_set.reps, mag, unit),
+                    "INSERT INTO sets (movement_id, reps, weight_magnitude, weight_unit,"
+                    " duration_seconds, distance_magnitude, distance_unit)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        movement_id,
+                        training_set.reps,
+                        mag,
+                        unit,
+                        # `is not None`: a zero timedelta is falsy but real
+                        duration.total_seconds() if duration is not None else None,
+                        dist_mag,
+                        dist_unit,
+                    ),
                 )
 
         for note in session.notes:
@@ -172,7 +212,7 @@ def create_db(log: TrainingLog) -> sqlite3.Connection:
             )
 
     for w in log.weigh_ins:
-        mag, unit = _decompose_weight(w.weight)
+        mag, unit = _decompose_quantity(w.weight)
         conn.execute(
             "INSERT INTO weigh_ins (date, weight_magnitude, weight_unit, time_of_day, scale) VALUES (?, ?, ?, ?, ?)",
             (

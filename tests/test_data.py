@@ -9,7 +9,7 @@ Testing philosophy:
 from pathlib import Path
 
 import pytest
-from datetime import date, time
+from datetime import date, time, timedelta
 from ox.data import TrainingSet, Movement, TrainingSession, TrainingLog, WeighIn
 from ox.units import ureg
 
@@ -64,6 +64,46 @@ class TestTrainingSet:
         # Volume = reps * weight
         expected_volume = 5 * 24 * ureg.kilogram
         assert training_set.volume == expected_volume
+
+    def test_defaults_are_none(self):
+        """duration and distance are optional and default to None."""
+        training_set = TrainingSet(reps=5)
+        assert training_set.duration is None
+        assert training_set.distance is None
+
+    def test_duration_set(self):
+        """An isometric hold: reps=1 with a duration."""
+        training_set = TrainingSet(reps=1, duration=timedelta(seconds=30))
+        assert training_set.duration == timedelta(seconds=30)
+        assert training_set.weight is None
+
+    def test_weighted_duration_set(self):
+        """Weight and duration co-occur (weighted-plank: 45lb PT30S 3x1)."""
+        training_set = TrainingSet(
+            reps=1, weight=45 * ureg.pound, duration=timedelta(seconds=30)
+        )
+        assert training_set.weight == 45 * ureg.pound
+        assert training_set.duration == timedelta(seconds=30)
+        # Volume still derives from reps * weight only
+        assert training_set.volume == 45 * ureg.pound
+
+    def test_distance_set(self):
+        """A distance-only set (run: 5km)."""
+        training_set = TrainingSet(reps=1, distance=5 * ureg.kilometer)
+        assert training_set.distance == 5 * ureg.kilometer
+
+    def test_all_fields_co_occur(self):
+        """No invariant forbids reps, weight, duration, and distance together."""
+        training_set = TrainingSet(
+            reps=1,
+            weight=20 * ureg.pound,
+            duration=timedelta(minutes=2),
+            distance=500 * ureg.meter,
+        )
+        assert training_set.reps == 1
+        assert training_set.weight == 20 * ureg.pound
+        assert training_set.duration == timedelta(minutes=2)
+        assert training_set.distance == 500 * ureg.meter
 
 
 class TestMovement:
@@ -123,16 +163,21 @@ class TestMovement:
         assert movement.top_set_weight is None
 
 
+def reparse_movement(line: str) -> Movement:
+    """Parse a single movement line back into a Movement."""
+    from ox.cli import parse_file
+    import tempfile
+
+    p = Path(tempfile.mktemp(suffix=".ox"))
+    p.write_text(f"2025-01-10 T {line}\n")
+    return parse_file(p).sessions[0].movements[0]
+
+
 class TestToOxRoundTrip:
     """Movement and TrainingSession to_ox() should emit a form that re-parses to an equal object."""
 
     def _reparse_movement(self, line: str) -> Movement:
-        from ox.cli import parse_file
-        import tempfile
-
-        p = Path(tempfile.mktemp(suffix=".ox"))
-        p.write_text(f"2025-01-10 * {line}\n")
-        return parse_file(p).sessions[0].movements[0]
+        return reparse_movement(line)
 
     def test_movement_uniform_weight(self):
         m = Movement(
@@ -182,8 +227,10 @@ class TestToOxRoundTrip:
         m = Movement(
             name="pullups", sets=[TrainingSet(reps=10, weight=None)], note=None
         )
-        s = TrainingSession(date=date(2025, 1, 10), flag="*", name=None, movements=(m,))
-        assert s.to_ox() == "2025-01-10 * pullups: BW 1x10"
+        s = TrainingSession(
+            date=date(2025, 1, 10), completed=True, name=None, movements=(m,)
+        )
+        assert s.to_ox() == "2025-01-10 T pullups: BW 1x10"
 
     def test_session_block(self):
         m1 = Movement(
@@ -192,12 +239,258 @@ class TestToOxRoundTrip:
             note=None,
         )
         s = TrainingSession(
-            date=date(2025, 1, 11), flag="*", name="Upper Day", movements=(m1,)
+            date=date(2025, 1, 11), completed=True, name="Upper Day", movements=(m1,)
         )
         out = s.to_ox()
-        assert out.startswith("@session\n2025-01-11 * Upper Day")
+        assert out.startswith("@session\ndate: 2025-01-11\nname: Upper Day")
         assert out.endswith("@end")
         assert "bench-press: 135lb 5x5" in out
+
+
+class TestToOxDurationDistance:
+    """to_ox() emission of the duration and distance set fields."""
+
+    def _movement(self, name, sets):
+        return Movement(name=name, sets=sets, note=None)
+
+    def test_single_duration(self):
+        m = self._movement("run", [TrainingSet(reps=1, duration=timedelta(minutes=30))])
+        assert m.to_ox() == "run: PT30M"
+
+    def test_single_distance(self):
+        m = self._movement("run", [TrainingSet(reps=1, distance=5 * ureg.kilometer)])
+        assert m.to_ox() == "run: 5km"
+
+    def test_distance_and_duration(self):
+        m = self._movement(
+            "run",
+            [
+                TrainingSet(
+                    reps=1, distance=5 * ureg.kilometer, duration=timedelta(minutes=25)
+                )
+            ],
+        )
+        assert m.to_ox() == "run: 5km PT25M"
+
+    def test_imperial_distance_keeps_its_unit(self):
+        m = self._movement("run", [TrainingSet(reps=1, distance=3 * ureg.mile)])
+        assert m.to_ox() == "run: 3mi"
+
+    def test_weight_and_duration(self):
+        m = self._movement(
+            "weighted-plank",
+            [
+                TrainingSet(
+                    reps=1, weight=45 * ureg.pound, duration=timedelta(seconds=30)
+                )
+                for _ in range(3)
+            ],
+        )
+        assert m.to_ox() == "weighted-plank: 45lb PT30S 3x1"
+
+    def test_all_four_fields(self):
+        m = self._movement(
+            "sled-push",
+            [
+                TrainingSet(
+                    reps=2,
+                    weight=90 * ureg.kilogram,
+                    duration=timedelta(seconds=45),
+                    distance=20 * ureg.meter,
+                )
+                for _ in range(3)
+            ],
+        )
+        assert m.to_ox() == "sled-push: 90kg 20m PT45S 3x2"
+
+    def test_uniform_values_collapse(self):
+        m = self._movement(
+            "row",
+            [
+                TrainingSet(
+                    reps=1, distance=500 * ureg.meter, duration=timedelta(minutes=2)
+                )
+                for _ in range(5)
+            ],
+        )
+        assert m.to_ox() == "row: 500m PT2M 5x1"
+
+    def test_varying_duration_expands(self):
+        m = self._movement(
+            "plank",
+            [TrainingSet(reps=1, duration=timedelta(seconds=s)) for s in (30, 25, 20)],
+        )
+        assert m.to_ox() == "plank: PT30S/PT25S/PT20S"
+
+    def test_varying_distance_expands(self):
+        m = self._movement(
+            "sprints",
+            [TrainingSet(reps=1, distance=d * ureg.meter) for d in (100, 200, 400)],
+        )
+        assert m.to_ox() == "sprints: 100m/200m/400m"
+
+    def test_bw_omitted_when_measured_by_time(self):
+        """A timed hold has no load to mark, so the BW token is dropped."""
+        m = self._movement(
+            "plank",
+            [TrainingSet(reps=1, duration=timedelta(seconds=30)) for _ in range(3)],
+        )
+        assert m.to_ox() == "plank: PT30S 3x1"
+
+    def test_bw_kept_without_duration_or_distance(self):
+        m = self._movement("pullups", [TrainingSet(reps=10) for _ in range(5)])
+        assert m.to_ox() == "pullups: BW 5x10"
+
+    def test_rep_scheme_omitted_when_implied_by_set_count(self):
+        """One set of one rep needs no "1x1" — the lone measure states it."""
+        m = self._movement("run", [TrainingSet(reps=1, duration=timedelta(minutes=30))])
+        assert "x" not in m.to_ox()
+
+    def test_rep_scheme_kept_when_set_count_not_recoverable(self):
+        """A collapsed measure loses the set count, so the rep scheme carries it."""
+        m = self._movement(
+            "sprints",
+            [TrainingSet(reps=1, distance=100 * ureg.meter) for _ in range(6)],
+        )
+        assert m.to_ox() == "sprints: 100m 6x1"
+
+    def test_rep_scheme_kept_when_reps_are_not_one(self):
+        m = self._movement(
+            "kb-swing",
+            [TrainingSet(reps=10, duration=timedelta(seconds=30)) for _ in range(3)],
+        )
+        assert m.to_ox() == "kb-swing: PT30S 3x10"
+
+    def test_duration_is_canonicalized(self):
+        """90 seconds serializes as PT1M30S, not as typed."""
+        m = self._movement(
+            "hold", [TrainingSet(reps=1, duration=timedelta(seconds=90))]
+        )
+        assert m.to_ox() == "hold: PT1M30S"
+
+    def test_partial_duration_raises(self):
+        m = self._movement(
+            "plank",
+            [TrainingSet(reps=1, duration=timedelta(seconds=30)), TrainingSet(reps=1)],
+        )
+        with pytest.raises(ValueError, match="present on only some sets"):
+            m.to_ox()
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "run: PT30M",
+            "run: 5km PT25M",
+            "row: 500m PT2M 5x1",
+            "sprints: 100m 6x1",
+            "plank: PT30S 3x1",
+            "weighted-plank: 45lb PT30S 3x1",
+            "plank: PT30S/PT25S/PT20S",
+            "sprints: 100m/200m/400m",
+            "run: 3mi PT24M",
+        ],
+    )
+    def test_round_trip_is_stable(self, line):
+        """Each canonical form re-parses and re-emits unchanged."""
+        assert reparse_movement(line).to_ox() == line
+
+    def test_implied_distance_units_normalize(self):
+        """Implied units are resolved on parse, so they come back explicit."""
+        assert (
+            reparse_movement("sprints: 100/200/400m").to_ox()
+            == "sprints: 100m/200m/400m"
+        )
+
+    def test_bw_prefix_round_trips_without_the_token(self):
+        m = reparse_movement("plank: BW PT30S 3x1")
+        assert m.to_ox() == "plank: PT30S 3x1"
+        assert [s.duration for s in m.sets] == [timedelta(seconds=30)] * 3
+
+
+class TestCompletedSerialization:
+    """`completed` is a bool internally and a `completed:` line on the page."""
+
+    def _session(self, completed):
+        m = Movement(name="pullups", sets=[TrainingSet(reps=10)], note=None)
+        return TrainingSession(
+            date=date(2025, 1, 10), completed=completed, name=None, movements=(m,)
+        )
+
+    def test_completed_entry_is_a_single_line(self):
+        assert self._session(True).to_ox() == "2025-01-10 T pullups: BW 1x10"
+
+    def test_planned_entry_needs_a_block(self):
+        """`T` cannot say "planned", so planning forces the block form."""
+        out = self._session(False).to_ox()
+        assert out.splitlines()[:3] == [
+            "@session",
+            "date: 2025-01-10",
+            "completed: false",
+        ]
+
+    def test_completed_true_is_left_implicit(self):
+        m = Movement(name="squat", sets=[TrainingSet(reps=5)], note=None)
+        s = TrainingSession(
+            date=date(2025, 1, 10),
+            completed=True,
+            name="Lower Day",
+            movements=(m,),
+        )
+        assert "completed:" not in s.to_ox()
+
+
+class TestSessionSrpe:
+    """TrainingSession carries sRPE and emits it from to_ox()."""
+
+    def _session(self, **kwargs):
+        m = Movement(name="squat", sets=[TrainingSet(reps=5)], note=None)
+        kwargs.setdefault("name", "Lower Strength")
+        return TrainingSession(
+            date=date(2025, 1, 6), completed=True, movements=(m,), **kwargs
+        )
+
+    def test_fields_default_to_none(self):
+        s = self._session()
+        assert s.srpe_rating is None
+        assert s.srpe_duration is None
+        assert s.srpe_note is None
+
+    def test_emits_srpe_line(self):
+        s = self._session(srpe_rating=5, srpe_duration=timedelta(minutes=45))
+        assert "srpe: 5 PT45M" in s.to_ox()
+
+    def test_emits_note(self):
+        s = self._session(
+            srpe_rating=5,
+            srpe_duration=timedelta(minutes=45),
+            srpe_note="felt strong",
+        )
+        assert 'srpe: 5 PT45M "felt strong"' in s.to_ox()
+
+    def test_omitted_when_absent(self):
+        assert "srpe" not in self._session().to_ox()
+
+    def test_line_precedes_movements_and_notes(self):
+        s = self._session(srpe_rating=5, srpe_duration=timedelta(minutes=45))
+        lines = s.to_ox().split("\n")
+        assert lines[3].startswith("srpe:")
+
+    def test_round_trip(self):
+        import tempfile
+        from ox.cli import parse_file
+
+        s = self._session(
+            srpe_rating=8,
+            srpe_duration=timedelta(hours=1, minutes=30),
+            srpe_note="brutal",
+        )
+        f = Path(tempfile.mktemp(suffix=".ox"))
+        f.write_text(s.to_ox() + "\n")
+        parsed = parse_file(f).sessions[0]
+        assert parsed.srpe_rating == 8
+        assert parsed.srpe_duration == timedelta(hours=1, minutes=30)
+        assert parsed.srpe_note == "brutal"
+        assert parsed.to_ox() == s.to_ox()
 
 
 class TestTrainingLog:
@@ -211,7 +504,7 @@ class TestTrainingLog:
         """
         session1 = TrainingSession(
             date=date(2025, 1, 10),
-            flag="*",
+            completed=True,
             name="Upper Day",
             movements=(
                 Movement("pullups", [TrainingSet(10, None)], None),
@@ -221,7 +514,7 @@ class TestTrainingLog:
 
         session2 = TrainingSession(
             date=date(2025, 1, 12),
-            flag="*",
+            completed=True,
             name="Lower Day",
             movements=(
                 Movement("squat", [TrainingSet(5, 185 * ureg.pounds)], None),
@@ -268,15 +561,15 @@ class TestTrainingLog:
         assert recent_movement.name == "pullups"
 
     def test_completed_sessions_filter(self, sample_log):
-        """Test completed_sessions property filters by flag."""
+        """Test completed_sessions property filters on the bool."""
         completed = sample_log.completed_sessions
 
-        # Both sessions in sample_log are completed (flag="*")
+        # Both sessions in sample_log are completed
         assert len(completed) == 2
-        assert all(s.flag == "*" for s in completed)
+        assert all(s.completed for s in completed)
 
     def test_planned_sessions_filter(self, sample_log):
-        """Test planned_sessions property filters by flag."""
+        """Test planned_sessions property filters on the bool."""
         planned = sample_log.planned_sessions
 
         # No planned sessions in sample_log
@@ -286,14 +579,14 @@ class TestTrainingLog:
         """Test filtering with both completed and planned sessions."""
         completed = TrainingSession(
             date=date(2025, 1, 10),
-            flag="*",
+            completed=True,
             name="Completed",
             movements=(Movement("pullups", [TrainingSet(10, None)], None),),
         )
 
         planned = TrainingSession(
             date=date(2025, 1, 11),
-            flag="!",
+            completed=False,
             name="Planned",
             movements=(Movement("squat", [TrainingSet(5, 185 * ureg.pounds)], None),),
         )
