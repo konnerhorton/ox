@@ -1,5 +1,6 @@
 .plans/
 TODO.md
+*.vsix
 # Python
 __pycache__/
 *.py[cod]
