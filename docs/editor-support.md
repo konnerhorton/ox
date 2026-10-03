@@ -32,7 +32,7 @@ Reload VSCode (`Ctrl+Shift+P` → "Developer: Reload Window").
 
 ### Features
 
-- **Diagnostics** — syntax errors and invalid `@include` paths
+- **Diagnostics** — syntax errors (with a hint for common mistakes, the same as `lint`) and invalid `@include` paths
 - **Completions** — movement name autocomplete, populated from `@movement` blocks in the parsed log
 - **Folding** — collapse comment sections
 

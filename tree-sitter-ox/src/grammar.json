@@ -903,7 +903,7 @@
     },
     "quoted_string": {
       "type": "PATTERN",
-      "value": "\"[^\"]*\""
+      "value": "\"[^\"\\n]*\""
     }
   },
   "extras": [

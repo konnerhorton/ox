@@ -54,11 +54,16 @@ ox> tables -h
 
 ### `lint`
 
-Show parse errors in the log file.
+Show parse errors in the log file. Common mistakes are named, with the fix:
 
 ```
 ox> lint
+Line 12, col 31: Unknown unit `lbs`: use `lb`
+Line 40, col 6: Curly quote: use a straight double quote (")
+Line 57, col 0: sRPE line is `srpe: <whole-number rating> <duration> ["note"]`, e.g. `srpe: 5 PT45M`
 ```
+
+Anything else is reported as `Syntax error`. The LSP shows the same messages in your editor.
 
 ### `reload`
 

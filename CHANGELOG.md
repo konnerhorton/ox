@@ -69,6 +69,26 @@ sprint: 100m/200m/400m        # per-set distances, or 100/200/400m
 - The `srpe` plugin reads those columns in one query. `_SRPE_PATTERN`, `_parse_srpe`, and
   `_parse_iso_duration_minutes` are gone along with both note-scanning paths.
 
+## Lint hints
+
+`lint` and the LSP now name common mistakes instead of reporting a bare "Syntax error":
+
+- curly quotes (`“` `”`) used in place of `"`
+- the pre-0.6 syntax: `*` / `!` entry flags, positional session headers, and `srpe: "5; PT45M"`,
+  each with a pointer to `scripts/migrate_ox.py`
+- malformed `srpe:` lines (fractional ratings, missing durations, placeholders)
+- `135lbs` / `24kgs` (use `lb` / `kg`) and non-ISO durations like `25min` (use `PT25M`)
+- unclosed quotes, single-line entries missing `T`, and invalid `completed:` / `date:` values
+- session blocks that don't start with `date:`, and blocks missing `@end`
+
+Error recovery often wraps a whole session block in one error, so each broken line in it gets its
+own diagnostic instead of the block reporting once at its first line.
+
+## Fixes
+
+- **Quoted strings no longer span lines.** An unclosed quote used to run on to the next `"` in the
+  file, silently absorbing every entry in between into one note. It is now an error on its own line.
+
 ## Editor support
 
 - Movement completion no longer fires on a session's keyword lines. The old check assumed a one-line

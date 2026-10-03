@@ -231,6 +231,8 @@ module.exports = grammar({
       /\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)/  // single: 5km
     )),
 
-    quoted_string: ($) => /"[^"]*"/,
+    // Single-line only: an unclosed quote must fail on its own line, not
+    // swallow everything up to the next `"` further down the file.
+    quoted_string: ($) => /"[^"\n]*"/,
   },
 });
