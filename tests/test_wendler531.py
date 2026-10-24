@@ -12,7 +12,9 @@ from ox.builtins.wendler531 import (
     register,
     wendler531,
 )
+from ox.cli import parse_file
 from ox.plugins import PluginContext, TextResult
+from ox.sql_utils import parse_plugin_args
 
 
 # --- _round_weight ---
@@ -187,6 +189,113 @@ def test_week_schemes_percentages():
     assert [p for p, _ in WEEK_SCHEMES[4]] == [0.40, 0.50, 0.60]
 
 
+# --- File output ---
+
+
+def _cycle(**kwargs):
+    return wendler531(
+        _ctx(), movements="squat:300", start_date="2026-01-05", **kwargs
+    ).text
+
+
+def test_no_file_unchanged(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    text = _cycle()
+    assert "Appended" not in text
+    assert text.endswith("\n")
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_append_creates_new_file(tmp_path):
+    path = tmp_path / "new.ox"
+    _cycle(file=str(path))
+    assert path.read_text() == _cycle()
+
+
+def test_append_preserves_existing_content(tmp_path):
+    path = tmp_path / "log.ox"
+    existing = "2026-01-01 T pullups: BW 5x10\n"
+    path.write_text(existing)
+    _cycle(file=str(path))
+    assert path.read_text() == existing + "\n" + _cycle()
+
+
+@pytest.mark.parametrize(
+    "existing, separator",
+    [("", ""), ("x\n\n", ""), ("x\n", "\n"), ("x", "\n\n")],
+)
+def test_append_separator(tmp_path, existing, separator):
+    path = tmp_path / "log.ox"
+    path.write_text(existing)
+    _cycle(file=str(path))
+    assert path.read_text() == existing + separator + _cycle()
+
+
+def test_appended_file_round_trips(tmp_path):
+    path = tmp_path / "log.ox"
+    path.write_text("2026-01-01 T pullups: BW 5x10\n")
+    _cycle(file=str(path))
+    log = parse_file(path)
+    assert log.diagnostics == ()
+    original, *planned = sorted(log.sessions, key=lambda s: s.date)
+    assert original.date == date(2026, 1, 1)
+    assert original.completed is True
+    assert [s.date for s in planned] == [
+        date(2026, 1, 5),
+        date(2026, 1, 12),
+        date(2026, 1, 19),
+        date(2026, 1, 26),
+    ]
+    assert all(s.completed is False for s in planned)
+
+
+def test_append_twice(tmp_path):
+    path = tmp_path / "log.ox"
+    _cycle(file=str(path))
+    _cycle(file=str(path))
+    log = parse_file(path)
+    assert len([s for s in log.sessions if s.completed is False]) == 8
+
+
+def test_result_reports_absolute_path(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    text = _cycle(file="log.ox")
+    assert text == _cycle() + f"\nAppended 4 sessions to {tmp_path / 'log.ox'}\n"
+    assert (tmp_path / "log.ox").exists()
+
+
+def test_append_expands_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    _cycle(file="~/log.ox")
+    assert (tmp_path / "log.ox").read_text() == _cycle()
+
+
+def test_missing_parent_directory_raises(tmp_path):
+    with pytest.raises(ValueError, match="Directory does not exist"):
+        _cycle(file=str(tmp_path / "nope" / "log.ox"))
+    assert not (tmp_path / "nope").exists()
+
+
+def test_directory_path_raises(tmp_path):
+    with pytest.raises(ValueError, match="Not a file"):
+        _cycle(file=str(tmp_path))
+
+
+def test_bad_movements_leaves_file_untouched(tmp_path):
+    path = tmp_path / "log.ox"
+    path.write_text("2026-01-01 T pullups: BW 5x10\n")
+    with pytest.raises(ValueError):
+        wendler531(_ctx(), movements="squat", file=str(path))
+    assert path.read_text() == "2026-01-01 T pullups: BW 5x10\n"
+
+
+@pytest.mark.parametrize("flag", ["-f", "--file"])
+def test_file_flag_parses(flag):
+    params = register()[0]["params"]
+    kwargs = parse_plugin_args(params, f"-m squat:300 {flag} log.ox")
+    assert kwargs["file"] == "log.ox"
+
+
 # --- Registration ---
 
 
@@ -197,7 +306,7 @@ def test_register_returns_descriptor():
     assert desc["name"] == "wendler531"
     assert desc["fn"] is wendler531
     param_names = {p["name"] for p in desc["params"]}
-    assert param_names == {"movements", "unit", "start_date", "rm"}
+    assert param_names == {"movements", "unit", "start_date", "rm", "file"}
 
 
 def test_register_movements_required():
@@ -205,3 +314,11 @@ def test_register_movements_required():
     movements_param = next(p for p in desc["params"] if p["name"] == "movements")
     assert movements_param["required"] is True
     assert movements_param["short"] == "m"
+
+
+def test_register_file_param():
+    desc = register()[0]
+    file_param = next(p for p in desc["params"] if p["name"] == "file")
+    assert file_param["short"] == "f"
+    assert file_param["default"] is None
+    assert file_param["required"] is False

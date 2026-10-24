@@ -8,9 +8,11 @@ Usage:
     wendler531 -m squat:315,bench-press:200
     wendler531 -m squat:315 -u kg
     wendler531 -m squat:315,deadlift:405 -d 2026-03-01
+    wendler531 -m squat:315 -f log.ox
 """
 
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from ox.data import Movement, TrainingSession, TrainingSet
 from ox.plugins import PluginContext, TextResult
@@ -58,7 +60,53 @@ def _pint_unit(unit):
     return {"lb": "pound", "lbs": "pound", "kg": "kilogram"}.get(unit, unit)
 
 
-def wendler531(ctx: PluginContext, movements, unit="lb", start_date=None, rm="true"):
+def _append_to_file(file, text):
+    """Append text to a file, separated from existing content by a blank line.
+
+    Existing bytes are never modified; only a separator is added before the new
+    text. A missing file is created, but a missing parent directory is an error.
+
+    Args:
+        file: Path to append to. `~` is expanded; relative paths resolve against
+            the current working directory.
+        text: Text to append.
+
+    Returns:
+        The resolved absolute path written to.
+
+    Raises:
+        ValueError: If the path is a directory, its parent doesn't exist, or the
+            write fails.
+    """
+    path = Path(file).expanduser().resolve()
+    if path.is_dir():
+        raise ValueError(f"Not a file: {path}")
+    if not path.parent.is_dir():
+        raise ValueError(f"Directory does not exist: {path.parent}")
+
+    try:
+        tail = b""
+        if path.exists():
+            with path.open("rb") as f:
+                size = f.seek(0, 2)
+                f.seek(max(size - 2, 0))
+                tail = f.read()
+        if not tail or tail.endswith(b"\n\n"):
+            separator = ""
+        elif tail.endswith(b"\n"):
+            separator = "\n"
+        else:
+            separator = "\n\n"
+        with path.open("a", encoding="utf-8") as f:
+            f.write(separator + text)
+    except OSError as e:
+        raise ValueError(f"Could not write to {path}: {e.strerror or e}") from e
+    return path
+
+
+def wendler531(
+    ctx: PluginContext, movements, unit="lb", start_date=None, rm="true", file=None
+):
     """Generate a 4-week Wendler 5/3/1 cycle."""
     parsed = _parse_movements(movements)
     pint_unit = _pint_unit(unit)
@@ -94,7 +142,12 @@ def wendler531(ctx: PluginContext, movements, unit="lb", start_date=None, rm="tr
             )
         )
 
-    return TextResult("\n\n".join(s.to_ox() for s in sessions) + "\n")
+    text = "\n\n".join(s.to_ox() for s in sessions) + "\n"
+    if file is None:
+        return TextResult(text)
+
+    path = _append_to_file(file, text)
+    return TextResult(f"{text}\nAppended {len(sessions)} sessions to {path}\n")
 
 
 def register():
@@ -130,6 +183,13 @@ def register():
                     "default": "true",
                     "required": False,
                     "short": "r",
+                },
+                {
+                    "name": "file",
+                    "type": str,
+                    "default": None,
+                    "required": False,
+                    "short": "f",
                 },
             ],
         }
