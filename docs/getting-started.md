@@ -6,9 +6,13 @@ icon: material/rocket-launch
 
 ## Installation
 
+Ox isn't on PyPI yet. Install it from GitHub:
+
 ```bash
-pip install ox
+uv tool install git+https://github.com/konnerhorton/ox
 ```
+
+This puts the `ox` CLI and the `ox-lsp` language server on your `PATH`.
 
 ## Your First Log
 

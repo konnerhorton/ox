@@ -1,0 +1,5 @@
+**/.uv-cache/**
+package-lock.json
+images/icon.svg
+**/*.vsix
+.vscode/**

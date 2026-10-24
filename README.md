@@ -110,8 +110,10 @@ training that happened. Logs in the pre-0.6 flag syntax convert with `scripts/mi
 
 ## Installation
 
+Ox isn't on PyPI yet. Install it from GitHub:
+
 ```bash
-pip install ox
+uv tool install git+https://github.com/konnerhorton/ox
 ```
 
 From source:
