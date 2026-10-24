@@ -66,8 +66,8 @@ Developers and power users comfortable with text files and CLIs.
 
 ### Distribution
 
-- Publish to PyPI as `ox-train` (`ox` is taken), keeping the `ox` command and import name — see `docs/TODO.md` #5
-- Publish the VSCode extension to the Marketplace and Open VSX — see `docs/TODO.md` #3
+- Publish to PyPI as `ox-train` (`ox` is taken), keeping the `ox` command and import name — see `docs/work/TODO.md` #5
+- Publish the VSCode extension to the Marketplace and Open VSX — see `docs/work/TODO.md` #3
 
 ## Non-Goals
 

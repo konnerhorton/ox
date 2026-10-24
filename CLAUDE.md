@@ -7,7 +7,7 @@ Uses a custom tree-sitter grammar to parse `.ox` log files into structured data 
 - `SPEC.md` is your guide for the goals, non-goals, and roadmap for this repo.
 - Work follows the spec-driven-development process: each unit of work (feature, fix, decision) gets a
   branch and a `docs/work/<branch>.md` holding its intent, spec and plan. Files for merged units are history.
-- `docs/TODO.md` is the backlog, referenced as "TODO #n".
+- `docs/work/TODO.md` is the backlog, referenced as "TODO #n".
 - If you edit `tree-sitter-ox/grammar.js`, regenerate and reinstall:
   ```bash
   cd tree-sitter-ox && tree-sitter generate && cd ..
