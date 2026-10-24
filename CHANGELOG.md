@@ -105,6 +105,11 @@ no longer prints "potentially incomplete entry" to stdout for the last case.
 - Session fields are offered as completions inside a `@session` block.
 - The VSCode grammar highlights `T`, the session fields, and the `srpe:` line.
 
+## Plugins
+
+- **`wendler531 -f/--file <path>`** appends the generated cycle to an `.ox` file (created if missing,
+  never overwritten), separated from existing content by a blank line.
+
 # v0.5.0
 
 First release after v0.2.0. This is a large jump — the reports system has been replaced by a proper plugin architecture, parsing has grown in several directions, and the CLI, LSP, and docs have all been reworked. The notes below group changes by theme rather than by commit.
