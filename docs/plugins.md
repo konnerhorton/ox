@@ -129,6 +129,7 @@ Generates a 4-week Wendler 5/3/1 cycle as planned sessions (`completed: false`).
 ```
 ox> wendler531 -m squat:315,bench:225
 ox> wendler531 -m deadlift:405 --unit kg --start-date 2026-03-01
+ox> wendler531 -m squat:315 -f log.ox
 ```
 
 | Param | Default | Options |
@@ -137,6 +138,7 @@ ox> wendler531 -m deadlift:405 --unit kg --start-date 2026-03-01
 | `-u/--unit` | `lb` | `lb`, `kg` |
 | `-d/--start-date` | today | `YYYY-MM-DD` |
 | `-r/--rm` | `true` | `true`, `false` — tag sets with `^rm` |
+| `-f/--file` | none | Append the cycle to this `.ox` file (created if missing). Relative paths are relative to the current directory; `~` is expanded |
 
 ## Loading Plugins
 
