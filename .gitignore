@@ -1,5 +1,4 @@
 .plans/
-TODO.md
 *.vsix
 # Python
 __pycache__/

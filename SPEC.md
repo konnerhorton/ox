@@ -64,6 +64,11 @@ Developers and power users comfortable with text files and CLIs.
 - LSP completions for session templates
 - Snippets for common entry patterns
 
+### Distribution
+
+- Publish to PyPI as `ox-train` (`ox` is taken), keeping the `ox` command and import name — see `docs/TODO.md` #5
+- Publish the VSCode extension to the Marketplace and Open VSX — see `docs/TODO.md` #3
+
 ## Non-Goals
 
 - **Not a workout planner or coach.** Ox records and analyzes. It doesn't prescribe.
