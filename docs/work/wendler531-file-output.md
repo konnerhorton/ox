@@ -106,3 +106,43 @@ The rules live here; `docs/plugins.md` gets the user-facing description.
 12. **CLI flags:** `parse_plugin_args` with `-f log.ox` and with `--file log.ox` both give
     `{"file": "log.ox", ...}`; `register()` lists the param with `short: "f"` and default `None`.
 13. **Docs:** `docs/plugins.md` lists `-f/--file`, and `uv run mkdocs build` is clean.
+
+## Plan
+
+Two build commits, each with `uv run pytest` and `uv run ruff check src/ tests/` green. Behavior and
+tests land together; user docs follow. About 150 changed lines in total.
+
+### 1. `wendler531-file-output: add -f/--file to append the cycle to a file`
+- `src/ox/builtins/wendler531.py`:
+  - module docstring: add a `wendler531 -m squat:315 -f log.ox` usage line;
+  - `_append_to_file(path, text) -> Path`: expand `~`, resolve to absolute, check the parent exists
+    and the path isn't a directory, read the last two bytes to pick the separator (Spec decision 2),
+    append in UTF-8, map `OSError` to `ValueError` (decision 5), and return the absolute path;
+  - `wendler531(..., file=None)`: build the cycle text exactly as today (decision 6); if `file` is
+    set, call `_append_to_file` and add `\nAppended {len(sessions)} sessions to {path}\n` (decision 4);
+  - `register()`: a `file` param, `type: str`, `default: None`, `required: False`, `short: "f"`.
+- `tests/test_wendler531.py`: a new `# --- File output ---` section using `tmp_path` and
+  `monkeypatch`, plus one test in `# --- Registration ---`:
+  - `test_no_file_unchanged` → AC 1 (compare against the text from a call without `file`; assert
+    `tmp_path` stays empty under `monkeypatch.chdir`);
+  - `test_append_creates_new_file` → AC 2;
+  - `test_append_preserves_existing_content` → AC 3;
+  - `test_append_separator` (parametrized over `""`, `"x\n\n"`, `"x\n"`, `"x"`) → AC 4;
+  - `test_appended_file_round_trips` (`parse_file`, dates, `completed`, `diagnostics`) → AC 5;
+  - `test_append_twice` → AC 6;
+  - `test_result_reports_absolute_path` → AC 7;
+  - `test_append_expands_home` → AC 8;
+  - `test_missing_parent_directory_raises` → AC 9;
+  - `test_directory_path_raises` → AC 10;
+  - `test_bad_movements_leaves_file_untouched` → AC 11;
+  - `test_file_flag_parses` (`parse_plugin_args` with `-f` and `--file`) and
+    `test_register_file_param` → AC 12.
+
+### 2. `wendler531-file-output: document -f/--file`
+- `docs/plugins.md`, wendler531 section: a `-f/--file` row (`none`, "append the cycle to this
+  `.ox` file; relative to the current directory") and the example `ox> wendler531 -m squat:315 -f log.ox`.
+- `CHANGELOG.md`, v0.6.0: a one-line entry under a new `## Plugins` heading (v0.6.0 has none yet).
+- Test: `uv run mkdocs build` clean → AC 13. Run the real REPL once
+  (`wendler531 -m squat:315 -f <scratch>/log.ox`) and look at the console output and the file.
+- Close-out: no SPEC decisions change. No `CLAUDE.md` convention emerged. Nothing in `docs/work/TODO.md`
+  is resolved.
