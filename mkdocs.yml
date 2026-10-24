@@ -9,6 +9,11 @@ theme:
   icon:
     logo: material/dumbbell
 
+# Process docs live under docs/ but aren't part of the user-facing site.
+exclude_docs: |
+  work/
+  TODO.md
+
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
