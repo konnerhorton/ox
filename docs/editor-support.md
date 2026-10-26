@@ -11,8 +11,7 @@ Syntax highlighting, diagnostics, and completions for `.ox` files. Source lives 
 ### Install
 
 Install **Ox** (`konnerhorton.ox-training-log`) from the VS Code Marketplace, or search for "Ox"
-in the Extensions view. VSCodium, Cursor, and other Open VSX editors can install it from
-[open-vsx.org](https://open-vsx.org).
+in the Extensions view.
 
 To run it from a source checkout instead:
 

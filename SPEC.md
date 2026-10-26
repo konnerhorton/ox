@@ -37,7 +37,7 @@ Developers and power users comfortable with text files and CLIs.
 - **Stored queries** — named SQL queries embedded in `.ox` files, accessible via CLI `query` command
 - **Include directives** — `@include "path.ox"` with recursive resolution and cycle detection
 - **Lint** (`src/ox/lint.py`) — parse error collection for CLI and LSP
-- **VSCode extension** — syntax highlighting
+- **VSCode extension** (`editors/vscode`) — syntax highlighting, and diagnostics and completions via `ox-lsp`; published on the VS Code Marketplace as `konnerhorton.ox-training-log`
 - **MkDocs documentation site** (`docs/`)
 - **First-class sRPE** — `srpe: <rating> <duration> ["note"]` on a session, stored on the `sessions` table and read directly by the `srpe` plugin
 - **Migration** (`scripts/migrate_ox.py`) — converts pre-0.6 logs to the current syntax
@@ -67,7 +67,7 @@ Developers and power users comfortable with text files and CLIs.
 ### Distribution
 
 - Publish to PyPI as `ox-train` (`ox` is taken), keeping the `ox` command and import name — see `docs/work/TODO.md` #5
-- Publish the VSCode extension to the Marketplace and Open VSX — see `docs/work/TODO.md` #3
+- Publish the VSCode extension to Open VSX — see `docs/work/TODO.md` #8
 
 ## Non-Goals
 
