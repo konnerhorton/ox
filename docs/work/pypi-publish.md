@@ -94,8 +94,8 @@ when a version tag is pushed.
   `_grammar.c` out of the wheel.
 - `tests/smoke.py`: parses a log with the installed package and imports `ox.lsp`. Shared by
   cibuildwheel's `test-command` and the sdist check.
-- `[tool.cibuildwheel]`: `build = "cp312-*"`, skip musllinux and PyPy, and a `test-command` that
-  runs the smoke test (AC 2) against each built wheel.
+- `[tool.cibuildwheel]`: `build` limited to `cp312` manylinux, macOS and `win_amd64`, and a
+  `test-command` that runs the smoke test (AC 2) against each built wheel.
 
 **Grammar import (`src/ox/_grammar.c`, `src/ox/grammar.py`)**
 - `_grammar.c` is the current `bindings/python/tree_sitter_ox/binding.c`, with the module renamed to
@@ -125,7 +125,8 @@ when a version tag is pushed.
 **Release workflow (`.github/workflows/release.yml`)**
 - Triggers: a `v*` tag push, and `workflow_dispatch`, which builds without publishing.
 - `build_wheels`: `pypa/cibuildwheel` on `ubuntu-latest` (x86_64), `ubuntu-24.04-arm` (aarch64),
-  `macos-13` (x86_64), `macos-14` (arm64) and `windows-latest` (AMD64). Each wheel is tested in
+  `macos-15-intel` (x86_64), `macos-latest` (arm64) and `windows-latest` (AMD64). These are the
+  runners cibuildwheel's own example uses; `macos-13` has been retired. Each wheel is tested in
   place by `test-command`.
 - `build_sdist`: `uv build --sdist`. Then it installs the sdist in a fresh venv and runs the smoke
   test, which proves the sdist compiles.

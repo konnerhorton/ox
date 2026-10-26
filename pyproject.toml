@@ -72,6 +72,7 @@ cache-keys = [
 ]
 
 [tool.cibuildwheel]
-build = "cp312-*"
-skip = "*-musllinux_* pp*"
+# One abi3 wheel per platform covers CPython 3.12+. No musllinux, 32-bit or PyPy
+# wheels; those install from the sdist.
+build = ["cp312-manylinux_*", "cp312-macosx_*", "cp312-win_amd64"]
 test-command = "ox --version && python {project}/tests/smoke.py {project}/examples/example.ox"
