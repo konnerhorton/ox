@@ -325,7 +325,7 @@ def show_tables(conn: sqlite3.Connection, headers: bool = False):
 
 @click.command()
 @click.argument("file", type=click.Path(exists=True, path_type=Path))
-@click.version_option(version=_pkg_version("ox"))
+@click.version_option(version=_pkg_version("ox-train"))
 def cli(file):
     """Interactive training log analyzer.
 

@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ox"
-version = "0.6.0"
+name = "ox-train"
+version = "0.6.1"
 description = "Plain text training log parser and analyzer"
 readme = "README.md"
 requires-python = ">=3.12"
