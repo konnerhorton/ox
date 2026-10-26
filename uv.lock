@@ -448,8 +448,8 @@ wheels = [
 ]
 
 [[package]]
-name = "ox"
-version = "0.6.0"
+name = "ox-train"
+version = "0.6.1"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
@@ -460,7 +460,6 @@ dependencies = [
     { name = "pygls" },
     { name = "rich" },
     { name = "tree-sitter" },
-    { name = "tree-sitter-ox" },
 ]
 
 [package.dev-dependencies]
@@ -481,7 +480,6 @@ requires-dist = [
     { name = "pygls", specifier = ">=1.3.0" },
     { name = "rich", specifier = ">=14.2.0" },
     { name = "tree-sitter", specifier = ">=0.25.2" },
-    { name = "tree-sitter-ox", directory = "tree-sitter-ox" },
 ]
 
 [package.metadata.requires-dev]
@@ -786,18 +784,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/03/87/af9604ebe275a9345d88c3ace0cf2a1341aa3f8ef49dd9fc11662132df8a/tree_sitter-0.25.2-cp314-cp314-win_amd64.whl", hash = "sha256:4973b718fcadfb04e59e746abfbb0288694159c6aeecd2add59320c03368c721", size = 130864, upload-time = "2025-09-25T17:37:57.453Z" },
     { url = "https://files.pythonhosted.org/packages/a6/6e/e64621037357acb83d912276ffd30a859ef117f9c680f2e3cb955f47c680/tree_sitter-0.25.2-cp314-cp314-win_arm64.whl", hash = "sha256:b8d4429954a3beb3e844e2872610d2a4800ba4eb42bb1990c6a4b1949b18459f", size = 117470, upload-time = "2025-09-25T17:37:58.431Z" },
 ]
-
-[[package]]
-name = "tree-sitter-ox"
-version = "0.1.0"
-source = { directory = "tree-sitter-ox" }
-
-[package.metadata]
-requires-dist = [{ name = "tree-sitter", marker = "extra == 'core'", specifier = "~=0.24" }]
-provides-extras = ["core"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "tree-sitter-ox", editable = "tree-sitter-ox" }]
 
 [[package]]
 name = "typing-extensions"

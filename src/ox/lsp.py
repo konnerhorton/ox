@@ -5,16 +5,15 @@ from pathlib import Path
 
 from lsprotocol import types as lsp
 from pygls.lsp.server import LanguageServer
-from tree_sitter import Language, Parser
-import tree_sitter_ox
+from tree_sitter import Parser
 
+from ox.grammar import LANGUAGE
 from ox.lint import collect_diagnostics as _collect_diagnostics
 
 server = LanguageServer(name="ox-lsp", version="0.1.0")
 
 # Initialize tree-sitter parser
-_language = Language(tree_sitter_ox.language())
-_parser = Parser(_language)
+_parser = Parser(LANGUAGE)
 
 _SEVERITY = {
     "error": lsp.DiagnosticSeverity.Error,

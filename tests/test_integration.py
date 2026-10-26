@@ -191,13 +191,12 @@ class TestMixedBWWeightProgressive:
 
         Example: pullup: BW/BW/25lb/50lb 1/1/1/1 — warmup BW sets then weighted.
         """
-        import tree_sitter_ox
-        from tree_sitter import Language, Parser
+        from tree_sitter import Parser
+        from ox.grammar import LANGUAGE
         from ox.lint import collect_diagnostics
 
         ox_content = "2025-01-10 T pullup: BW/BW/25lb/50lb 1/1/1/1\n"
-        language = Language(tree_sitter_ox.language())
-        parser = Parser(language)
+        parser = Parser(LANGUAGE)
         tree = parser.parse(bytes(ox_content, encoding="utf-8"))
 
         diagnostics = collect_diagnostics(tree)
@@ -205,13 +204,12 @@ class TestMixedBWWeightProgressive:
 
     def test_grammar_accepts_bw_then_weight(self, tmp_path):
         """Grammar should accept a two-segment BW/weight progressive."""
-        import tree_sitter_ox
-        from tree_sitter import Language, Parser
+        from tree_sitter import Parser
+        from ox.grammar import LANGUAGE
         from ox.lint import collect_diagnostics
 
         ox_content = "2025-01-10 T pullup: BW/25lb 1/1\n"
-        language = Language(tree_sitter_ox.language())
-        parser = Parser(language)
+        parser = Parser(LANGUAGE)
         tree = parser.parse(bytes(ox_content, encoding="utf-8"))
 
         diagnostics = collect_diagnostics(tree)

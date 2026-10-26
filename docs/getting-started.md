@@ -6,10 +6,10 @@ icon: material/rocket-launch
 
 ## Installation
 
-Ox isn't on PyPI yet. Install it from GitHub:
+Ox is on PyPI as `ox-train` (the name `ox` was taken):
 
 ```bash
-uv tool install git+https://github.com/konnerhorton/ox
+uv tool install ox-train   # or: pip install ox-train
 ```
 
 This puts the `ox` CLI and the `ox-lsp` language server on your `PATH`.
@@ -161,18 +161,6 @@ sprint: 100m/200m/400m        3 sets, one per distance
 A field written once applies to every set; written as a `/`-list it maps one value per set. The rep
 scheme decides how many sets there are — `5x1` means five sets of a single rep. With no rep scheme the
 count comes from the longest `/`-list, or one set if there is none, so `run: PT30M` is a single set.
-
-### Migrating an older log
-
-Logs written before 0.6 used `*` / `!` flags, a positional session header, and `srpe: "5; PT45M"`.
-Convert one with:
-
-```bash
-python scripts/migrate_ox.py training.ox --in-place
-```
-
-The script refuses to guess: planned single-line entries and fractional sRPE ratings stop it with a
-message naming the line, so you can decide what those should become.
 
 ### Movement names
 

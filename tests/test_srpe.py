@@ -49,7 +49,7 @@ def srpe_session_log_content():
 
 @pytest.fixture
 def srpe_ad_hoc_log_content():
-    """Log with sRPE on unnamed sessions, the shape the migration produces."""
+    """Log with sRPE on unnamed sessions."""
     return (
         "@session\n"
         "date: 2025-03-10\n"

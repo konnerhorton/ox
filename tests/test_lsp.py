@@ -4,10 +4,10 @@ from types import SimpleNamespace
 
 import pytest
 from lsprotocol import types as lsp
-from tree_sitter import Language, Parser
-import tree_sitter_ox
+from tree_sitter import Parser
 
 from ox import lsp as ox_lsp
+from ox.grammar import LANGUAGE
 from ox.lsp import (
     SESSION_KEYWORDS,
     _collect_movement_names,
@@ -25,7 +25,7 @@ from ox.lsp import (
 
 
 def _parse_tree(text: str):
-    parser = Parser(Language(tree_sitter_ox.language()))
+    parser = Parser(LANGUAGE)
     return parser.parse(bytes(text, encoding="utf-8"))
 
 

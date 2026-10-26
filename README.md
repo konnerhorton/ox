@@ -106,14 +106,15 @@ scheme sets the count (`5x1` is five sets of one rep); with none, `run: PT30M` i
 **Movement names:** no spaces (`kb-oh-press`, `bb-back-squat`)
 
 Planning is expressed only by a session's `completed: false` — a single-line entry always records
-training that happened. Logs in the pre-0.6 flag syntax convert with `scripts/migrate_ox.py`.
+training that happened.
 
 ## Installation
 
-Ox isn't on PyPI yet. Install it from GitHub:
+Ox is on PyPI as `ox-train` (the name `ox` was taken). It installs the `ox` command and the
+`ox-lsp` language server:
 
 ```bash
-uv tool install git+https://github.com/konnerhorton/ox
+uv tool install ox-train   # or: pip install ox-train
 ```
 
 From source:
