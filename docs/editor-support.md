@@ -44,10 +44,10 @@ installing `ox-lsp` or changing the setting.
 
 ## Language Server (LSP)
 
-`ox-lsp` provides real-time editor integration via stdio. It is installed with the `ox` package:
+`ox-lsp` provides real-time editor integration via stdio. It is installed with ox:
 
 ```bash
-uv tool install git+https://github.com/konnerhorton/ox
+uv tool install ox-train
 ```
 
 ### Features

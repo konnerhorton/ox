@@ -4,11 +4,6 @@ Items to fix, research or decide. Refer to them as "TODO #n"; numbers are never 
 renumbered. When an item is resolved, move any decision into `SPEC.md` (or the unit's
 `docs/work/<id>.md`) and delete it here.
 
-- [ ] **#1 Ship the migration script with the package.** `scripts/migrate_ox.py` isn't packaged, but
-  the CHANGELOG and every lint hint (`MIGRATE` in `src/ox/lint.py`) point users to it. Anyone who
-  installed ox without cloning the repo won't have it. Either add an `ox migrate` subcommand (and
-  update the `MIGRATE` hint text) or link to the script's URL in the CHANGELOG.
-
 - [ ] **#2 Guard `TrainingSession` against an sRPE rating without a duration.** A session built in code
   (e.g. by a plugin like wendler531) with `srpe_rating` set and `srpe_duration=None` crashes in
   `to_ox()` at `format_iso_duration(None)`. The parser can't produce this, since the grammar
@@ -20,13 +15,6 @@ renumbered. When an item is resolved, move any decision into `SPEC.md` (or the u
   against the param name exactly, so the working flag is `--start_date` and `--start-date` fails with
   "Unknown flag". Either fix the docs or have `parse_plugin_args` accept hyphens for underscores
   (which would fix it for every plugin's multi-word params).
-
-- [ ] **#5 Publish ox to PyPI as `ox-train`.** The name `ox` is taken on PyPI; `ox-train` was free as
-  of 2026-10-24. Rename the distribution in `pyproject.toml` (`name = "ox-train"`) while keeping the
-  `ox` import package and the `ox` / `ox-lsp` commands. The C extension `tree-sitter-ox` is a local
-  path dependency, so it must be published too or vendored into the wheel. Then switch the install
-  instructions in `README.md`, `docs/getting-started.md` and `docs/editor-support.md` from
-  `git+https://...` to `ox-train`. Roadmap: SPEC "Direction → Distribution".
 
 - [ ] **#6 Map `format:` values to a more descriptive data structure.** A short `format:` value (e.g.
   `"pavel-sprints"`) can't hold a full protocol on its own. Pavel sprints are 6 × (8s work / 22s
@@ -57,3 +45,8 @@ renumbered. When an item is resolved, move any decision into `SPEC.md` (or the u
   npx -p node@22 -p ovsx -c "ovsx publish ox-training-log-<version>.vsix -p <token>"
   ```
   Then add Open VSX back to the install section of `docs/editor-support.md`.
+
+- [ ] **#9 Drop the pre-0.6 syntax lint hints.** `_old_entry`, `_old_header` and `_old_srpe` in
+  `src/ox/lint.py` explain the `*`/`!` flags, positional session headers and `srpe: "5; PT45M"`.
+  The migration script is gone and the only pre-0.6 log has been converted, so once that syntax has
+  stopped turning up in practice, remove the three hints and their tests in `tests/test_lint.py`.

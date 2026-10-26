@@ -6,10 +6,10 @@ icon: material/rocket-launch
 
 ## Installation
 
-Ox isn't on PyPI yet. Install it from GitHub:
+Ox is on PyPI as `ox-train` (the name `ox` was taken):
 
 ```bash
-uv tool install git+https://github.com/konnerhorton/ox
+uv tool install ox-train   # or: pip install ox-train
 ```
 
 This puts the `ox` CLI and the `ox-lsp` language server on your `PATH`.

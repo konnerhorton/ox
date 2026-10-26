@@ -110,10 +110,11 @@ training that happened.
 
 ## Installation
 
-Ox isn't on PyPI yet. Install it from GitHub:
+Ox is on PyPI as `ox-train` (the name `ox` was taken). It installs the `ox` command and the
+`ox-lsp` language server:
 
 ```bash
-uv tool install git+https://github.com/konnerhorton/ox
+uv tool install ox-train   # or: pip install ox-train
 ```
 
 From source:

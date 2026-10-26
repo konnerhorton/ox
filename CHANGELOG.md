@@ -1,3 +1,17 @@
+# v0.6.1
+
+Ox is on PyPI. Install it with `uv tool install ox-train` (or `pip install ox-train`). The name `ox`
+was taken, so only the distribution is renamed: the commands are still `ox` and `ox-lsp`, and the
+import package is still `ox`. Nothing changes in the `.ox` format.
+
+- **Prebuilt wheels** for Linux (x86_64, aarch64), macOS (Intel, Apple Silicon) and Windows
+  (x86_64) on Python 3.12+. Other platforms build from the sdist, which needs a C compiler.
+- **The grammar ships inside ox.** The tree-sitter parser is compiled into the wheel as
+  `ox._grammar`, replacing the separate `tree-sitter-ox` package, so the grammar and the parser
+  always match.
+- **`scripts/migrate_ox.py` is gone.** Lint still names the pre-0.6 syntax, without the pointer to
+  the script.
+
 # v0.6.0
 
 A data model release. Sessions gained a real header, sets gained duration and distance, and sRPE

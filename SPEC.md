@@ -39,6 +39,7 @@ Developers and power users comfortable with text files and CLIs.
 - **Lint** (`src/ox/lint.py`) — parse error collection for CLI and LSP
 - **VSCode extension** (`editors/vscode`) — syntax highlighting, and diagnostics and completions via `ox-lsp`; published on the VS Code Marketplace as `konnerhorton.ox-training-log`
 - **MkDocs documentation site** (`docs/`)
+- **PyPI** — published as `ox-train` (`ox` is taken), keeping the `ox` / `ox-lsp` commands and the `ox` import name; the grammar is compiled into the wheel as `ox._grammar`, and a `v*` tag releases through `.github/workflows/release.yml`
 - **First-class sRPE** — `srpe: <rating> <duration> ["note"]` on a session, stored on the `sessions` table and read directly by the `srpe` plugin
 - **Round-trip serialization** — `to_ox()` methods write data back to `.ox` format
 - **Unit handling** — weights and distances tracked as `pint.Quantity`, durations as `timedelta`
@@ -65,7 +66,6 @@ Developers and power users comfortable with text files and CLIs.
 
 ### Distribution
 
-- Publish to PyPI as `ox-train` (`ox` is taken), keeping the `ox` command and import name — see `docs/work/TODO.md` #5
 - Publish the VSCode extension to Open VSX — see `docs/work/TODO.md` #8
 
 ## Non-Goals
