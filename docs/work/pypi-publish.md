@@ -89,6 +89,11 @@ when a version tag is pushed.
 - `MANIFEST.in` puts the C sources and headers into the sdist (`tree-sitter-ox/src/parser.c`,
   `tree-sitter-ox/src/tree_sitter/*.h` and `src/ox/_grammar.c`), so an sdist install can compile
   without the rest of `tree-sitter-ox/`.
+- `[tool.uv] cache-keys` lists `setup.py`, `_grammar.c` and `parser.c`, so `uv sync` rebuilds the
+  extension when the grammar is regenerated. `[tool.setuptools.exclude-package-data]` keeps
+  `_grammar.c` out of the wheel.
+- `tests/smoke.py`: parses a log with the installed package and imports `ox.lsp`. Shared by
+  cibuildwheel's `test-command` and the sdist check.
 - `[tool.cibuildwheel]`: `build = "cp312-*"`, skip musllinux and PyPy, and a `test-command` that
   runs the smoke test (AC 2) against each built wheel.
 
@@ -96,8 +101,9 @@ when a version tag is pushed.
 - `_grammar.c` is the current `bindings/python/tree_sitter_ox/binding.c`, with the module renamed to
   `_grammar` (`PyInit__grammar`).
 - `ox.grammar` exposes `LANGUAGE: tree_sitter.Language`, built once at import.
-- `cli.py`, `lsp.py`, `tests/test_parse.py` and `tests/test_lint.py` use `ox.grammar.LANGUAGE`
-  instead of `Language(tree_sitter_ox.language())`.
+- `cli.py`, `lsp.py`, `tests/test_parse.py`, `tests/test_lint.py`, `tests/test_lsp.py` and
+  `tests/test_integration.py` use `ox.grammar.LANGUAGE` instead of
+  `Language(tree_sitter_ox.language())`.
 - `cli.py`'s `--version` reads `importlib.metadata.version("ox-train")`. It reads `"ox"` today,
   which would raise `PackageNotFoundError` after the rename.
 
@@ -164,12 +170,13 @@ compiler.
    `Requires-Dist: tree-sitter-ox`. The wheel contains `ox/_grammar.abi3.so` (or `.pyd`) and no
    top-level `tree_sitter_ox`.
 2. **Smoke test:** in a fresh venv with only the built wheel installed, `ox --version` prints
-   `0.6.1`, `ox-lsp --help` exits 0, and
+   `0.6.1`, `tests/smoke.py` imports `ox.lsp` (`ox-lsp` has no `--help`; it serves on stdin), and
    `python -c "from ox.cli import parse_file; ..."` on `examples/example.ox` returns a log with
    sessions and no error diagnostics.
 3. **The sdist compiles:** the AC 2 smoke test passes in a fresh venv with only
    `ox_train-0.6.1.tar.gz` installed.
-4. **One grammar import:** `grep -rn tree_sitter_ox src tests` finds nothing.
+4. **One grammar import:** `grep -rn tree_sitter_ox src tests --include=*.py` finds nothing. The C
+   symbol `tree_sitter_ox()` that `tree-sitter generate` emits keeps its name in `_grammar.c`.
 5. **The grammar dev loop still works:** after a whitespace-only edit to `grammar.js`,
    `tree-sitter generate` and then `uv sync --reinstall-package ox-train` rebuild the extension, and
    the test suite passes.
@@ -213,7 +220,7 @@ Five build commits, then the release. Every commit passes `uv run pytest`, `ruff
   (abi3 extension built from `tree-sitter-ox/src/parser.c`) and `MANIFEST.in`.
 - `pyproject.toml`: drop the `tree-sitter-ox` dependency and source. Add uv `cache-keys` and
   `[tool.cibuildwheel]`.
-- `cli.py`, `lsp.py`, `test_parse.py` and `test_lint.py` use `ox.grammar.LANGUAGE`.
+- `cli.py`, `lsp.py` and the four test modules that build a parser use `ox.grammar.LANGUAGE`.
 - Delete the Python packaging in `tree-sitter-ox/`. `CLAUDE.md`: new reinstall command, and
   `grammar.py` added to the project structure.
 - Tests: AC 1–5 (local `uv build`, smoke tests from the wheel and the sdist in fresh venvs, grep,

@@ -8,13 +8,13 @@ Uses a custom tree-sitter grammar to parse `.ox` log files into structured data 
 - Work follows the spec-driven-development process: each unit of work (feature, fix, decision) gets a
   branch and a `docs/work/<branch>.md` holding its intent, spec and plan. Files for merged units are history.
 - `docs/work/TODO.md` is the backlog, referenced as "TODO #n".
-- If you edit `tree-sitter-ox/grammar.js`, regenerate and reinstall:
+- If you edit `tree-sitter-ox/grammar.js`, regenerate the parser:
   ```bash
   cd tree-sitter-ox && tree-sitter generate && cd ..
-  uv sync --reinstall-package tree-sitter-ox
   ```
-  uv keys built wheels by version number, so it will not rebuild the C extension on its own — the package version never changes. `uv cache clean tree-sitter-ox && uv sync` is **not** sufficient: `uv sync` audits, sees the version already installed, and skips the rebuild. `--reinstall-package` is what forces it.
-- Symptom of a stale C extension: a large, scattered wave of "Syntax error" diagnostic failures across `test_parse`/`test_db`/`test_integration` while `git status` is clean and `grammar.js` visibly contains the rule being rejected. Reinstall before investigating further.
+  The grammar is compiled into ox-train itself as `ox._grammar` (root `setup.py`). `[tool.uv] cache-keys`
+  in `pyproject.toml` lists `parser.c`, so the next `uv sync` or `uv run` rebuilds the extension.
+- Symptom of a stale C extension: a large, scattered wave of "Syntax error" diagnostic failures across `test_parse`/`test_db`/`test_integration` while `git status` is clean and `grammar.js` visibly contains the rule being rejected. Force a rebuild with `uv sync --reinstall-package ox-train` before investigating further.
 - Releasing the VSCode extension (`editors/vscode`): bump `version` in `package.json`, add a `CHANGELOG.md`
   entry, then `npm install && npx -p node@22 -p @vscode/vsce -c "vsce package"` (system Node is 18, an apt
   package — don't replace it; `vsce` needs ≥20). Upload the `.vsix` at
@@ -43,6 +43,7 @@ src/ox/
   cli.py        - Click CLI with interactive REPL (run, query, tables, lint, reload)
   lsp.py        - LSP server: diagnostics, movement completion, comment folding
   lint.py       - Parse error collection for CLI lint command and LSP
+  grammar.py    - LANGUAGE: the compiled tree-sitter grammar (C extension ox._grammar, from _grammar.c)
   builtins/
     volume.py      - Volume over time plugin
     e1rm.py        - Estimated 1RM plugin (Brzycki/Epley)
@@ -61,8 +62,10 @@ tests/
   test_notes.py      - Note parsing, session notes, DB population
   test_srpe.py       - sRPE plugin (training load, ACWR, monotony, strain)
   test_lint.py       - Diagnostic collection
+  smoke.py           - Installed-package smoke test (run by cibuildwheel and the release workflow, not pytest)
 tree-sitter-ox/
-  grammar.js  - Tree-sitter grammar definition for .ox format
+  grammar.js  - Tree-sitter grammar definition for .ox format; `tree-sitter generate` writes src/parser.c
+setup.py      - Builds ox._grammar from tree-sitter-ox/src/parser.c (metadata lives in pyproject.toml)
 editors/
   vscode/     - VSCode extension for .ox syntax highlighting
 examples/

@@ -2,18 +2,10 @@
 include LICENSE
 include README.md
 
-# Include tree-sitter grammar files
-recursive-include tree-sitter-ox/src *.c *.h *.cc
-include tree-sitter-ox/grammar.js
-include tree-sitter-ox/package.json
-
-# Include compiled tree-sitter binary
-include tree-sitter-ox/*.so
-include tree-sitter-ox/*.dylib
-include tree-sitter-ox/*.dll
-
-# Include example files
-recursive-include example *.ox
+# Vendored tree-sitter grammar, compiled into ox._grammar by setup.py
+include src/ox/_grammar.c
+include tree-sitter-ox/src/parser.c
+include tree-sitter-ox/src/tree_sitter/*.h
 
 # Exclude unnecessary files
 global-exclude *.pyc

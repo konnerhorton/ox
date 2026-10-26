@@ -5,8 +5,7 @@ from importlib.metadata import version as _pkg_version
 
 import click
 from pathlib import Path
-from tree_sitter import Language, Parser
-import tree_sitter_ox
+from tree_sitter import Parser
 from rich.console import Console
 from rich import box
 from rich.table import Table
@@ -24,6 +23,7 @@ from ox.data import (
     WeighIn,
 )
 from ox.db import create_db
+from ox.grammar import LANGUAGE
 from ox.lint import collect_diagnostics
 from ox.plugins import (
     PLUGINS,
@@ -182,8 +182,7 @@ def parse_file(file_path: Path) -> TrainingLog:
     Returns:
         TrainingLog object with parsed sessions
     """
-    language = Language(tree_sitter_ox.language())
-    parser = Parser(language)
+    parser = Parser(LANGUAGE)
 
     (
         entries,

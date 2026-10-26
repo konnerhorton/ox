@@ -10,13 +10,13 @@ from ox.cli import cli, parse_file
 from ox.lint import collect_diagnostics
 from ox.data import Diagnostic
 
-from tree_sitter import Language, Parser
-import tree_sitter_ox
+from tree_sitter import Parser
+
+from ox.grammar import LANGUAGE
 
 
 def _parse_tree(text: str):
-    language = Language(tree_sitter_ox.language())
-    parser = Parser(language)
+    parser = Parser(LANGUAGE)
     return parser.parse(bytes(text, encoding="utf-8"))
 
 

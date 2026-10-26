@@ -32,11 +32,7 @@ dependencies = [
     "pygls>=1.3.0",
     "rich>=14.2.0",
     "tree-sitter>=0.25.2",
-    "tree-sitter-ox",
 ]
-
-[tool.uv.sources]
-tree-sitter-ox = { path = "tree-sitter-ox" }
 
 [project.urls]
 Homepage = "https://github.com/konnerhorton/ox"
@@ -49,6 +45,9 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.exclude-package-data]
+ox = ["*.c"]
 
 [project.scripts]
 ox = "ox.cli:cli"
@@ -64,3 +63,15 @@ dev = [
 
 [tool.uv]
 cache-dir=".uv-cache"
+# Rebuild the grammar extension when its C sources change.
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "setup.py" },
+    { file = "src/ox/_grammar.c" },
+    { file = "tree-sitter-ox/src/parser.c" },
+]
+
+[tool.cibuildwheel]
+build = "cp312-*"
+skip = "*-musllinux_* pp*"
+test-command = "ox --version && python {project}/tests/smoke.py {project}/examples/example.ox"
