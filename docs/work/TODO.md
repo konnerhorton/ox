@@ -52,3 +52,23 @@ renumbered. When an item is resolved, move any decision into `SPEC.md` (or the u
   path dependency, so it must be published too or vendored into the wheel. Then switch the install
   instructions in `README.md`, `docs/getting-started.md` and `docs/editor-support.md` from
   `git+https://...` to `ox-train`. Roadmap: SPEC "Direction → Distribution".
+
+- [ ] **#6 Map `format:` values to a more descriptive data structure.** A short `format:` value (e.g.
+  `"pavel-sprints"`) can't hold a full protocol on its own. Pavel sprints are 6 × (8s work / 22s
+  rest) per set with 2 min between sets, and a `set-rest` argument on `intervals` was rejected as
+  verbose and confusing. Instead, a format name could refer to a definition written once elsewhere,
+  in the same way as the existing ideas: `@template` blocks (SPEC "What's incomplete": "grammar
+  exists, no processing; `format:` is a free-text stub with no linkage to them") and
+  `docs/future.md` "Protocol metadata" ("defined once for the named session"). Also undecided: how
+  `intervals` writes its work and rest arguments. The log uses `"intervals work-PT1M rest-PT1M"` for
+  now, but it isn't settled. Related unit: `docs/work/format-vocabulary.md`.
+
+- [ ] **#7 Define that weight and distance apply to each rep.** In `pavel-sprints: 3x6 50yd`, each of
+  the 18 sprints is ~50yd, so the total is 900yd, not 150yd. Likewise `pullup: 24kg 3x5` means 24kg
+  on every one of the 15 reps. Today SPEC "What works today" only says these are "independent
+  per-set fields", and the `sets` table stores one `distance_magnitude` per set row next to `reps`,
+  so the meaning isn't written down anywhere. Document "applies to each rep" (SPEC,
+  `docs/getting-started.md` "Duration and distance") and make any derived totals (volume, total
+  distance, pace) multiply by reps. Open question: does duration follow the same rule? Existing
+  usage says no: `plank: BW PT45S 3x1` and `run-interval: 3x1 PT1M` time the whole set, and with a
+  single rep per set both readings agree. `3x5 PT30S`, though, could mean 30s per rep or 30s per set.
