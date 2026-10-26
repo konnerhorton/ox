@@ -190,3 +190,48 @@ compiler.
 11. **Docs:** `README.md`, `docs/getting-started.md` and `docs/editor-support.md` install with
     `ox-train` and contain no `git+https`. CHANGELOG, SPEC, CLAUDE.md and TODO are updated as listed
     above.
+
+## Plan
+
+Five build commits, then the release. Every commit passes `uv run pytest`, `ruff check` and
+`ruff format --check`.
+
+### 1. `pypi-publish: drop the migration script`
+- Delete `scripts/migrate_ox.py`, `tests/test_migrate.py` and `tests/fixtures/migrate_{old,new}.ox`.
+- `src/ox/lint.py`: delete `MIGRATE` and its three uses.
+- `tests/test_lint.py`: `test_migration_hints_name_the_script` becomes
+  `test_old_syntax_hints_name_no_script`.
+- Remove the pointers in `README.md`, `docs/getting-started.md`, `SPEC.md` and `CLAUDE.md`.
+- Tests: AC 6.
+
+### 2. `pypi-publish: rename the distribution to ox-train`
+- `pyproject.toml`: `name = "ox-train"`, `version = "0.6.1"`. `src/ox/cli.py`: `--version` reads
+  `ox-train`. Refresh `uv.lock`.
+
+### 3. `pypi-publish: vendor the grammar as ox._grammar`
+- New `src/ox/_grammar.c` (binding renamed), `src/ox/grammar.py` (`LANGUAGE`), root `setup.py`
+  (abi3 extension built from `tree-sitter-ox/src/parser.c`) and `MANIFEST.in`.
+- `pyproject.toml`: drop the `tree-sitter-ox` dependency and source. Add uv `cache-keys` and
+  `[tool.cibuildwheel]`.
+- `cli.py`, `lsp.py`, `test_parse.py` and `test_lint.py` use `ox.grammar.LANGUAGE`.
+- Delete the Python packaging in `tree-sitter-ox/`. `CLAUDE.md`: new reinstall command, and
+  `grammar.py` added to the project structure.
+- Tests: AC 1–5 (local `uv build`, smoke tests from the wheel and the sdist in fresh venvs, grep,
+  grammar dev loop).
+
+### 4. `pypi-publish: add release workflow`
+- `.github/workflows/release.yml`: `check_version`, `build_wheels` (5 runners, cibuildwheel),
+  `build_sdist` (with a smoke test), `publish_testpypi`, `publish_pypi`. Publishing runs on `v*`
+  tags only.
+- Tests: AC 8 locally, and a local Linux cibuildwheel build.
+
+### 5. `pypi-publish: switch install docs to ox-train and close out`
+- Install docs (`README.md`, `docs/getting-started.md`, `docs/editor-support.md`), `CHANGELOG.md`
+  v0.6.1, `SPEC.md`, and `docs/work/TODO.md` (delete #1 and #5, add #9).
+- Tests: AC 11.
+
+### Release (each step needs the author's approval)
+1. Push, open a PR, CI green (AC 10). 2. Merge `--no-ff` and push. 3. Dry run with
+`gh workflow run release.yml --ref main` (AC 7). `workflow_dispatch` needs the file on the default
+branch, so this runs after the merge. 4. Tag `v0.6.1` and push. 5. `uv tool install ox-train` and
+the smoke test (AC 9).
