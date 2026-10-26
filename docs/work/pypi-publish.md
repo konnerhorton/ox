@@ -74,3 +74,119 @@ when a version tag is pushed.
 ### Setup outside the repo
 - PyPI and TestPyPI pending publishers: set up by the author on 2026-10-26 (project `ox-train`,
   owner `konnerhorton`, repo `ox`, workflow `release.yml`, environments `pypi` and `testpypi`).
+
+## Spec
+
+### Changes
+
+**Packaging (`pyproject.toml`, new root `setup.py`, `MANIFEST.in`)**
+- `name = "ox-train"`, `version = "0.6.1"`. Drop the `tree-sitter-ox` dependency and its
+  `[tool.uv.sources]` entry. Keep `tree-sitter>=0.25.2`, since the generated parser is ABI 15.
+- The root `setup.py` declares one extension, `ox._grammar`, built from
+  `tree-sitter-ox/src/parser.c` and `src/ox/_grammar.c`, with `include_dirs=["tree-sitter-ox/src"]`.
+  It uses the limited API (`Py_LIMITED_API=0x030C0000`), so the wheel is tagged `cp312-abi3`. The
+  compiler flags are the ones `tree-sitter-ox/setup.py` uses today.
+- `MANIFEST.in` puts the C sources and headers into the sdist (`tree-sitter-ox/src/parser.c`,
+  `tree-sitter-ox/src/tree_sitter/*.h` and `src/ox/_grammar.c`), so an sdist install can compile
+  without the rest of `tree-sitter-ox/`.
+- `[tool.cibuildwheel]`: `build = "cp312-*"`, skip musllinux and PyPy, and a `test-command` that
+  runs the smoke test (AC 2) against each built wheel.
+
+**Grammar import (`src/ox/_grammar.c`, `src/ox/grammar.py`)**
+- `_grammar.c` is the current `bindings/python/tree_sitter_ox/binding.c`, with the module renamed to
+  `_grammar` (`PyInit__grammar`).
+- `ox.grammar` exposes `LANGUAGE: tree_sitter.Language`, built once at import.
+- `cli.py`, `lsp.py`, `tests/test_parse.py` and `tests/test_lint.py` use `ox.grammar.LANGUAGE`
+  instead of `Language(tree_sitter_ox.language())`.
+- `cli.py`'s `--version` reads `importlib.metadata.version("ox-train")`. It reads `"ox"` today,
+  which would raise `PackageNotFoundError` after the rename.
+
+**`tree-sitter-ox/`**
+- Remove its Python packaging, which nothing installs any more: `pyproject.toml`, `setup.py`,
+  `uv.lock` and `bindings/python/`. `grammar.js`, `src/`, `test/corpus/` and the other language
+  bindings stay. `tree-sitter generate` doesn't touch `bindings/`, so the grammar dev loop is
+  unchanged up to the reinstall step.
+
+**Dropping the migration script**
+- Delete `scripts/migrate_ox.py`, `tests/test_migrate.py` and its fixtures
+  (`tests/fixtures/migrate_old.ox`, `migrate_new.ox`).
+- `src/ox/lint.py`: delete `MIGRATE` and its three uses. The hint text otherwise stays.
+- `tests/test_lint.py::test_migration_hints_name_the_script` becomes a test that the old-syntax
+  hints still fire and no longer mention a script.
+- Remove the pointers in `README.md`, `docs/getting-started.md` ("Migrating an older log" section),
+  `SPEC.md` ("Migration" line) and `CLAUDE.md`. Past `CHANGELOG.md` entries stay.
+
+**Release workflow (`.github/workflows/release.yml`)**
+- Triggers: a `v*` tag push, and `workflow_dispatch`, which builds without publishing.
+- `build_wheels`: `pypa/cibuildwheel` on `ubuntu-latest` (x86_64), `ubuntu-24.04-arm` (aarch64),
+  `macos-13` (x86_64), `macos-14` (arm64) and `windows-latest` (AMD64). Each wheel is tested in
+  place by `test-command`.
+- `build_sdist`: `uv build --sdist`. Then it installs the sdist in a fresh venv and runs the smoke
+  test, which proves the sdist compiles.
+- `check_version`: on a tag push, fails unless the tag equals `v` + the `pyproject.toml` version.
+- `publish_testpypi` (environment `testpypi`) and then `publish_pypi` (environment `pypi`, needs
+  `publish_testpypi`) use `pypa/gh-action-pypi-publish` with `id-token: write`. Neither runs on
+  `workflow_dispatch`.
+
+**CI (`ci.yml`)**: unchanged. `uv sync` now compiles the extension on the runner, which has a
+compiler.
+
+**Docs and bookkeeping**
+- Install commands become `uv tool install ox-train` in `README.md`, `docs/getting-started.md` and
+  `docs/editor-support.md`, with `pip install ox-train` as the alternative. README's "From source"
+  section stays.
+- `CLAUDE.md`: the grammar reinstall command becomes `uv sync --reinstall-package ox-train`, and the
+  explanation of why is updated. Add `grammar.py` to the project structure, and remove the migrate
+  sentence.
+- `CHANGELOG.md`: a `v0.6.1` entry covering the PyPI name, the vendored grammar, and the removed
+  migration script.
+- `SPEC.md`: "What works today" says ox installs from PyPI as `ox-train`, and the "Migration" line
+  goes. "Direction → Distribution" drops the PyPI item.
+- `docs/work/TODO.md`: delete #1 and #5. Add #9: drop the old-syntax lint hints (`_old_entry`,
+  `_old_header`, `_old_srpe` in `src/ox/lint.py`) once no pre-0.6 log is in use.
+
+### Decisions
+1. **Expose a `Language` object, not a capsule function.** `ox.grammar.LANGUAGE` replaces the four
+   `Language(tree_sitter_ox.language())` calls. Callers only ever wrap the capsule, so building the
+   `Language` once removes repeated code. The private `ox._grammar.language()` still returns the
+   capsule.
+2. **No PR-time wheel build.** A cross-platform build on every PR is slow and catches little that
+   the `workflow_dispatch` dry run before tagging doesn't. PR CI already compiles the extension on
+   Linux.
+3. **The real upload waits for TestPyPI to succeed.** A broken upload to PyPI can't be reused under
+   the same version, while TestPyPI is disposable.
+4. **musllinux (Alpine) and PyPy get no wheels.** They can install from the sdist. Add them if
+   someone asks.
+
+### Acceptance criteria
+1. **Distribution name and contents:** `uv build` produces `ox_train-0.6.1.tar.gz` and
+   `ox_train-0.6.1-cp312-abi3-<platform>.whl`. The wheel's `METADATA` has `Name: ox-train` and no
+   `Requires-Dist: tree-sitter-ox`. The wheel contains `ox/_grammar.abi3.so` (or `.pyd`) and no
+   top-level `tree_sitter_ox`.
+2. **Smoke test:** in a fresh venv with only the built wheel installed, `ox --version` prints
+   `0.6.1`, `ox-lsp --help` exits 0, and
+   `python -c "from ox.cli import parse_file; ..."` on `examples/example.ox` returns a log with
+   sessions and no error diagnostics.
+3. **The sdist compiles:** the AC 2 smoke test passes in a fresh venv with only
+   `ox_train-0.6.1.tar.gz` installed.
+4. **One grammar import:** `grep -rn tree_sitter_ox src tests` finds nothing.
+5. **The grammar dev loop still works:** after a whitespace-only edit to `grammar.js`,
+   `tree-sitter generate` and then `uv sync --reinstall-package ox-train` rebuild the extension, and
+   the test suite passes.
+6. **Migration removed:** `scripts/migrate_ox.py` and `tests/test_migrate.py` are gone. The three
+   old-syntax inputs (`*` flag, positional header, `srpe: "5; PT45M"`) still get hints, and none of
+   them contain `migrate`. `grep -rn migrate_ox` outside `CHANGELOG.md` and `docs/work/` finds
+   nothing.
+7. **Dry run:** a `workflow_dispatch` run of `release.yml` builds and tests all five wheels and the
+   sdist, and publishes nothing.
+8. **Version guard:** a tag that doesn't match the `pyproject.toml` version fails `check_version`
+   before anything is uploaded. Checked by reading the step's script and running its shell logic
+   locally with a mismatched tag. No bad tag gets pushed.
+9. **Release:** pushing `v0.6.1` uploads to TestPyPI and then PyPI. Afterwards,
+   `uv tool install ox-train` on this machine (from PyPI, with no repo checkout) passes the AC 2
+   smoke test.
+10. **Repo green:** `uv run pytest`, `ruff check` and `ruff format --check` pass on every commit, and
+    PR CI passes.
+11. **Docs:** `README.md`, `docs/getting-started.md` and `docs/editor-support.md` install with
+    `ox-train` and contain no `git+https`. CHANGELOG, SPEC, CLAUDE.md and TODO are updated as listed
+    above.
