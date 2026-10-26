@@ -15,6 +15,11 @@ Uses a custom tree-sitter grammar to parse `.ox` log files into structured data 
   ```
   uv keys built wheels by version number, so it will not rebuild the C extension on its own — the package version never changes. `uv cache clean tree-sitter-ox && uv sync` is **not** sufficient: `uv sync` audits, sees the version already installed, and skips the rebuild. `--reinstall-package` is what forces it.
 - Symptom of a stale C extension: a large, scattered wave of "Syntax error" diagnostic failures across `test_parse`/`test_db`/`test_integration` while `git status` is clean and `grammar.js` visibly contains the rule being rejected. Reinstall before investigating further.
+- Releasing the VSCode extension (`editors/vscode`): bump `version` in `package.json`, add a `CHANGELOG.md`
+  entry, then `npm install && npx -p node@22 -p @vscode/vsce -c "vsce package"` (system Node is 18, an apt
+  package — don't replace it; `vsce` needs ≥20). Upload the `.vsix` at
+  https://marketplace.visualstudio.com/manage via the extension's ⋯ → Update. No PAT: Azure DevOps rejects
+  the personal Microsoft account ("does not exist in tenant 'Microsoft Services'").
 
 ## Commands
 
