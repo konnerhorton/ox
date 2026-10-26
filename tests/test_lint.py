@@ -131,9 +131,18 @@ class TestLintHints:
         assert "Old session header" in diagnostics[0].message
         assert all("start with a `date:`" not in d.message for d in diagnostics)
 
-    def test_migration_hints_name_the_script(self):
-        assert "migrate_ox.py" in _only("2025-01-10 * pullups: BW 5x10\n").message
-        assert "migrate_ox.py" in _only(_session('srpe: "5; PT45M"')).message
+    def test_old_syntax_hints_name_no_script(self):
+        messages = [
+            _only("2025-01-10 * pullups: BW 5x10\n").message,
+            collect_diagnostics(
+                _parse_tree("@session\n2025-01-12 * Lower\nsquat: 100kg 5x5\n@end\n")
+            )[0].message,
+            _only(_session('srpe: "5; PT45M"')).message,
+        ]
+        assert messages[0].startswith("Old entry syntax")
+        assert messages[1].startswith("Old session header")
+        assert messages[2].startswith("Old sRPE syntax")
+        assert all("migrate" not in m for m in messages)
 
     def test_hint_columns_cover_the_mistake(self):
         d = _only("2025-01-10 T bench-press: 135lbs 5x5\n")

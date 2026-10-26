@@ -154,8 +154,7 @@ Set count comes from the rep scheme (`5x1` is five sets of one rep). With no rep
 the length of the longest `/`-list, defaulting to one set — so `run: PT30M` is a single 30-minute set.
 
 Planning is expressed only by a session block's `completed: false`; a single-line entry always records
-training that happened. Logs written in the pre-0.6 flag syntax (`*`, `!`, positional session headers,
-`srpe: "5; PT45M"`) are converted by `scripts/migrate_ox.py`.
+training that happened.
 
 ## Conventions
 

@@ -17,7 +17,6 @@ from typing import Callable, Optional
 from ox.data import Diagnostic
 
 DATE = r"\d{4}-\d{2}-\d{2}"
-MIGRATE = "scripts/migrate_ox.py converts pre-0.6 logs"
 
 BLOCK_START = re.compile(r"\s*@(session|movement|template)\b")
 BLOCK_END = re.compile(r"\s*@end\b")
@@ -72,7 +71,7 @@ def _old_entry(line: str):
     if m := OLD_ENTRY.match(line):
         return _group_span(m), (
             f"Old entry syntax: replace `{m[1]}` with `T`; planned work goes in a "
-            f"session block with `completed: false`. {MIGRATE}"
+            "session block with `completed: false`."
         )
     return None
 
@@ -81,7 +80,7 @@ def _old_header(line: str):
     if m := OLD_HEADER.match(line):
         return _group_span(m), (
             "Old session header: write `date:` and `name:` lines after "
-            f"`@session`, and `completed: false` for planned work. {MIGRATE}"
+            "`@session`, and `completed: false` for planned work."
         )
     return None
 
@@ -97,9 +96,7 @@ def _missing_t(line: str):
 
 def _old_srpe(line: str):
     if m := OLD_SRPE.match(line):
-        return _group_span(m), (
-            f'Old sRPE syntax: write `srpe: 5 PT45M ["note"]`. {MIGRATE}'
-        )
+        return _group_span(m), ('Old sRPE syntax: write `srpe: 5 PT45M ["note"]`.')
     return None
 
 

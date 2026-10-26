@@ -40,7 +40,6 @@ Developers and power users comfortable with text files and CLIs.
 - **VSCode extension** (`editors/vscode`) — syntax highlighting, and diagnostics and completions via `ox-lsp`; published on the VS Code Marketplace as `konnerhorton.ox-training-log`
 - **MkDocs documentation site** (`docs/`)
 - **First-class sRPE** — `srpe: <rating> <duration> ["note"]` on a session, stored on the `sessions` table and read directly by the `srpe` plugin
-- **Migration** (`scripts/migrate_ox.py`) — converts pre-0.6 logs to the current syntax
 - **Round-trip serialization** — `to_ox()` methods write data back to `.ox` format
 - **Unit handling** — weights and distances tracked as `pint.Quantity`, durations as `timedelta`
 

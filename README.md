@@ -106,7 +106,7 @@ scheme sets the count (`5x1` is five sets of one rep); with none, `run: PT30M` i
 **Movement names:** no spaces (`kb-oh-press`, `bb-back-squat`)
 
 Planning is expressed only by a session's `completed: false` — a single-line entry always records
-training that happened. Logs in the pre-0.6 flag syntax convert with `scripts/migrate_ox.py`.
+training that happened.
 
 ## Installation
 
