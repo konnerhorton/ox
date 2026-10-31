@@ -2,7 +2,7 @@
   "name": "ox-training-log",
   "displayName": "Ox",
   "description": "Syntax highlighting and diagnostics for Ox training log files",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "konnerhorton",
   "license": "MIT",
   "icon": "images/icon.png",

@@ -20,6 +20,11 @@ Uses a custom tree-sitter grammar to parse `.ox` log files into structured data 
   package — don't replace it; `vsce` needs ≥20). Upload the `.vsix` at
   https://marketplace.visualstudio.com/manage via the extension's ⋯ → Update. No PAT: Azure DevOps rejects
   the personal Microsoft account ("does not exist in tenant 'Microsoft Services'").
+- The VSCode extension deliberately ships no color theme: a theme replaces the user's wholesale and
+  leaves other languages uncolored. Pick grammar scopes by checking how the built-in theme JSON
+  (`/usr/share/code/resources/app/extensions/theme-defaults/themes/`) resolves them, not from
+  memory. VS Code's defaults are now Dark 2026 / Light 2026, and `keyword.operator` is uncolored
+  in all of them.
 
 ## Commands
 
