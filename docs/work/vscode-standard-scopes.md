@@ -166,3 +166,65 @@ Resolved foreground for each new scope, read from the theme JSON files (VS Code 
    and the fallback, and `vsce package` succeeds.
 8. The README snippet, pasted into user settings, gives `.ox` tokens Ox Dark's former colors
    (spot check: date `#4EC9B0` bold, reps `#CE9178`, distance `#D4A5FF`).
+
+## Plan
+
+There are three build commits: the rename, the removal, then the release and close-out. The
+rename and the removal are kept apart so each can be reverted on its own. None of this touches
+Python, but `uv run pytest` and `uv run ruff check src/ tests/` still run green before each commit
+(the pre-commit hook runs ruff).
+
+### 1. `vscode-standard-scopes: rename grammar scopes to standard categories`
+- **Files:** `editors/vscode/syntaxes/ox.tmLanguage.json`.
+- **Change:** the five renames in the mapping table, and nothing else.
+- **Proves AC2, AC3:**
+  - `git diff main -- editors/vscode/syntaxes/ | grep '^[-+] ' | grep -v '"name":'` prints
+    nothing.
+  - `grep` finds no old scope and each new one.
+  - The JSON still parses (`python3 -m json.tool`).
+
+### 2. `vscode-standard-scopes: remove the Ox Dark theme`
+- **Files:** delete `editors/vscode/themes/ox-dark.json`; edit `editors/vscode/package.json`
+  (remove `contributes.themes` and the `"Themes"` category).
+- **Proves AC1:** `test ! -e editors/vscode/themes`, and `jq` shows no `themes` key and no
+  `Themes` category.
+
+### 3. Test (no commit)
+- Write a scratch file, `<scratchpad>/all-tokens.ox`, with one of each token kind: comment,
+  every block keyword, `@include`, `@plugin`, `T` and `W` entries, `note`, `query`, every session
+  field including `completed: false` and `srpe:`, a `@movement` block, and an entry with weight,
+  reps, time, distance and a quoted note.
+- Re-run the scope resolver against the final grammar's scope names. It should reproduce the
+  spec table. This catches a typo in a renamed scope before the manual check.
+- **Manual, by you (AC4, AC5, AC6):**
+  1. `code --extensionDevelopmentPath=$PWD/editors/vscode <scratchpad>/all-tokens.ox src/ox/cli.py
+     editors/vscode/package.json` opens a development window with the branch's extension. Your
+     installed 0.1.0 is left alone.
+  2. In each of the four built-in themes, run *Inspect Editor Tokens and Scopes* on each token
+     kind, and confirm that Python and JSON are highlighted.
+  3. Take screenshots for the PR, plus one in One Dark Pro if it's installed.
+- If a check fails, fix the mapping in the spec and in step 1's commit, then repeat.
+
+### 4. `vscode-standard-scopes: release 0.2.0 and close out`
+- **Files:**
+  - `editors/vscode/package.json` and `package-lock.json`: `version` goes to `0.2.0`.
+  - `editors/vscode/CHANGELOG.md`: a `0.2.0` entry.
+  - `editors/vscode/README.md`: drop the theme bullet, add the "works with any color theme" line
+    and the opt-in snippet.
+  - `docs/editor-support.md`: a Features line.
+- **README snippet:** an `editor.tokenColorCustomizations.textMateRules` block with Ox Dark's
+  colors and font styles, mapped to the new scope names. Two old gaps get fixed along the way:
+  - The marker rule targets `keyword.other.marker.ox` (the old theme had the dead
+    `keyword.operator.flag.ox`).
+  - `@plugin` gets the same color as `@include`.
+- **Proves AC7, AC8:**
+  - `npx -p node@22 -p @vscode/vsce -c "vsce package"` in `editors/vscode` builds
+    `ox-training-log-0.2.0.vsix`, which is ignored by git and not committed.
+  - You paste the snippet into the dev window's settings and spot-check date, reps and distance.
+- **Close-out in this commit:**
+  - SPEC, `docs/work/TODO.md` and the `CLAUDE.md` structure line need no change. I'll check them
+    again at the time.
+  - Lesson for later sessions: VS Code's default themes are now the 2026 pair, and the resolver
+    approach (read the theme JSON, don't guess) is how a scope choice gets checked. This goes in
+    a short `CLAUDE.md` usage note next to the extension release note.
+- **After merge (your manual step, per `CLAUDE.md`):** upload the `.vsix` to the Marketplace.
