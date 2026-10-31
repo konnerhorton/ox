@@ -31,8 +31,7 @@
     "vscode": "^1.75.0"
   },
   "categories": [
-    "Programming Languages",
-    "Themes"
+    "Programming Languages"
   ],
   "activationEvents": [],
   "main": "./extension.js",
@@ -55,13 +54,6 @@
         "language": "ox",
         "scopeName": "source.ox",
         "path": "./syntaxes/ox.tmLanguage.json"
-      }
-    ],
-    "themes": [
-      {
-        "label": "Ox Dark",
-        "uiTheme": "vs-dark",
-        "path": "./themes/ox-dark.json"
       }
     ],
     "configuration": {
