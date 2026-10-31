@@ -45,7 +45,7 @@
     "query-entry": {
       "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+(query)\\s+(\"[^\"]*\")\\s+(\"[^\"]*\")$",
       "captures": {
-        "1": { "name": "constant.numeric.date.ox" },
+        "1": { "name": "entity.name.type.date.ox" },
         "2": { "name": "keyword.other.query.ox" },
         "3": { "name": "string.quoted.double.ox" },
         "4": { "name": "string.quoted.double.ox" }
@@ -54,8 +54,8 @@
     "singleline-entry": {
       "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+(T)\\s+([^#@:\\s][^:]*):\\s*(.*)$",
       "captures": {
-        "1": { "name": "constant.numeric.date.ox" },
-        "2": { "name": "keyword.operator.marker.ox" },
+        "1": { "name": "entity.name.type.date.ox" },
+        "2": { "name": "keyword.other.marker.ox" },
         "3": { "name": "entity.name.function.ox" },
         "4": { "patterns": [{ "include": "#details" }] }
       }
@@ -63,7 +63,7 @@
     "note-entry": {
       "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+(note)\\s+(\"[^\"]*\")$",
       "captures": {
-        "1": { "name": "constant.numeric.date.ox" },
+        "1": { "name": "entity.name.type.date.ox" },
         "2": { "name": "keyword.other.note.ox" },
         "3": { "name": "string.quoted.double.ox" }
       }
@@ -71,43 +71,43 @@
     "weigh-in-entry": {
       "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+(W)\\s+(.*)$",
       "captures": {
-        "1": { "name": "constant.numeric.date.ox" },
-        "2": { "name": "keyword.operator.marker.ox" },
+        "1": { "name": "entity.name.type.date.ox" },
+        "2": { "name": "keyword.other.marker.ox" },
         "3": { "patterns": [{ "include": "#details" }] }
       }
     },
     "session-date": {
       "match": "^\\s*(date):\\s*(\\d{4}-\\d{2}-\\d{2})\\s*$",
       "captures": {
-        "1": { "name": "support.type.property-name.ox" },
-        "2": { "name": "constant.numeric.date.ox" }
+        "1": { "name": "entity.other.attribute-name.ox" },
+        "2": { "name": "entity.name.type.date.ox" }
       }
     },
     "session-name": {
       "match": "^\\s*(name):\\s*(.+)$",
       "captures": {
-        "1": { "name": "support.type.property-name.ox" },
-        "2": { "name": "entity.name.section.ox" }
+        "1": { "name": "entity.other.attribute-name.ox" },
+        "2": { "name": "markup.heading.session.ox" }
       }
     },
     "session-completed": {
       "match": "^\\s*(completed):\\s*(true|false)\\s*$",
       "captures": {
-        "1": { "name": "support.type.property-name.ox" },
+        "1": { "name": "entity.other.attribute-name.ox" },
         "2": { "name": "constant.language.boolean.ox" }
       }
     },
     "session-format": {
       "match": "^\\s*(format):\\s*(.+)$",
       "captures": {
-        "1": { "name": "support.type.property-name.ox" },
+        "1": { "name": "entity.other.attribute-name.ox" },
         "2": { "name": "string.unquoted.ox" }
       }
     },
     "srpe-line": {
       "match": "^\\s*(srpe):\\s*(\\d+)\\s+(\\S+)\\s*(\"[^\"]*\")?\\s*$",
       "captures": {
-        "1": { "name": "support.type.property-name.ox" },
+        "1": { "name": "entity.other.attribute-name.ox" },
         "2": { "name": "constant.numeric.rating.ox" },
         "3": { "patterns": [{ "include": "#time" }] },
         "4": { "name": "string.quoted.double.ox" }
@@ -123,7 +123,7 @@
     "metadata-line": {
       "match": "^\\s*(equipment|tag|tags|url|note):\\s*(.*)$",
       "captures": {
-        "1": { "name": "support.type.property-name.ox" },
+        "1": { "name": "entity.other.attribute-name.ox" },
         "2": { "name": "string.unquoted.ox" }
       }
     },
@@ -146,7 +146,7 @@
     },
     "rep-scheme": {
       "match": "\\b\\d+x\\d+\\b|\\b\\d+(/\\d+)+\\b",
-      "name": "constant.numeric.reps.ox"
+      "name": "variable.other.constant.reps.ox"
     },
     "time": {
       "match": "PT(\\d+H(\\d+M(\\d+(\\.\\d+)?S)?)?|\\d+M(\\d+(\\.\\d+)?S)?|\\d+(\\.\\d+)?S)",
