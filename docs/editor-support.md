@@ -36,6 +36,8 @@ installing `ox-lsp` or changing the setting.
 
 - Syntax highlighting for dates, markers (`T`, `W`), session fields (`date:`, `name:`,
   `completed:`, `format:`, `srpe:`), weights, reps, durations, distances, strings, and comments
+- Highlighting uses your current color theme, and the extension's README has an opt-in snippet for
+  custom `.ox` colors
 - Block directives (`@session`, `@movement`, `@template`, `@end`) and top-level directives (`@include`, `@plugin`)
 - `note` and `query` entry highlighting; `equipment`/`tags`/`note`/`url` fields inside `@movement` blocks
 - Comment toggling (`#`)
