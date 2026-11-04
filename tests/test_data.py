@@ -470,6 +470,28 @@ class TestSessionSrpe:
     def test_omitted_when_absent(self):
         assert "srpe" not in self._session().to_ox()
 
+    def test_rating_without_duration_raises(self):
+        with pytest.raises(ValueError, match="must be given together"):
+            self._session(srpe_rating=5)
+
+    def test_duration_without_rating_raises(self):
+        with pytest.raises(ValueError, match="must be given together"):
+            self._session(srpe_duration=timedelta(minutes=45))
+
+    def test_note_without_rating_or_duration_raises(self):
+        with pytest.raises(ValueError, match="srpe_note requires"):
+            self._session(srpe_note="felt strong")
+
+    def test_rating_and_duration_build(self):
+        s = self._session(srpe_rating=5, srpe_duration=timedelta(minutes=45))
+        assert s.srpe_rating == 5
+
+    def test_rating_duration_and_note_build(self):
+        s = self._session(
+            srpe_rating=5, srpe_duration=timedelta(minutes=45), srpe_note="ok"
+        )
+        assert s.srpe_note == "ok"
+
     def test_line_precedes_movements_and_notes(self):
         s = self._session(srpe_rating=5, srpe_duration=timedelta(minutes=45))
         lines = s.to_ox().split("\n")

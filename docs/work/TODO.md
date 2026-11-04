@@ -4,12 +4,6 @@ Items to fix, research or decide. Refer to them as "TODO #n"; numbers are never 
 renumbered. When an item is resolved, move any decision into `SPEC.md` (or the unit's
 `docs/work/<id>.md`) and delete it here.
 
-- [ ] **#2 Guard `TrainingSession` against an sRPE rating without a duration.** A session built in code
-  (e.g. by a plugin like wendler531) with `srpe_rating` set and `srpe_duration=None` crashes in
-  `to_ox()` at `format_iso_duration(None)`. The parser can't produce this, since the grammar
-  requires a duration. Add a `__post_init__` check in `src/ox/data.py` so that `srpe_rating`,
-  `srpe_duration` and `srpe_note` are only accepted together, with the rating present.
-
 - [ ] **#4 Fix the `wendler531` start-date flag in the docs.** `docs/plugins.md` shows
   `--start-date 2026-03-01`, but `parse_plugin_args` (`src/ox/sql_utils.py`) matches long flags
   against the param name exactly, so the working flag is `--start_date` and `--start-date` fails with

@@ -292,6 +292,11 @@ class TrainingSession(Entry):
         srpe_rating: Session RPE, 1-10 perceived exertion for the whole session
         srpe_duration: Wall-clock length of the session
         srpe_note: Freeform comment on the session's exertion
+
+    Raises:
+        ValueError: If only one of ``srpe_rating`` and ``srpe_duration`` is given, or if
+            ``srpe_note`` is given without them. These are the only combinations an
+            ``srpe:`` line can express.
     """
 
     movements: tuple[Movement, ...]
@@ -301,6 +306,12 @@ class TrainingSession(Entry):
     srpe_rating: Optional[int] = None
     srpe_duration: Optional[timedelta] = None
     srpe_note: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        if (self.srpe_rating is None) != (self.srpe_duration is None):
+            raise ValueError("srpe_rating and srpe_duration must be given together")
+        if self.srpe_note is not None and self.srpe_rating is None:
+            raise ValueError("srpe_note requires srpe_rating and srpe_duration")
 
     @property
     def _is_single_line(self) -> bool:

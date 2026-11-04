@@ -1,3 +1,9 @@
+# Unreleased
+
+- **`TrainingSession` rejects sRPE fields that can't be written as an `srpe:` line.** Building one
+  with a rating but no duration (or the reverse), or with a note but neither, now raises
+  `ValueError` at construction instead of crashing later in `to_ox()`. Parsed logs are unaffected.
+
 # v0.6.1
 
 Ox is on PyPI. Install it with `uv tool install ox-train` (or `pip install ox-train`). The name `ox`
