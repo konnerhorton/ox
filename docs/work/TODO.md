@@ -26,16 +26,6 @@ renumbered. When an item is resolved, move any decision into `SPEC.md` (or the u
   `intervals` writes its work and rest arguments. The log uses `"intervals work-PT1M rest-PT1M"` for
   now, but it isn't settled. Related unit: `docs/work/format-vocabulary.md`.
 
-- [ ] **#7 Define that weight and distance apply to each rep.** In `pavel-sprints: 3x6 50yd`, each of
-  the 18 sprints is ~50yd, so the total is 900yd, not 150yd. Likewise `pullup: 24kg 3x5` means 24kg
-  on every one of the 15 reps. Today SPEC "What works today" only says these are "independent
-  per-set fields", and the `sets` table stores one `distance_magnitude` per set row next to `reps`,
-  so the meaning isn't written down anywhere. Document "applies to each rep" (SPEC,
-  `docs/getting-started.md` "Duration and distance") and make any derived totals (volume, total
-  distance, pace) multiply by reps. Duration follows the same rule (decided 2026-11-04): `3x5 PT30S`
-  is 30s per rep. Existing usage is consistent with this: `plank: BW PT45S 3x1` and
-  `run-interval: 3x1 PT1M` have one rep per set, so per rep and per set agree.
-
 - [ ] **#8 Publish the VSCode extension to Open VSX** (for VSCodium/Cursor users). It is on the VS Code
   Marketplace as `konnerhorton.ox-training-log`. Sign in to https://open-vsx.org with GitHub, sign
   the publisher agreement, create an access token, then from `editors/vscode` (system Node is 18;

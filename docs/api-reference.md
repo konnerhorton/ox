@@ -60,7 +60,7 @@ All are frozen dataclasses with `slots=True`.
 
 **Properties:** `total_reps`, `top_set_weight`
 
-**Methods:** `total_volume()`, `to_ox(compact_reps=False)`
+**Methods:** `total_volume()`, `total_distance()`, `total_duration()`, `to_ox(compact_reps=False)`
 
 ### TrainingSet
 
@@ -74,7 +74,8 @@ All are frozen dataclasses with `slots=True`.
 `weight`, `duration` and `distance` each apply to every rep in the set, so totals multiply by
 `reps`: `3x6 50yd` covers 900yd, and `3x5 PT30S` takes 7m30s.
 
-**Properties:** `volume` (`reps × weight`, or `None` for BW)
+**Properties:** `volume` (`reps × weight`, or `None` for BW), `total_distance` (`reps × distance`),
+`total_duration` (`reps × duration`); each is `None` when the field is absent
 
 ### MovementDefinition
 

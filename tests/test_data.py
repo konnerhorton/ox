@@ -598,3 +598,52 @@ class TestTrainingLog:
         assert len(log.planned_sessions) == 1
         assert log.completed_sessions[0].name == "Completed"
         assert log.planned_sessions[0].name == "Planned"
+
+
+class TestPerRepTotals:
+    """Weight, distance and duration apply to every rep, so totals multiply by reps.
+
+    Expected values are hand-computed from the lines, not taken from the code.
+    """
+
+    def test_distance_multiplies_by_reps(self):
+        m = reparse_movement("pavel-sprints: 3x6 50yd")
+        assert m.total_distance().to("yard").magnitude == pytest.approx(900)
+
+    def test_set_total_distance(self):
+        m = reparse_movement("pavel-sprints: 3x6 50yd")
+        assert m.sets[0].total_distance.to("yard").magnitude == pytest.approx(300)
+
+    def test_duration_multiplies_by_reps(self):
+        m = reparse_movement("hang: BW 3x5 PT30S")
+        assert m.total_duration() == timedelta(seconds=450)
+        assert m.sets[0].total_duration == timedelta(seconds=150)
+
+    def test_one_rep_per_set_hold(self):
+        m = reparse_movement("plank: BW PT45S 3x1")
+        assert m.total_duration() == timedelta(seconds=135)
+
+    def test_single_effort(self):
+        m = reparse_movement("run: 5km PT25M")
+        assert m.total_distance().to("km").magnitude == pytest.approx(5)
+        assert m.total_duration() == timedelta(seconds=1500)
+
+    def test_progressive_distance_without_rep_scheme(self):
+        m = reparse_movement("sprint: 100m/200m/400m")
+        assert m.total_distance().to("m").magnitude == pytest.approx(700)
+
+    def test_mixed_length_units_sum(self):
+        # 0.25mi = 402.336m exactly
+        m = reparse_movement("run: 400m/0.25mi")
+        assert m.total_distance().to("m").magnitude == pytest.approx(802.336)
+
+    def test_no_distance_or_duration_is_none(self):
+        m = reparse_movement("squat: 185lb 5x5")
+        assert m.total_distance() is None
+        assert m.total_duration() is None
+        assert m.sets[0].total_distance is None
+        assert m.sets[0].total_duration is None
+
+    def test_volume_multiplies_by_reps(self):
+        m = reparse_movement("pullup: 24kg 3x5")
+        assert m.total_volume().to("kg").magnitude == pytest.approx(360)
