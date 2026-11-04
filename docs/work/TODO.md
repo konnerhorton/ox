@@ -4,12 +4,6 @@ Items to fix, research or decide. Refer to them as "TODO #n"; numbers are never 
 renumbered. When an item is resolved, move any decision into `SPEC.md` (or the unit's
 `docs/work/<id>.md`) and delete it here.
 
-- [ ] **#2 Guard `TrainingSession` against an sRPE rating without a duration.** A session built in code
-  (e.g. by a plugin like wendler531) with `srpe_rating` set and `srpe_duration=None` crashes in
-  `to_ox()` at `format_iso_duration(None)`. The parser can't produce this, since the grammar
-  requires a duration. Add a `__post_init__` check in `src/ox/data.py` so that `srpe_rating`,
-  `srpe_duration` and `srpe_note` are only accepted together, with the rating present.
-
 - [ ] **#6 Map `format:` values to a more descriptive data structure.** A short `format:` value (e.g.
   `"pavel-sprints"`) can't hold a full protocol on its own. Pavel sprints are 6 × (8s work / 22s
   rest) per set with 2 min between sets, and a `set-rest` argument on `intervals` was rejected as

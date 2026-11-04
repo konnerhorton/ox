@@ -7,6 +7,9 @@
   50yd (900yd), and `hang: BW 3x5 PT30S` is 15 hangs of 30s. Nothing in the format changes; the
   docs now say so, and `TrainingSet.total_distance` / `total_duration` and
   `Movement.total_distance()` / `total_duration()` compute the totals.
+- **`TrainingSession` rejects sRPE fields that can't be written as an `srpe:` line.** Building one
+  with a rating but no duration (or the reverse), or with a note but neither, now raises
+  `ValueError` at construction instead of crashing later in `to_ox()`. Parsed logs are unaffected.
 
 # v0.6.1
 
