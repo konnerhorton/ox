@@ -137,12 +137,16 @@ class TrainingSet:
     The four attributes are independent and may co-occur: a set can carry reps,
     weight, duration, and distance at once (e.g. `row: 500m PT2M 5x1`).
 
+    Weight, duration and distance each apply to every rep in the set, so totals
+    multiply by reps: `3x6 50yd` is 6 reps of 50yd per set, and `3x5 PT30S` is
+    5 reps of 30s per set.
+
     Attributes:
         reps: Number of repetitions. Always present; a movement with no rep
             scheme yields a single set of reps=1.
-        weight: Weight used (optional), assumes bodyweight if no weight listed
-        duration: Time under load for this set (optional), e.g. an isometric hold
-        distance: Distance covered in this set (optional)
+        weight: Weight for each rep (optional), assumes bodyweight if no weight listed
+        duration: Time for each rep (optional), e.g. an isometric hold
+        distance: Distance covered in each rep (optional)
     """
 
     reps: int

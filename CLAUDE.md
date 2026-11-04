@@ -157,6 +157,7 @@ bench-press: 135lb 5x5
 ```
 
 Weight, duration, and distance are independent per-set fields — a set may carry all of them at once.
+Each applies to every rep in the set, so totals multiply by reps (`3x6 50yd` is 900yd, `3x5 PT30S` is 7m30s).
 Given once, a field broadcasts across every set; given as a `/`-list, it maps one value per set.
 Set count comes from the rep scheme (`5x1` is five sets of one rep). With no rep scheme, the count is
 the length of the longest `/`-list, defaulting to one set — so `run: PT30M` is a single 30-minute set.

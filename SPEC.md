@@ -26,7 +26,7 @@ Developers and power users comfortable with text files and CLIs.
 - **Tree-sitter grammar** (`tree-sitter-ox/grammar.js`) — parses `.ox` files into syntax trees; supports many mass units (kg, lb, oz, stone, grain, etc.), ISO 8601 durations, and distance units
 - **Python parser** (`src/ox/parse.py`) — tree-sitter nodes → dataclasses
 - **Data model** (`src/ox/data.py`) — `TrainingSet`, `Movement`, `TrainingSession`, `TrainingLog`, `Note`, `WeighIn`, `StoredQuery`, `Diagnostic`
-- **Set fields** — reps, weight, duration, and distance are independent per-set fields; a set may carry all four
+- **Set fields** — reps, weight, duration, and distance are independent per-set fields; a set may carry all four. Weight, duration and distance each apply to every rep in the set, so totals multiply by reps (`3x6 50yd` is 900yd; `3x5 PT30S` is 7m30s)
 - **SQLite query layer** (`src/ox/db.py`) — in-memory DB with `sessions`, `movements`, `sets`, `notes`, `session_notes`, `weigh_ins`, `queries` tables and `training` view
 - **Plugin system** (`src/ox/plugins.py`) — built-in plugins plus user plugins loaded via `@plugin` directives in `.ox` files
 - **Built-in plugins** (`src/ox/builtins/`) — `volume` (volume over time), `e1rm` (estimated 1RM via Brzycki/Epley), `weighin` (weight tracking with stats/plot/rolling average), `srpe` (session RPE training load), `wendler531` (5/3/1 cycle generator)

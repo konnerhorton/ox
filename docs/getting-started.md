@@ -162,6 +162,16 @@ A field written once applies to every set; written as a `/`-list it maps one val
 scheme decides how many sets there are — `5x1` means five sets of a single rep. With no rep scheme the
 count comes from the longest `/`-list, or one set if there is none, so `run: PT30M` is a single set.
 
+Weight, duration, and distance each apply to **every rep** in the set, so totals multiply by reps:
+
+```
+pullup: 24kg 3x5             24kg on each of 15 reps: 360kg volume
+pavel-sprints: 3x6 50yd      each of 18 sprints is 50yd: 900yd
+hang: BW 3x5 PT30S           each of 15 hangs is 30s: 7m30s
+```
+
+For a single hold or effort per set, use one rep per set (`PT45S 3x1`), as in the examples above.
+
 ### Movement names
 
 No spaces — hyphens are common but any non-space format works:
