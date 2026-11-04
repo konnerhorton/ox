@@ -23,8 +23,3 @@ renumbered. When an item is resolved, move any decision into `SPEC.md` (or the u
   npx -p node@22 -p ovsx -c "ovsx publish ox-training-log-<version>.vsix -p <token>"
   ```
   Then add Open VSX back to the install section of `docs/editor-support.md`.
-
-- [ ] **#9 Drop the pre-0.6 syntax lint hints.** `_old_entry`, `_old_header` and `_old_srpe` in
-  `src/ox/lint.py` explain the `*`/`!` flags, positional session headers and `srpe: "5; PT45M"`.
-  The migration script is gone and the only pre-0.6 log has been converted, so once that syntax has
-  stopped turning up in practice, remove the three hints and their tests in `tests/test_lint.py`.

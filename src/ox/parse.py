@@ -59,8 +59,8 @@ def get_srpe(
         well-formed srpe_line.
     """
     line = next((c for c in raw_entry.children if c.type == "srpe_line"), None)
-    # A malformed line (e.g. the pre-0.6 `srpe: "5; PT45M"`) still recovers a
-    # rating and duration; don't record values from a line lint rejects.
+    # A malformed line can still recover a rating and duration; don't record
+    # values from a line lint rejects.
     if line is None or line.has_error:
         return None, None, None
 

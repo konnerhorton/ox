@@ -10,6 +10,9 @@
 - **`TrainingSession` rejects sRPE fields that can't be written as an `srpe:` line.** Building one
   with a rating but no duration (or the reverse), or with a note but neither, now raises
   `ValueError` at construction instead of crashing later in `to_ox()`. Parsed logs are unaffected.
+- **Lint no longer has hints for the pre-0.6 syntax.** `*`/`!` entry flags, positional session
+  headers and `srpe: "5; PT45M"` are still rejected, but with the general diagnostic (`Syntax
+  error`, the missing-`date:` hint, or the sRPE-line hint) instead of a migration message.
 
 # v0.6.1
 

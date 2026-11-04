@@ -48,6 +48,10 @@ One build commit, with close-out included.
      `test_old_session_header_hint` and `test_old_syntax_hints_name_no_script`. Add one test pinning
      the fallbacks in the table above: each old form still produces an error-severity diagnostic,
      and the old header and old sRPE forms get the messages listed.
+   - Found during build: `src/ox/lint.py`'s module docstring cited "the pre-0.6 syntax" as an
+     example hint, and `tests/test_parse.py::test_old_quoted_form_is_a_syntax_error` asserted the
+     "Old sRPE syntax" message. The docstring now cites a malformed `srpe:` line; the test is
+     renamed `test_quoted_form_is_a_syntax_error` and asserts the sRPE-line hint.
    - `grep -rn "Old entry\|Old session header\|Old sRPE\|pre-0.6" src/ tests/ docs/` should only
      find `CHANGELOG.md` history.
    - Close-out: delete TODO #9 from `docs/work/TODO.md`; add a line to the unreleased section of
