@@ -481,11 +481,11 @@ class TestSrpeLine:
         _, diags = _parse_str(_session("srpe: 5"))
         assert len(diags) > 0
 
-    def test_old_quoted_form_is_a_syntax_error(self):
-        """The pre-0.6 `srpe: "5; PT45M"` form no longer parses as a movement."""
+    def test_quoted_form_is_a_syntax_error(self):
+        """A quoted `srpe: "5; PT45M"` is rejected, not parsed as a movement."""
         tree, diags = _parse_str(_session('srpe: "5; PT45M"'))
         assert len(diags) == 1
-        assert "Old sRPE syntax" in diags[0].message
+        assert "sRPE line is" in diags[0].message
 
         kinds = []
 

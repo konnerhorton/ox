@@ -85,10 +85,6 @@ class TestLintHints:
             (_session("note: “sore”"), 3, "Curly quote"),
             (_session('deadlift: 245lb 3x3 “tm 350"'), 3, "Curly quote"),
             (_session('note: "bow.”', "srpe: 3 PT60M"), 3, "Curly quote"),
-            # Pre-0.6 syntax
-            ("2025-01-10 * pullups: BW 5x10\n", 1, "replace `*` with `T`"),
-            ("2025-01-10 ! squat: 100kg 5x5\n", 1, "replace `!` with `T`"),
-            ('@session\ndate: 2025-01-11\n  srpe: "5; PT45M"\n@end\n', 3, "Old sRPE"),
             # sRPE lines
             (_session("srpe: 5.5 PT45M"), 3, "whole number"),
             (_session("srpe: X PTXXM"), 3, "sRPE line is"),
@@ -124,25 +120,24 @@ class TestLintHints:
         assert message in d.message
         assert d.severity == "error"
 
-    def test_old_session_header_hint(self):
-        text = "@session\n2025-01-12 * Lower\nsquat: 100kg 5x5\n@end\n"
-        diagnostics = collect_diagnostics(_parse_tree(text))
-        assert diagnostics[0].line == 2
-        assert "Old session header" in diagnostics[0].message
-        assert all("start with a `date:`" not in d.message for d in diagnostics)
+    def test_old_syntax_falls_back_to_general_diagnostics(self):
+        """Pre-0.6 syntax has no hint of its own but is still rejected."""
+        for text in (
+            "2025-01-10 * pullups: BW 5x10\n",
+            "2025-01-10 ! squat: 100kg 5x5\n",
+        ):
+            d = _only(text)
+            assert (d.line, d.message, d.severity) == (1, "Syntax error", "error")
 
-    def test_old_syntax_hints_name_no_script(self):
-        messages = [
-            _only("2025-01-10 * pullups: BW 5x10\n").message,
-            collect_diagnostics(
-                _parse_tree("@session\n2025-01-12 * Lower\nsquat: 100kg 5x5\n@end\n")
-            )[0].message,
-            _only(_session('srpe: "5; PT45M"')).message,
-        ]
-        assert messages[0].startswith("Old entry syntax")
-        assert messages[1].startswith("Old session header")
-        assert messages[2].startswith("Old sRPE syntax")
-        assert all("migrate" not in m for m in messages)
+        header = "@session\n2025-01-12 * Lower\nsquat: 100kg 5x5\n@end\n"
+        diagnostics = collect_diagnostics(_parse_tree(header))
+        assert diagnostics[0].line == 1
+        assert "start with a `date:`" in diagnostics[0].message
+        assert all(d.severity == "error" for d in diagnostics)
+
+        d = _only(_session('srpe: "5; PT45M"'))
+        assert (d.line, d.severity) == (3, "error")
+        assert "sRPE line is" in d.message
 
     def test_hint_columns_cover_the_mistake(self):
         d = _only("2025-01-10 T bench-press: 135lbs 5x5\n")

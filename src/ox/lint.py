@@ -2,7 +2,7 @@
 
 Tree-sitter reports where parsing failed, not why. `collect_diagnostics` turns
 each ERROR node into a diagnostic, and where a line inside the error matches a
-known mistake (curly quotes, the pre-0.6 syntax, `135lbs`, `25min`, ...) it
+known mistake (curly quotes, a malformed `srpe:` line, `135lbs`, `25min`, ...) it
 reports that mistake instead of a bare "Syntax error".
 
 Error recovery often wraps a whole session block in one ERROR node, so hints
@@ -21,10 +21,7 @@ DATE = r"\d{4}-\d{2}-\d{2}"
 BLOCK_START = re.compile(r"\s*@(session|movement|template)\b")
 BLOCK_END = re.compile(r"\s*@end\b")
 
-OLD_ENTRY = re.compile(rf"\s*{DATE}\s+([*!])\s+[^\s:]+\s*:")
-OLD_HEADER = re.compile(rf"\s*{DATE}\s+([*!])\s+\S")
 MISSING_T = re.compile(rf"\s*{DATE}\s+([a-z][\w-]*)\s*:")
-OLD_SRPE = re.compile(r'\s*(srpe:\s*".*)')
 SRPE_FRACTION = re.compile(r"\s*srpe:\s*(\d+\.\d+)")
 SRPE_ANY = re.compile(r"\s*(srpe:.*?)\s*$")
 VALID_SRPE = re.compile(r'\s*srpe:\s*\d+\s+PT\S+(\s+"[^"\n]*")?\s*$')
@@ -67,36 +64,12 @@ def _curly_quotes(line: str):
     return (found[0], found[-1] + 1), 'Curly quote: use a straight double quote (")'
 
 
-def _old_entry(line: str):
-    if m := OLD_ENTRY.match(line):
-        return _group_span(m), (
-            f"Old entry syntax: replace `{m[1]}` with `T`; planned work goes in a "
-            "session block with `completed: false`."
-        )
-    return None
-
-
-def _old_header(line: str):
-    if m := OLD_HEADER.match(line):
-        return _group_span(m), (
-            "Old session header: write `date:` and `name:` lines after "
-            "`@session`, and `completed: false` for planned work."
-        )
-    return None
-
-
 def _missing_t(line: str):
     if m := MISSING_T.match(line):
         return _group_span(m), (
             "Single-line entry needs `T` after the date, "
             f"e.g. `2025-01-10 T {m[1]}: ...`"
         )
-    return None
-
-
-def _old_srpe(line: str):
-    if m := OLD_SRPE.match(line):
-        return _group_span(m), ('Old sRPE syntax: write `srpe: 5 PT45M ["note"]`.')
     return None
 
 
@@ -159,10 +132,7 @@ def _loose_duration(line: str):
 
 LINE_RULES: tuple[Callable[[str], Optional[tuple[Span, str]]], ...] = (
     _curly_quotes,
-    _old_entry,
-    _old_header,
     _missing_t,
-    _old_srpe,
     _srpe_fraction,
     _srpe_malformed,
     _completed_value,
@@ -189,7 +159,7 @@ def _session_without_date(lines: list[str], row: int):
     if lines[row].strip() != "@session":
         return None
     first = _first_content_line(lines, row)
-    if first is None or DATE_LINE.match(first) or OLD_HEADER.match(first):
+    if first is None or DATE_LINE.match(first):
         return None
     return _line_span(lines[row]), "A session block must start with a `date:` line"
 
