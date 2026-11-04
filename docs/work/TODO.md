@@ -23,3 +23,23 @@ renumbered. When an item is resolved, move any decision into `SPEC.md` (or the u
   npx -p node@22 -p ovsx -c "ovsx publish ox-training-log-<version>.vsix -p <token>"
   ```
   Then add Open VSX back to the install section of `docs/editor-support.md`.
+
+- [ ] **#10 `add` command in the REPL.** Append a session to the log from the interactive prompt:
+  date defaults to today, movement names complete from the loaded log, and the file is only ever
+  appended to (never rewritten). This is the REPL's first write path. Open questions: which file
+  receives the append when the log uses `@include` (the root file passed to `ox`, or a configurable
+  target); validating the new block by parsing it before writing, then reloading. Prefill works at
+  two levels: a movement's line gets its last recorded weight/reps, and a session name already used
+  prefills every movement from that session's most recent instance. Its UI depends on the REPL
+  overhaul (dashboard-style REPL), so settle that first.
+
+- [ ] **#11 Syntax highlighting for nano and micro.** Ship `editors/nano/ox.nanorc` and
+  `editors/micro/ox.yaml` with install steps in `docs/editor-support.md`. Both are regex-based, so
+  they approximate the tree-sitter grammar the way the TextMate grammar does, and each is another
+  copy to keep in step with `grammar.js`.
+
+- [ ] **#12 Snippets in the VSCode extension.** Already on the SPEC roadmap ("Snippets for common
+  entry patterns"). Add `contributes.snippets` with session block, single-line entry, weigh-in,
+  note, `@movement`, `@template`, `@include` and stored query, using `$CURRENT_YEAR-$CURRENT_MONTH-$CURRENT_DATE`
+  for dates. Ships as a version bump of the extension. Do this after LSP completions (SPEC roadmap)
+  so the snippets cover what completions don't.
