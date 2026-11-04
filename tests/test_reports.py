@@ -210,6 +210,48 @@ class TestParsePluginArgs:
             parse_plugin_args(params, "-m")
 
 
+START_DATE_PARAMS = [
+    {"name": "start_date", "type": str, "required": True, "short": "d"},
+]
+
+
+class TestHyphenFlags:
+    """Multi-word param names are passed with hyphens: start_date -> --start-date."""
+
+    def test_hyphenated_flag_parses(self):
+        result = parse_plugin_args(START_DATE_PARAMS, "--start-date 2026-03-01")
+        assert result == {"start_date": "2026-03-01"}
+
+    def test_underscore_flag_rejected_with_hint(self):
+        with pytest.raises(
+            ValueError,
+            match=r"Unknown flag: --start_date \(did you mean --start-date\?\)",
+        ):
+            parse_plugin_args(START_DATE_PARAMS, "--start_date 2026-03-01")
+
+    def test_missing_required_names_hyphenated_flag(self):
+        with pytest.raises(
+            ValueError, match="Missing required flag\\(s\\): --start-date$"
+        ):
+            parse_plugin_args(START_DATE_PARAMS, "")
+
+    def test_unknown_flag_without_match_has_no_hint(self):
+        with pytest.raises(ValueError, match=r"^Unknown flag: --foo$"):
+            parse_plugin_args(START_DATE_PARAMS, "--foo bar")
+
+    def test_unknown_underscore_flag_without_match_has_no_hint(self):
+        with pytest.raises(ValueError, match=r"^Unknown flag: --end_date$"):
+            parse_plugin_args(START_DATE_PARAMS, "--end_date 2026-03-01")
+
+    def test_short_flag_unchanged(self):
+        result = parse_plugin_args(START_DATE_PARAMS, "-d 2026-03-01")
+        assert result == {"start_date": "2026-03-01"}
+
+    def test_usage_shows_hyphenated_flag(self):
+        usage = plugin_usage("wendler531", {"params": START_DATE_PARAMS})
+        assert usage == "wendler531 -d/--start-date <start-date>"
+
+
 class TestPluginUsage:
     """Test usage string generation."""
 

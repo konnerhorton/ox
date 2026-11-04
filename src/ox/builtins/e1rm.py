@@ -109,7 +109,7 @@ def estimated_1rm(
             kwargs["y_step"] = float(y_step)
         if x_scale is not None:
             if x_scale not in ("week", "month", "quarter", "year"):
-                raise ValueError("x_scale must be one of: week, month, quarter, year")
+                raise ValueError("--x-scale must be one of: week, month, quarter, year")
             kwargs["x_scale"] = x_scale
         return PlotResult(plot.scatter(dates, values, **kwargs))
 

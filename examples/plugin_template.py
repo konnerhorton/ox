@@ -52,6 +52,8 @@ def register():
             "name": "my-plugin",
             "fn": my_plugin,
             "description": "Short description shown in plugin list",
+            # Each param's "name" is the keyword argument fn receives; its CLI
+            # flag swaps "_" for "-", so "start_date" becomes --start-date.
             "params": [
                 {"name": "exercise", "type": str, "required": True, "short": "e"},
                 {

@@ -10,12 +10,6 @@ renumbered. When an item is resolved, move any decision into `SPEC.md` (or the u
   requires a duration. Add a `__post_init__` check in `src/ox/data.py` so that `srpe_rating`,
   `srpe_duration` and `srpe_note` are only accepted together, with the rating present.
 
-- [ ] **#4 Fix the `wendler531` start-date flag in the docs.** `docs/plugins.md` shows
-  `--start-date 2026-03-01`, but `parse_plugin_args` (`src/ox/sql_utils.py`) matches long flags
-  against the param name exactly, so the working flag is `--start_date` and `--start-date` fails with
-  "Unknown flag". Either fix the docs or have `parse_plugin_args` accept hyphens for underscores
-  (which would fix it for every plugin's multi-word params).
-
 - [ ] **#6 Map `format:` values to a more descriptive data structure.** A short `format:` value (e.g.
   `"pavel-sprints"`) can't hold a full protocol on its own. Pavel sprints are 6 × (8s work / 22s
   rest) per set with 2 min between sets, and a `set-rest` argument on `intervals` was rejected as

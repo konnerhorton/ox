@@ -56,8 +56,16 @@ def _time_bin_expr(bin: str, col: str = "date") -> str:
     return TIME_BINS[bin].format(col=col)
 
 
+def _flag_name(param: dict) -> str:
+    """CLI long-flag name for a param: its name with `_` replaced by `-`."""
+    return param["name"].replace("_", "-")
+
+
 def parse_plugin_args(params: list[dict], arg_string: str) -> dict:
     """Parse --flag value pairs from a string against a param spec.
+
+    A param's `name` is a Python identifier; its long flag is the name with
+    `_` replaced by `-`, so `start_date` is passed only as `--start-date`.
 
     Args:
         params: List of param dicts with keys: name, type, required, default (optional)
@@ -76,8 +84,13 @@ def parse_plugin_args(params: list[dict], arg_string: str) -> dict:
         token = tokens[i]
         if token.startswith("--"):
             key = token[2:]
-            param = next((p for p in params if p["name"] == key), None)
+            param = next((p for p in params if _flag_name(p) == key), None)
             if param is None:
+                hyphenated = key.replace("_", "-")
+                if "_" in key and any(_flag_name(p) == hyphenated for p in params):
+                    raise ValueError(
+                        f"Unknown flag: --{key} (did you mean --{hyphenated}?)"
+                    )
                 raise ValueError(f"Unknown flag: --{key}")
             flag = f"--{key}"
         elif token.startswith("-") and len(token) == 2:
@@ -99,7 +112,7 @@ def parse_plugin_args(params: list[dict], arg_string: str) -> dict:
         if name not in parsed:
             if param.get("required", False):
                 required_names = [
-                    f"--{p['name']}" for p in params if p.get("required", False)
+                    f"--{_flag_name(p)}" for p in params if p.get("required", False)
                 ]
                 raise ValueError(
                     f"Missing required flag(s): {', '.join(required_names)}"
@@ -122,7 +135,7 @@ def plugin_usage(name: str, entry: dict) -> str:
     parts = [name]
     for p in entry["params"]:
         short = f"-{p['short']}/" if p.get("short") else ""
-        flag = f"{short}--{p['name']} <{p['name']}>"
+        flag = f"{short}--{_flag_name(p)} <{_flag_name(p)}>"
         if p.get("required", False):
             parts.append(flag)
         else:
