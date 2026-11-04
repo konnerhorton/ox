@@ -1,3 +1,10 @@
+# Unreleased
+
+- **Weight, distance and duration apply to every rep.** `pavel-sprints: 3x6 50yd` is 18 sprints of
+  50yd (900yd), and `hang: BW 3x5 PT30S` is 15 hangs of 30s. Nothing in the format changes; the
+  docs now say so, and `TrainingSet.total_distance` / `total_duration` and
+  `Movement.total_distance()` / `total_duration()` compute the totals.
+
 # v0.6.1
 
 Ox is on PyPI. Install it with `uv tool install ox-train` (or `pip install ox-train`). The name `ox`

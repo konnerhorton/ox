@@ -137,12 +137,16 @@ class TrainingSet:
     The four attributes are independent and may co-occur: a set can carry reps,
     weight, duration, and distance at once (e.g. `row: 500m PT2M 5x1`).
 
+    Weight, duration and distance each apply to every rep in the set, so totals
+    multiply by reps: `3x6 50yd` is 6 reps of 50yd per set, and `3x5 PT30S` is
+    5 reps of 30s per set.
+
     Attributes:
         reps: Number of repetitions. Always present; a movement with no rep
             scheme yields a single set of reps=1.
-        weight: Weight used (optional), assumes bodyweight if no weight listed
-        duration: Time under load for this set (optional), e.g. an isometric hold
-        distance: Distance covered in this set (optional)
+        weight: Weight for each rep (optional), assumes bodyweight if no weight listed
+        duration: Time for each rep (optional), e.g. an isometric hold
+        distance: Distance covered in each rep (optional)
     """
 
     reps: int
@@ -154,6 +158,16 @@ class TrainingSet:
     def volume(self) -> Optional[Quantity]:
         """Calculate volume (reps * weight)."""
         return self.weight * self.reps if self.weight else None
+
+    @property
+    def total_distance(self) -> Optional[Quantity]:
+        """Distance across all reps (reps * distance), or None without distance."""
+        return self.distance * self.reps if self.distance is not None else None
+
+    @property
+    def total_duration(self) -> Optional[timedelta]:
+        """Time across all reps (reps * duration), or None without duration."""
+        return self.duration * self.reps if self.duration is not None else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,6 +193,22 @@ class Movement:
         """Total volume across all sets."""
         volumes = [s.volume for s in self.sets if s.volume is not None]
         return sum(volumes) if volumes else None
+
+    def total_distance(self) -> Optional[Quantity]:
+        """Total distance across all sets, or None if no set has a distance.
+
+        Each set contributes reps * distance. Compatible length units add.
+        """
+        distances = [s.total_distance for s in self.sets if s.distance is not None]
+        return sum(distances) if distances else None
+
+    def total_duration(self) -> Optional[timedelta]:
+        """Total time across all sets, or None if no set has a duration.
+
+        Each set contributes reps * duration.
+        """
+        durations = [s.total_duration for s in self.sets if s.duration is not None]
+        return sum(durations, timedelta()) if durations else None
 
     @property
     def top_set_weight(self) -> Optional[Quantity]:
