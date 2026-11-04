@@ -32,9 +32,9 @@ renumbered. When an item is resolved, move any decision into `SPEC.md` (or the u
   per-set fields", and the `sets` table stores one `distance_magnitude` per set row next to `reps`,
   so the meaning isn't written down anywhere. Document "applies to each rep" (SPEC,
   `docs/getting-started.md` "Duration and distance") and make any derived totals (volume, total
-  distance, pace) multiply by reps. Open question: does duration follow the same rule? Existing
-  usage says no: `plank: BW PT45S 3x1` and `run-interval: 3x1 PT1M` time the whole set, and with a
-  single rep per set both readings agree. `3x5 PT30S`, though, could mean 30s per rep or 30s per set.
+  distance, pace) multiply by reps. Duration follows the same rule (decided 2026-11-04): `3x5 PT30S`
+  is 30s per rep. Existing usage is consistent with this: `plank: BW PT45S 3x1` and
+  `run-interval: 3x1 PT1M` have one rep per set, so per rep and per set agree.
 
 - [ ] **#8 Publish the VSCode extension to Open VSX** (for VSCodium/Cursor users). It is on the VS Code
   Marketplace as `konnerhorton.ox-training-log`. Sign in to https://open-vsx.org with GitHub, sign
