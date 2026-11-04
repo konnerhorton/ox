@@ -174,5 +174,6 @@ training that happened.
 - `to_ox()` methods serialize back to .ox format (round-trip support)
 - Tree-sitter nodes are processed in `parse.py`; data structures live in `data.py` — keep this separation
 - All analysis features are plugins (builtins or user-defined). Plugins receive `PluginContext(db, log)` and return `TableResult`, `TextResult`, or `PlotResult`
+- Plugin param `name`s are Python identifiers; the CLI flag is the name with `_` → `-` (`start_date` → `--start-date`, the only accepted spelling)
 - CLI commands: `plugins` to list available plugins, `query` for raw SQL. Plugins are invoked by name directly (e.g. `volume -m squat`)
 

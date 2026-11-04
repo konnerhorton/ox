@@ -205,8 +205,10 @@ def register():
 
 | Field | Required | Description |
 |---|---|---|
-| `name` | yes | `--name` flag |
+| `name` | yes | Python identifier, passed to `fn` as a keyword argument. The long flag is the name with `_` → `-` |
 | `type` | yes | Python type (`str`, `int`, etc.) |
 | `required` | yes | Whether required |
 | `default` | no | Default value |
 | `short` | no | Single-char short flag |
+
+A multi-word param named `start_date` is passed as `--start-date`; `--start_date` is rejected.
