@@ -226,6 +226,34 @@ def parse_file(file_path: Path) -> TrainingLog:
     )
 
 
+def load_log(file: Path) -> tuple[TrainingLog, sqlite3.Connection, PluginContext]:
+    """Parse the log, build its database and load its plugins."""
+    log = parse_file(file)
+    db = create_db(log)
+    load_plugins(log, file)
+    return log, db, PluginContext(db=db, log=log)
+
+
+def print_load_summary(log: TrainingLog) -> None:
+    """Print the counts, user plugins and parse-error warning after a load."""
+    console.print(
+        f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
+        f"{len(log.planned_sessions)} planned sessions, "
+        f"{len(log.weigh_ins)} weigh-in(s)"
+    )
+    if USER_PLUGINS:
+        console.print(
+            f"[green]✓[/green] Loaded user plugins: {', '.join(sorted(USER_PLUGINS))}\n"
+        )
+    else:
+        console.print()
+    if log.diagnostics:
+        console.print(
+            f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
+            "Run 'lint' for details.[/yellow]\n"
+        )
+
+
 def show_help():
     """Display help message with available commands."""
     console.print("\n[bold cyan]Available Commands:[/bold cyan]")
@@ -354,26 +382,8 @@ def cli(file):
     # Parse the file once
     try:
         console.print(f"[cyan]Loading {file}...[/cyan]")
-        log = parse_file(file)
-        db = create_db(log)
-        load_plugins(log, file)
-        ctx = PluginContext(db=db, log=log)
-        console.print(
-            f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
-            f"{len(log.planned_sessions)} planned sessions, "
-            f"{len(log.weigh_ins)} weigh-in(s)"
-        )
-        if USER_PLUGINS:
-            console.print(
-                f"[green]✓[/green] Loaded user plugins: {', '.join(sorted(USER_PLUGINS))}\n"
-            )
-        else:
-            console.print()
-        if log.diagnostics:
-            console.print(
-                f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
-                "Run 'lint' for details.[/yellow]\n"
-            )
+        log, db, ctx = load_log(file)
+        print_load_summary(log)
     except Exception as e:
         console.print(f"[red]✗[/red] Error loading file: {e}", style="red")
         raise click.Abort()
@@ -441,27 +451,10 @@ def cli(file):
             elif command == "reload":
                 try:
                     console.print(f"[cyan]Reloading {file}...[/cyan]")
-                    log = parse_file(file)
+                    new_log, new_db, new_ctx = load_log(file)
                     db.close()
-                    db = create_db(log)
-                    load_plugins(log, file)
-                    ctx = PluginContext(db=db, log=log)
-                    console.print(
-                        f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
-                        f"{len(log.planned_sessions)} planned sessions, "
-                        f"{len(log.weigh_ins)} weigh-in(s)"
-                    )
-                    if USER_PLUGINS:
-                        console.print(
-                            f"[green]✓[/green] Loaded user plugins: {', '.join(sorted(USER_PLUGINS))}"
-                        )
-                    else:
-                        console.print()
-                    if log.diagnostics:
-                        console.print(
-                            f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
-                            "Run 'lint' for details.[/yellow]\n"
-                        )
+                    log, db, ctx = new_log, new_db, new_ctx
+                    print_load_summary(log)
                     session.completer = build_completer(log)
                 except Exception as e:
                     console.print(f"[red]✗[/red] Error reloading file: {e}\n")
