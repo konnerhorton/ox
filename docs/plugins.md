@@ -212,3 +212,6 @@ def register():
 | `short` | no | Single-char short flag |
 
 A multi-word param named `start_date` is passed as `--start-date`; `--start_date` is rejected.
+
+A param named `movement` or `movements` gets movement-name completion in the REPL: pressing Tab
+after its flag offers movement names from the log (for `movements`, per comma-separated item).
