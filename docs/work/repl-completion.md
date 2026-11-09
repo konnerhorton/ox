@@ -128,3 +128,83 @@ sessions, and a stored query `recent`.
 10. **Reload:** after a movement is added to the file, `reload` makes it completable (checked by
     building the completer from the reloaded log, as `reload` does).
 11. **No regressions:** existing REPL commands behave as before; full test suite and ruff pass.
+
+## Plan
+
+Context: implements `## Spec` above (D1–D8, AC 1–11). This is a small unit, so the whole build
+is one Sonnet session, and an Opus session closes it.
+
+### Step 1 (Sonnet): `repl-completion: add movement_names and ReplCompleter`
+Files: `src/ox/completion.py` (new), `tests/test_completion.py` (new).
+
+- `_movement_index(log) -> list[tuple[str, str]]`: `(name, note)` pairs in D4 order.
+  - Collect names from `log.sessions` (all sessions) and `log.movement_definitions`.
+  - For each name, take its latest completed `session.date`.
+  - Note: the ISO date if trained; `planned` if it appears only in planned sessions; `defined` if
+    it appears only in `@movement`.
+  - Sort trained names by date descending, then name; the rest follow, sorted by name.
+- `movement_names(log) -> list[str]`: the names from `_movement_index`, the public helper `repl-add` reuses.
+- `ReplCompleter(Completer)`, built as `ReplCompleter(commands, plugins, movements, queries)`:
+  - `plugins`: a `dict[str, dict]` shaped like `PLUGINS`, passed in rather than read from the
+    global so tests can use a fake user plugin (AC 8).
+  - `movements`: the `(name, note)` pairs.
+  - `get_completions(document, event)` takes `words = text_before_cursor.split()` and appends
+    `""` when the text is empty or ends in whitespace. `word = words[-1]`.
+    - `len(words) == 1` → commands whose lowercase starts with `word.lower()`.
+    - `words[0] == "query"` and `len(words) == 2` → query names.
+    - `words[0]` in `plugins`, with params `ps`:
+      - The previous word is a movement flag: `-{short}` or `--{_flag_name(p)}` (reuse
+        `ox.sql_utils._flag_name`) of a param named `movement` or `movements`. Complete
+        `seg = word.rsplit(",", 1)[-1]`; nothing if `":" in seg`; `start_position=-len(seg)`.
+      - Otherwise, a word starting with `-` → long flags `--{_flag_name(p)}`, leaving out any
+        param whose short or long flag already appears in `words[1:-1]`.
+      - Flag note: `required` if `p.get("required")`; else `default: {p['default']}`, or
+        `optional` when the default is `None` (e.g. `wendler531 --start-date`).
+    - Anything else → nothing.
+  - Each suggestion is `Completion(text, start_position=-len(prefix), display_meta=note)`.
+- Tests: one fixture log as text, written to `tmp_path` and loaded with `ox.cli.parse_file`: the
+  spec's fixture (squat 2025-01-01 / 2025-01-08, bench-press 2025-01-03, planned 2025-02-01
+  deadlift + squat, `@movement front-squat`, stored query `recent`).
+  - Build the completer with `PLUGINS` after `load_plugins()`; for AC 8, a dict with a fake
+    plugin entry.
+  - Helper: `complete(c, text) -> list[(text, meta)]` via `Document(text)` + `CompleteEvent()`.
+  - Proves AC 1–9.
+
+### Step 2 (Sonnet): `repl-completion: use ReplCompleter in the REPL`
+Files: `src/ox/cli.py`, `tests/test_completion.py`.
+
+- Add a module constant `REPL_COMMANDS` (the eight names now listed twice) and
+  `build_completer(log) -> ReplCompleter`, which combines it with `PLUGINS`,
+  `_movement_index(log)` and `[q.name for q in log.queries]`.
+- Startup: `PromptSession(completer=build_completer(log))`. `reload`:
+  `session.completer = build_completer(log)`. Drop the `WordCompleter` import.
+- Test AC 10: write the fixture, build, append a `2025-01-09 T kb-swing: 24kg 5x10` line,
+  `parse_file` again, build again → `volume -m kb` offers `kb-swing`. Also check that `build_completer` offers
+  every `REPL_COMMANDS` entry on an empty line (AC 11, since `help`, `exit` etc. stay completable).
+
+### Step 3 (Sonnet): `repl-completion: document tab completion`
+Files: `docs/cli-reference.md`, `SPEC.md`, `CLAUDE.md`.
+
+- `docs/cli-reference.md`: change the Tab row to "Auto-complete commands, plugin flags, movement
+  names and stored queries", and add a short "Tab completion" section listing the D5 positions,
+  the order of movement suggestions (D4), and the convention that a plugin param named
+  `movement`/`movements` gets movement completion (also add a line to `docs/plugins.md` where
+  params are documented).
+- `SPEC.md`: in "What works today", the CLI bullet says the completion is context-aware
+  (movement names, flags, stored queries); remove the "CLI movement autocompletion" bullet from
+  "What's incomplete".
+- `CLAUDE.md`: add `completion.py` to Project Structure and `test_completion.py` to tests; add
+  the movement/movements param-name convention under Conventions.
+- `docs/work/TODO.md` #10: rewrite the "depends on the REPL overhaul" sentence to point at
+  `repl-add` and the intent's D2–D3 (guided prompts, both prefill levels, movement completion done).
+
+### Close (Opus, new session)
+- Run `uv run pytest` and `uv run ruff check src/ tests/`.
+- Use `ReplCompleter` built from `examples/advanced.ox` in a short script to print completions
+  for `volume -m `, `e1rm --`, `query `, and look at the order and notes by eye.
+- Run `ox examples/advanced.ox` interactively once (the user, or `! ox …`) to see the menu
+  rendering.
+- Report each AC as met or not, then merge `--no-ff` into `main` after approval.
+
+### Verification
+- `uv run pytest tests/test_completion.py` after each step; full suite + ruff before each commit.
