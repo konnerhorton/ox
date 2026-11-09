@@ -5,7 +5,14 @@ from prompt_toolkit.completion import CompleteEvent
 from prompt_toolkit.document import Document
 
 from ox.cli import REPL_COMMANDS, build_completer, parse_file
-from ox.completion import ReplCompleter, _movement_index, movement_names
+from ox.add import last_movements, prefill_text
+from ox.completion import (
+    MovementLineCompleter,
+    ReplCompleter,
+    SessionNameCompleter,
+    _movement_index,
+    movement_names,
+)
 from ox.plugins import PLUGINS, load_plugins
 
 FIXTURE = """\
@@ -165,3 +172,82 @@ def test_build_completer_offers_repl_commands(log):
     offered = set(texts(build_completer(log), ""))
     assert set(REPL_COMMANDS) <= offered
     assert set(PLUGINS) <= offered
+
+
+# repl-add: movement-line and session-name completion (repl-add spec D4, D6)
+ADD_ROOT = """\
+@session
+date: 2025-01-01
+name: Upper Day
+bench-press: 135lb 5x5 "easy"
+pullups: BW 3x8
+@end
+
+@include "jan.ox"
+
+@session
+date: 2025-01-08
+name: Upper Day
+bench-press: 140lb 5x5
+pullups: BW 3x10
+@end
+
+@session
+date: 2025-02-01
+name: Lower Day
+completed: false
+squat: 200lb 5x5
+deadlift: 225lb 1x5
+@end
+"""
+
+
+@pytest.fixture
+def add_log(tmp_path):
+    (tmp_path / "jan.ox").write_text("2025-01-03 T squat: 185lb 5x5\n")
+    path = tmp_path / "add.ox"
+    path.write_text(ADD_ROOT)
+    return parse_file(path)
+
+
+@pytest.fixture
+def line_completer(add_log):
+    prefills = {n: prefill_text(m) for n, m in last_movements(add_log).items()}
+    return MovementLineCompleter(_movement_index(add_log), prefills)
+
+
+def completions(c, text):
+    return list(c.get_completions(Document(text), CompleteEvent()))
+
+
+# repl-add AC 2
+def test_movement_line_prefill(line_completer):
+    [sq] = completions(line_completer, "sq")
+    assert sq.text == "squat: 185lb 5x5"
+    assert sq.start_position == -2
+    assert sq.display_text == "squat"
+    assert sq.display_meta_text == "2025-01-03"
+    assert texts(line_completer, "bench") == ["bench-press: 140lb 5x5"]
+    assert texts(line_completer, "dead") == ["deadlift: "]
+
+
+def test_movement_line_after_colon(line_completer):
+    assert texts(line_completer, "squat:") == []
+    assert texts(line_completer, "squat: 185") == []
+
+
+def test_movement_line_empty_offers_all(line_completer):
+    assert [c.display_text for c in completions(line_completer, "")] == [
+        "bench-press",
+        "pullups",
+        "squat",
+        "deadlift",
+    ]
+
+
+# repl-add AC 3
+def test_session_name_completion(add_log):
+    c = SessionNameCompleter(add_log)
+    assert complete(c, "U") == [("Upper Day", "2025-01-08")]
+    assert complete(c, "") == [("Upper Day", "2025-01-08"), ("Lower Day", "planned")]
+    assert complete(c, "upper d") == [("Upper Day", "2025-01-08")]
