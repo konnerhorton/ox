@@ -4,7 +4,7 @@ import pytest
 from prompt_toolkit.completion import CompleteEvent
 from prompt_toolkit.document import Document
 
-from ox.cli import parse_file
+from ox.cli import REPL_COMMANDS, build_completer, parse_file
 from ox.completion import ReplCompleter, _movement_index, movement_names
 from ox.plugins import PLUGINS, load_plugins
 
@@ -27,7 +27,7 @@ equipment: barbell
 2025-01-08 query "recent" "SELECT * FROM training LIMIT 10"
 """
 
-COMMANDS = ["plugins", "query", "tables", "reload", "lint", "help", "exit", "quit"]
+COMMANDS = REPL_COMMANDS
 
 
 @pytest.fixture
@@ -148,3 +148,20 @@ def test_user_plugin(log):
 # AC 9
 def test_case_insensitive(completer):
     assert texts(completer, "volume -m SQ") == ["squat"]
+
+
+# AC 10
+def test_reload_picks_up_new_movement(log_path):
+    load_plugins()
+    assert texts(build_completer(parse_file(log_path)), "volume -m kb") == []
+    with log_path.open("a") as f:
+        f.write("2025-01-09 T kb-swing: 24kg 5x10\n")
+    assert texts(build_completer(parse_file(log_path)), "volume -m kb") == ["kb-swing"]
+
+
+# AC 11
+def test_build_completer_offers_repl_commands(log):
+    load_plugins()
+    offered = set(texts(build_completer(log), ""))
+    assert set(REPL_COMMANDS) <= offered
+    assert set(PLUGINS) <= offered

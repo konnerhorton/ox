@@ -10,7 +10,6 @@ from rich.console import Console
 from rich import box
 from rich.table import Table
 from prompt_toolkit import PromptSession
-from prompt_toolkit.completion import WordCompleter
 
 from ox.parse import process_include_directive, process_plugin_directive, process_node
 from ox.data import (
@@ -22,6 +21,7 @@ from ox.data import (
     TrainingSession,
     WeighIn,
 )
+from ox.completion import ReplCompleter, _movement_index
 from ox.db import create_db
 from ox.grammar import LANGUAGE
 from ox.lint import collect_diagnostics
@@ -39,6 +39,27 @@ from ox.sql_utils import parse_plugin_args, plugin_usage
 console = Console()
 
 DEFAULT_TABLE_BOX = box.SIMPLE
+
+REPL_COMMANDS = [
+    "plugins",
+    "query",
+    "tables",
+    "reload",
+    "lint",
+    "help",
+    "exit",
+    "quit",
+]
+
+
+def build_completer(log: TrainingLog) -> ReplCompleter:
+    """Tab completer for the REPL, built from the commands, plugins and log."""
+    return ReplCompleter(
+        REPL_COMMANDS + list(PLUGINS),
+        PLUGINS,
+        _movement_index(log),
+        [q.name for q in log.queries],
+    )
 
 
 def _parse_single_file(
@@ -357,21 +378,7 @@ def cli(file):
         console.print(f"[red]✗[/red] Error loading file: {e}", style="red")
         raise click.Abort()
 
-    # Setup tab completion for commands + plugin names
-    commands = [
-        "plugins",
-        "query",
-        "tables",
-        "reload",
-        "lint",
-        "help",
-        "exit",
-        "quit",
-    ] + list(PLUGINS.keys())
-    completer = WordCompleter(commands, ignore_case=True)
-
-    # Create prompt session
-    session = PromptSession(completer=completer)
+    session = PromptSession(completer=build_completer(log))
 
     console.print("Type 'help' for commands, 'exit' to quit\n")
 
@@ -455,18 +462,7 @@ def cli(file):
                             f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
                             "Run 'lint' for details.[/yellow]\n"
                         )
-                    # Update completer with any new plugins
-                    commands = [
-                        "plugins",
-                        "query",
-                        "tables",
-                        "reload",
-                        "lint",
-                        "help",
-                        "exit",
-                        "quit",
-                    ] + list(PLUGINS.keys())
-                    session.completer = WordCompleter(commands, ignore_case=True)
+                    session.completer = build_completer(log)
                 except Exception as e:
                     console.print(f"[red]✗[/red] Error reloading file: {e}\n")
 
