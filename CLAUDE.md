@@ -46,6 +46,7 @@ src/ox/
   sql_utils.py  - SQL helper utilities for plugins (parse_plugin_args, plugin_usage, _weight_sql_expr, _time_bin_expr)
   units.py      - Pint unit registry (shared instance)
   cli.py        - Click CLI with interactive REPL (run, query, tables, lint, reload)
+  completion.py - REPL tab completion: movement_names(log), ReplCompleter
   lsp.py        - LSP server: diagnostics, movement completion, comment folding
   lint.py       - Parse error collection for CLI lint command and LSP
   grammar.py    - LANGUAGE: the compiled tree-sitter grammar (C extension ox._grammar, from _grammar.c)
@@ -67,6 +68,7 @@ tests/
   test_notes.py      - Note parsing, session notes, DB population
   test_srpe.py       - sRPE plugin (training load, ACWR, monotony, strain)
   test_lint.py       - Diagnostic collection
+  test_completion.py - REPL tab completion (commands, flags, movement names, queries)
   smoke.py           - Installed-package smoke test (run by cibuildwheel and the release workflow, not pytest)
 tree-sitter-ox/
   grammar.js  - Tree-sitter grammar definition for .ox format; `tree-sitter generate` writes src/parser.c
@@ -175,5 +177,6 @@ training that happened.
 - Tree-sitter nodes are processed in `parse.py`; data structures live in `data.py` — keep this separation
 - All analysis features are plugins (builtins or user-defined). Plugins receive `PluginContext(db, log)` and return `TableResult`, `TextResult`, or `PlotResult`
 - Plugin param `name`s are Python identifiers; the CLI flag is the name with `_` → `-` (`start_date` → `--start-date`, the only accepted spelling)
+- A plugin param named `movement` or `movements` gets movement-name completion in the REPL (`ox.completion`)
 - CLI commands: `plugins` to list available plugins, `query` for raw SQL. Plugins are invoked by name directly (e.g. `volume -m squat`)
 

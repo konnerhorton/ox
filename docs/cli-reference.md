@@ -85,10 +85,28 @@ Exit the REPL. `Ctrl+D` also works.
 
 | Key | Action |
 |---|---|
-| Tab | Auto-complete commands |
+| Tab | Auto-complete commands, plugin flags, movement names and stored queries |
 | Ctrl+C | Cancel current input |
 | Ctrl+D | Exit |
 | Up/Down | Command history |
+
+### Tab completion
+
+What Tab offers depends on where the cursor is:
+
+- **First word:** commands and plugin names.
+- **After a plugin name, a word starting with `-`:** the plugin's long flags (`--movement`, `--bin`, …),
+  leaving out flags already on the line. Each shows `required` or its default beside it.
+- **After a movement flag** (`-m`, `--movement`, `--movements`): movement names from the loaded log.
+  In a comma-separated list (`wendler531 -m squat:315,dead`), the item after the last comma completes.
+- **After `query`:** stored query names.
+
+Movement names come from every session and `@movement` definition in the log, most recently trained
+first, with the date last trained beside each. Names that only appear in planned sessions (`planned`)
+or `@movement` blocks (`defined`) follow, alphabetically. Names that only appear in `@template` blocks
+aren't offered. `reload` picks up new movements, plugins and queries.
+
+Matching is a case-insensitive prefix match. Completion only suggests: any name can still be typed.
 
 ## CLI Options
 

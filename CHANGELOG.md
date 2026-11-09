@@ -1,5 +1,9 @@
 # Unreleased
 
+- **Tab completion knows where you are in the REPL.** After a plugin name, `-<Tab>` offers its
+  flags (with `required` or the default beside each); after `-m`/`--movement` it offers movement
+  names from your log, most recently trained first; after `query` it offers stored query names.
+  Tab no longer offers command names in the middle of a line.
 - **Multi-word plugin flags use hyphens.** A param named `start_date` is passed as `--start-date`,
   as `docs/plugins.md` already showed. The underscore spellings (`--start_date`, `--y_step`,
   `--x_scale`) no longer work; the error suggests the hyphenated flag.

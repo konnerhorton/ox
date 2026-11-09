@@ -30,8 +30,10 @@ renumbered. When an item is resolved, move any decision into `SPEC.md` (or the u
   receives the append when the log uses `@include` (the root file passed to `ox`, or a configurable
   target); validating the new block by parsing it before writing, then reloading. Prefill works at
   two levels: a movement's line gets its last recorded weight/reps, and a session name already used
-  prefills every movement from that session's most recent instance. Its UI depends on the REPL
-  overhaul (dashboard-style REPL), so settle that first.
+  prefills every movement from that session's most recent instance. It doesn't wait for the REPL
+  overhaul: it is the `repl-add` unit, guided prompts in the plain prompt with both prefill levels
+  (`docs/work/repl-completion.md`, intent decisions 2–3). Movement completion is done
+  (`ox.completion.movement_names`).
 
 - [ ] **#11 Syntax highlighting for nano and micro.** Ship `editors/nano/ox.nanorc` and
   `editors/micro/ox.yaml` with install steps in `docs/editor-support.md`. Both are regex-based, so
