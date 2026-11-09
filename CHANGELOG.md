@@ -1,5 +1,11 @@
 # Unreleased
 
+- **`add` logs a session from the REPL.** Type `add` at the `ox>` prompt and answer one prompt per
+  field: date (today by default), name, format, one line per movement, sRPE and note. Give a
+  session name you've used before and its last format and movements come back prefilled, ready to
+  edit; on a new movement line, `sq<Tab>` fills in `squat: 185lb 5x5` from the last time you did
+  it. Each line is checked as you type it, and you see the session before it's written. `add` only
+  appends to the end of the file you opened, then reloads the log.
 - **Tab completion knows where you are in the REPL.** After a plugin name, `-<Tab>` offers its
   flags (with `required` or the default beside each); after `-m`/`--movement` it offers movement
   names from your log, most recently trained first; after `query` it offers stored query names.

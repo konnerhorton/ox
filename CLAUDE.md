@@ -45,8 +45,9 @@ src/ox/
   plugins.py    - Plugin discovery, registry, PluginContext, result types (TableResult, TextResult, PlotResult)
   sql_utils.py  - SQL helper utilities for plugins (parse_plugin_args, plugin_usage, _weight_sql_expr, _time_bin_expr)
   units.py      - Pint unit registry (shared instance)
-  cli.py        - Click CLI with interactive REPL (run, query, tables, lint, reload)
-  completion.py - REPL tab completion: movement_names(log), ReplCompleter
+  cli.py        - Click CLI with interactive REPL (add, run, query, tables, lint, reload)
+  add.py        - REPL `add`: prefill lookups, line checks, append-only write, run_add driver
+  completion.py - REPL tab completion: movement_names(log), ReplCompleter, add's line/name completers
   lsp.py        - LSP server: diagnostics, movement completion, comment folding
   lint.py       - Parse error collection for CLI lint command and LSP
   grammar.py    - LANGUAGE: the compiled tree-sitter grammar (C extension ox._grammar, from _grammar.c)
@@ -69,6 +70,8 @@ tests/
   test_srpe.py       - sRPE plugin (training load, ACWR, monotony, strain)
   test_lint.py       - Diagnostic collection
   test_completion.py - REPL tab completion (commands, flags, movement names, queries)
+  test_add.py        - add: lookups, line checks, append, run_add with a scripted ask
+  test_cli_add.py    - add end to end through prompt_toolkit pipe input (paced: completion is async)
   smoke.py           - Installed-package smoke test (run by cibuildwheel and the release workflow, not pytest)
 tree-sitter-ox/
   grammar.js  - Tree-sitter grammar definition for .ox format; `tree-sitter generate` writes src/parser.c
