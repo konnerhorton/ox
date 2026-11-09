@@ -62,3 +62,69 @@ part is a reusable piece that `add` uses to complete the start of each movement 
 4. 🟡 **Shared source of names.** One function, used by both the REPL and the LSP, that returns
    movement names from a parsed `TrainingLog`. The LSP could keep its tree walk (it completes
    in files that may not parse fully), so this may stay REPL-only.
+
+## Spec
+
+### Changes
+- **`src/ox/completion.py` (new):** `movement_names(log)` (the reusable source of names, also for
+  `repl-add`) and `ReplCompleter`, a `prompt_toolkit` `Completer` built from the command list, the
+  plugin registry, movement names and stored query names.
+- **`src/ox/cli.py`:** startup and `reload` build the completer with one helper in place of the
+  two copies of the command list; the flat `WordCompleter` is removed.
+- **`docs/cli-reference.md`:** the Tab row and a short "Tab completion" section say what completes where.
+
+### Decisions
+1. **Movement params are named `movement` or `movements`.** These are the three current ones:
+   `volume` and `e1rm` (`movement`), `wendler531` (`movements`, e.g. `squat:315,deadlift:405`).
+   The value after `-m`/`--movement`/`--movements` (whichever flags the param has) completes movement names. A
+   `"complete"` key in the param dict was considered and rejected for now: it needs every plugin to
+   change, and the naming convention covers every case today. (Resolves open question 1.)
+2. **Lists are completed per item.** In a movement value, only the text after the last `,` is
+   completed, so `-m squat:315,dead<Tab>` offers `deadlift`. If that text contains `:` (a value is
+   being typed), nothing is offered.
+3. **Names come from the parsed log:** movements in every session (completed, planned, single-line
+   entries) and `@movement` definitions. `@template` blocks are not in `TrainingLog` (SPEC "What's
+   incomplete"), so names that appear only in templates aren't offered. The LSP keeps its own
+   tree walk because it has to work on files that don't parse fully. (Resolves open question 4: REPL only.)
+4. **Order: most recently trained first.** Names are ordered by their latest *completed* session
+   date, newest first. Names with no completed session (only planned, or only defined) follow,
+   alphabetically. Ties are broken by name. Planned dates don't count, because a future-dated plan
+   would otherwise always come first. (Resolves open question 2.)
+5. **What completes where.** The cursor's position is worked out from the text before it, split on
+   whitespace:
+   - First word: commands and plugin names, the same list as today.
+   - After a plugin name, a word starting with `-`: that plugin's long flags (`--` + name with
+     `_` → `-`), skipping flags already used on the line. Short flags aren't offered; they are one
+     letter and shown in `plugins`.
+   - The word right after one of a plugin's movement flags (short or long): movement names (D1, D2).
+   - The second word after `query`: stored query names. (Resolves open question 3.)
+   - Anywhere else: nothing. This is a change: today the flat completer offers command names in
+     any position, e.g. after `volume -m`.
+6. **Matching is a case-insensitive prefix match**, as now. An empty prefix offers everything that
+   fits that position.
+7. **Completions carry a short note** (`display_meta`, shown dim beside each suggestion in the menu):
+   - movement: date last trained, `planned` (no completed session), or `defined` (only an `@movement` block)
+   - flag: `required` or `default: <value>`
+   - stored query: nothing
+8. **Rebuilt on `reload`**, so new movements, plugins and queries show up.
+
+### Acceptance criteria
+Fixture: squat completed on 2025-01-01 and 2025-01-08, bench-press completed on 2025-01-03, a
+planned session on 2025-02-01 with deadlift and squat, an `@movement front-squat` block with no
+sessions, and a stored query `recent`.
+
+1. **Names and order:** `movement_names(log)` returns `squat, bench-press, deadlift, front-squat`.
+2. **First word:** `vo` completes to `volume`; an empty line offers every command and plugin.
+3. **Flags:** `volume --` offers `--movement`, `--bin`, `--unit`; `volume -m squat --` offers
+   `--bin`, `--unit`. The `--bin` note reads `default: weekly`; `--movement` reads `required`.
+4. **Movement value:** `volume -m ` offers the four names in order (AC 1); `e1rm --movement s`
+   offers `squat`; the notes read `2025-01-08`, `2025-01-03`, `planned`, `defined`.
+5. **Lists:** `wendler531 -m squat:315,de` offers `deadlift`; `wendler531 -m squat:3` offers nothing.
+6. **Queries:** `query r` offers `recent`; `query SELECT * FROM r` offers nothing.
+7. **Nothing elsewhere:** `volume -m squat --bin w`, `tables `, and `bogus -m ` offer nothing.
+8. **User plugins:** a user plugin registered with a `movement` param gets movement completion
+   with no change to the plugin.
+9. **Case:** `volume -m SQ` offers `squat`.
+10. **Reload:** after a movement is added to the file, `reload` makes it completable (checked by
+    building the completer from the reloaded log, as `reload` does).
+11. **No regressions:** existing REPL commands behave as before; full test suite and ruff pass.
