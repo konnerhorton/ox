@@ -6,11 +6,18 @@ injected `ask` function so tests can script the answers.
 """
 
 import re
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 
+from prompt_toolkit.completion import Completer
 from tree_sitter import Parser
 
+from ox.completion import (
+    MovementLineCompleter,
+    SessionNameCompleter,
+    _movement_index,
+)
 from ox.data import Movement, TrainingLog, TrainingSession
 from ox.grammar import LANGUAGE
 from ox.lint import collect_diagnostics
@@ -178,3 +185,113 @@ def append_session(path: Path, text: str) -> None:
         prefix += b"\n"
     with open(path, "ab") as f:
         f.write(prefix + text.encode("utf-8") + b"\n")
+
+
+Ask = Callable[..., str]
+
+MOVEMENT_PROMPT = "- "
+
+
+def _ask_checked(
+    ask: Ask,
+    echo: Callable[[str], None],
+    label: str,
+    check: Callable[[str], str | None],
+    default: str = "",
+    completer: Completer | None = None,
+) -> str:
+    """Ask until the answer is empty or passes `check`; a rejected answer
+    comes back as the next default so it can be fixed rather than retyped."""
+    while True:
+        text = ask(label, default=default, completer=completer).strip()
+        if not text:
+            return ""
+        if (problem := check(text)) is None:
+            return text
+        echo(problem)
+        default = text
+
+
+def run_add(
+    log: TrainingLog,
+    path: Path,
+    ask: Ask,
+    today: date,
+    echo: Callable[[str], None],
+) -> TrainingSession | None:
+    """Prompt for a session, preview it and append it to `path` on confirmation.
+
+    `ask(label, default="", completer=None)` is the only input. Returns the
+    session written, or None if nothing was (nothing to add, declined, or
+    cancelled with Ctrl+C / Ctrl+D). Doesn't reload the log.
+    """
+    try:
+        return _run_add(log, path, ask, today, echo)
+    except (KeyboardInterrupt, EOFError):
+        echo("Cancelled.")
+        return None
+
+
+def _run_add(log, path, ask, today, echo):
+    default = today.isoformat()
+    while True:
+        text = ask("date: ", default=default)
+        try:
+            day = parse_date(text, today)
+            break
+        except ValueError as e:
+            echo(str(e))
+            default = text
+
+    name = ask("name: ", completer=SessionNameCompleter(log)).strip()
+    previous = last_session(log, name) if name else None
+
+    def check(text):
+        return check_line(text, day)
+
+    fmt = ""
+    lines = []
+    if previous is not None:
+        fmt = ask("format: ", default=previous.format or "").strip()
+    echo("Movements: Tab completes a name with its last sets; an empty line ends.")
+    if previous is not None:
+        for movement in previous.movements:
+            line = _ask_checked(
+                ask, echo, MOVEMENT_PROMPT, check, default=prefill_text(movement)
+            )
+            if line:
+                lines.append(line)
+
+    prefills = {n: prefill_text(m) for n, m in last_movements(log).items()}
+    completer = MovementLineCompleter(_movement_index(log), prefills)
+    while line := _ask_checked(ask, echo, MOVEMENT_PROMPT, check, completer=completer):
+        lines.append(line)
+
+    srpe = _ask_checked(ask, echo, "srpe: ", lambda t: check_srpe(t, day))
+    note = _ask_checked(ask, echo, "note: ", check_note)
+
+    try:
+        session = build_session(day, name, fmt, lines, srpe, note)
+    except ValueError as e:
+        echo(f"Not written: {e}")
+        return None
+    if session is None:
+        echo("Nothing to add.")
+        return None
+
+    text = session.to_ox()
+    if (problem := verify(text, session)) is not None:
+        echo(f"Not written: {problem}")
+        return None
+
+    echo("")
+    echo(text)
+    echo("")
+    while True:
+        answer = ask(f"Append to {path}? [Y/n] ").strip().lower()
+        if answer in ("", "y", "yes"):
+            append_session(path, text)
+            return session
+        if answer in ("n", "no"):
+            echo("Not written.")
+            return None

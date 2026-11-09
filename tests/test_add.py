@@ -14,9 +14,11 @@ from ox.add import (
     last_session,
     parse_date,
     prefill_text,
+    run_add,
     verify,
 )
 from ox.cli import parse_file
+from ox.completion import MovementLineCompleter, SessionNameCompleter
 
 ROOT = """\
 @session
@@ -228,3 +230,176 @@ def test_verify_catches_mismatch():
     session = build_session(DAY, "", "", ["squat: 190lb 5x5"], "", "")
     assert verify("2025-03-01 T squat: 195lb 5x5", session) is not None
     assert verify("2025-03-01 T squat: 190lbs 5x5", session) is not None
+
+
+# --- run_add driver (plan step 4) ---
+
+
+class Script:
+    """A scripted `ask`: returns answers in order, raising any exception given."""
+
+    def __init__(self, answers):
+        self.answers = list(answers)
+        self.calls = []  # (label, default, completer)
+        self.echoed = []
+
+    def ask(self, label, default="", completer=None):
+        self.calls.append((label, default, completer))
+        answer = self.answers.pop(0)
+        if isinstance(answer, type) and issubclass(answer, BaseException):
+            raise answer
+        return answer
+
+    def echo(self, text):
+        self.echoed.append(text)
+
+
+def run(log, path, answers, today=DAY):
+    script = Script(answers)
+    result = run_add(log, path, script.ask, today, script.echo)
+    assert script.answers == [], "unused answers"
+    return result, script
+
+
+# AC 1: prompt defaults for a named session
+def test_driver_session_prefill(log, log_path):
+    _, script = run(
+        log,
+        log_path,
+        [
+            "2025-03-02",
+            "Upper Day",
+            "5/3/1 wave",
+            "bench-press: 140lb 5x5",
+            "pullups: BW 3x10",
+            "",
+            "",
+            "",
+            "n",
+        ],
+    )
+    labels_defaults = [(label, default) for label, default, _ in script.calls]
+    assert labels_defaults[:5] == [
+        ("date: ", "2025-03-01"),
+        ("name: ", ""),
+        ("format: ", "5/3/1 wave"),
+        ("- ", "bench-press: 140lb 5x5"),
+        ("- ", "pullups: BW 3x10"),
+    ]
+    assert isinstance(script.calls[1][2], SessionNameCompleter)
+    assert isinstance(script.calls[5][2], MovementLineCompleter)
+
+
+def test_driver_planned_name_no_prefill(log, log_path):
+    _, script = run(log, log_path, ["", "Lower Day", "", "", ""])
+    labels = [label for label, _, _ in script.calls]
+    assert labels == ["date: ", "name: ", "- ", "srpe: ", "note: "]
+    assert script.echoed[-1] == "Nothing to add."
+
+
+# AC 4: single line
+def test_driver_single_line(log, log_path):
+    session, script = run(
+        log, log_path, ["2025-03-01", "", "squat: 190lb 5x5", "", "", "", ""]
+    )
+    assert session is not None
+    assert log_path.read_bytes() == (
+        ROOT.encode() + b"\n2025-03-01 T squat: 190lb 5x5\n"
+    )
+    assert "2025-03-01 T squat: 190lb 5x5" in script.echoed
+    assert script.calls[-1][0] == f"Append to {log_path}? [Y/n] "
+
+
+# AC 5: block
+def test_driver_block(log, log_path):
+    run(
+        log,
+        log_path,
+        [
+            "2025-03-02",
+            "Upper Day",
+            "5/3/1 wave",
+            "bench-press: 140lb 5x5",
+            "",  # pullups cleared
+            "dips: BW 3x10",
+            "",
+            '7 PT1H "felt strong"',
+            "deload",
+            "y",
+        ],
+    )
+    assert log_path.read_bytes() == ROOT.encode() + b"\n" + AC5_TEXT.encode() + b"\n"
+
+
+# AC 6: effort only, and nothing to add
+def test_driver_effort_only(log, log_path):
+    run(log, log_path, ["2025-03-03", "", "", "6 PT1H30M", "", ""])
+    assert log_path.read_text().endswith(
+        "\n\n@session\ndate: 2025-03-03\nsrpe: 6 PT1H30M\n@end\n"
+    )
+
+
+def test_driver_nothing_to_add(log, log_path):
+    before = log_path.read_bytes()
+    result, script = run(log, log_path, ["", "", "", "", ""])
+    assert result is None
+    assert script.echoed[-1] == "Nothing to add."
+    assert log_path.read_bytes() == before
+
+
+# AC 7: re-prompt keeps the rejected text
+def test_driver_reprompts(log, log_path):
+    _, script = run(
+        log,
+        log_path,
+        [
+            "2025-02-30",
+            "2025-03-01",
+            "",
+            "squat: 185lbs 5x5",
+            "squat: 185lb 5x5",
+            "",
+            "5.5 PT1H",
+            "5 PT1H",
+            'say "hi"',
+            "hi",
+            "n",
+        ],
+    )
+    calls = [(label, default) for label, default, _ in script.calls]
+    assert ("date: ", "2025-02-30") in calls
+    assert ("- ", "squat: 185lbs 5x5") in calls
+    assert ("srpe: ", "5.5 PT1H") in calls
+    assert ("note: ", 'say "hi"') in calls
+    assert "Not a calendar date: 2025-02-30" in script.echoed
+    assert "Unknown unit `lbs`: use `lb`" in script.echoed
+    assert "sRPE rating must be a whole number" in script.echoed
+
+
+# AC 8: empty date uses today
+def test_driver_date_default(log, log_path):
+    session, _ = run(log, log_path, ["", "", "squat: 1lb 1x1", "", "", "", "y"])
+    assert session.date == DAY
+
+
+# AC 10: declined
+def test_driver_declined(log, log_path):
+    before = log_path.read_bytes()
+    result, script = run(log, log_path, ["", "", "squat: 1lb 1x1", "", "", "", "n"])
+    assert result is None
+    assert script.echoed[-1] == "Not written."
+    assert log_path.read_bytes() == before
+
+
+# AC 11: cancelled at each prompt
+FULL = ["2025-03-01", "", "squat: 1lb 1x1", "", "5 PT1H", "", "y"]
+
+
+@pytest.mark.parametrize("exc", [KeyboardInterrupt, EOFError])
+@pytest.mark.parametrize("at", [0, 2, 4, 6])  # date, movement line, srpe, confirm
+def test_driver_cancel(log, log_path, exc, at):
+    before = log_path.read_bytes()
+    script = Script(FULL[:at] + [exc])
+    assert run_add(log, log_path, script.ask, DAY, script.echo) is None
+    assert script.echoed[-1] == "Cancelled."
+    assert log_path.read_bytes() == before
