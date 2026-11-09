@@ -187,3 +187,90 @@ Fixture log (root file, with an `@include` of a second file holding the 2025-01-
 13. **Round trip:** every appended text in ACs 4–6 re-parses to the session that was built (D8).
 14. **Usage:** `add foo` prints `Usage: add` and doesn't prompt.
 15. **No regressions:** existing REPL commands behave as before; full test suite and ruff pass.
+
+## Plan
+
+Six build commits, each with `uv run pytest` and `uv run ruff check src/ tests/` green. Steps 1–5
+run on Opus; step 6 is small enough to finish in the same session rather than switch models.
+Suggested session break after step 3.
+
+Shared test fixture (`tests/test_add.py`): the spec's AC log, written to `tmp_path` as `log.ox`
+with `@include "jan.ox"` holding the 2025-01-03 single-line squat, plus a variant whose last
+bench-press carries a note (AC 2).
+
+### 1. `cli: share one load helper between startup and reload` (Opus)
+A refactor with no behavior change, so `add` can reload with the same code (spec D11).
+- `src/ox/cli.py`: `load_log(file) -> tuple[TrainingLog, Connection, PluginContext]` (parse,
+  `create_db`, `load_plugins`) and `print_load_summary(log)` (the `✓ Loaded ...`, user-plugin and
+  parse-error lines). Startup and `reload` both call them; their error handling stays where it is.
+- Tests: existing suite unchanged and green.
+
+### 2. `repl-add: add prefill lookups, line checks and append` (Opus)
+The pure pieces of `src/ox/add.py`, no prompting.
+- `last_session(log, name) -> TrainingSession | None` (D2: completed, exact name, latest date,
+  later in `log.sessions` on a tie).
+- `last_movements(log) -> dict[str, Movement]` (D3, same rule per movement name) and
+  `prefill_text(movement) -> str` (`Movement(name, sets, None).to_ox()`).
+- `parse_date(text, today) -> date` (empty → today; raises `ValueError` with a message otherwise).
+- `check_line(text, date) -> str | None` (D5: wraps the line in a minimal block, returns the
+  first `collect_diagnostics` message or `None`); `check_srpe(text, date)` wraps as `srpe: <text>`;
+  `check_note(text)` rejects `"`.
+- `build_session(date, name, format, lines, srpe, note) -> TrainingSession | None`: parses the
+  minimal block holding everything and returns its session, `None` when there are no movements,
+  sRPE or note (D7). Building through the parser means movement lines become `Movement`s with
+  the same code that reads the log.
+- `verify(text, session) -> str | None` (D8: parses `text` alone, needs no diagnostics and exactly
+  one session equal to `session`).
+- `append_session(path, text)` (D10: reads only the last byte, then opens in `"a"` mode).
+- Tests (`tests/test_add.py`): AC 1 and 2 at the lookup level (which instance, which text, note
+  dropped), AC 6 `None` case, AC 7 (each rejection and its message: `lbs` hint, srpe hint, `"`,
+  `2025-02-30`), AC 8 (`parse_date("", today)`), AC 9 (no trailing newline / trailing newline /
+  empty file, byte comparison; included file untouched), AC 13 (`verify` on the AC 4–6 texts).
+
+### 3. `repl-add: add movement-line and session-name completers` (Opus)
+- `src/ox/completion.py`: `MovementLineCompleter(index, prefills)`, where `index` is
+  `_movement_index(log)` and `prefills` maps name → prefill text. With no `:` before the cursor,
+  yields `Completion(prefills.get(name, f"{name}: "), start_position=-len(text_before_cursor),
+  display=name, display_meta=note)` for prefix matches (D4); otherwise nothing.
+  `SessionNameCompleter(log)`: completed names by latest date with the date as note, then
+  planned-only names alphabetically noted `planned` (D6). Both reuse `_match`'s
+  case-insensitive prefix rule.
+- Tests (`tests/test_completion.py`): AC 2 (`sq` → `squat: 185lb 5x5` replacing the whole line,
+  `dead` → `deadlift: `, display is the bare name, nothing after `:`), AC 3.
+
+### 4. `repl-add: add the add driver` (Opus)
+- `src/ox/add.py`: `run_add(log, path, ask, today, echo) -> TrainingSession | None`. `ask(label,
+  default="", completer=None) -> str` is the only input; `echo` prints. Runs the prompts in spec
+  D1's order, re-asks with the text kept (`default=` the rejected text) after a failed check,
+  prints the preview and `Append to <path>? [Y/n]`, appends, and returns the session written (or
+  `None` for `Nothing to add.`, `Not written.`, `Cancelled.`). `KeyboardInterrupt`/`EOFError`
+  from `ask` → `Cancelled.` (D12). Does not reload; the caller does.
+- Tests (`tests/test_add.py`, scripted `ask` that records labels and defaults): AC 1 (prompt
+  defaults for `Upper Day`), AC 4 and AC 5 (exact appended bytes), AC 6 (effort-only block;
+  `Nothing to add.` leaves the file unchanged), AC 7 (re-prompt carries the rejected text as
+  the default), AC 8, AC 10, AC 11 (an interrupt raised at `date`, a movement line, `srpe`,
+  confirm, each with both exceptions; file byte-identical).
+
+### 5. `repl-add: wire add into the REPL` (Opus)
+- `src/ox/cli.py`: `add` in `REPL_COMMANDS` and `show_help`; dispatch calls `run_add` with an
+  `ask` built on a separate `PromptSession` (its own history, so `add` lines don't fill the `ox>`
+  history, and passing `completer=` doesn't replace the `ox>` completer); `add <args>` prints
+  `Usage: add` (D13). On a written session: `load_log` + `print_load_summary`, rebuild the `ox>`
+  completer, print `Added ...` (D11).
+- Tests (`tests/test_cli_add.py`): drive `cli` end to end with `prompt_toolkit`'s
+  `create_pipe_input()` and `DummyOutput` in a `create_app_session`, feeding keystrokes
+  (`\t` for Tab, `\x03` Ctrl+C, `\x04` Ctrl+D). AC 2 end to end (Tab on `sq` writes the prefill
+  line), AC 11 (Ctrl+C and Ctrl+D inside `add`, then a further command still runs), AC 12 (after
+  `add`, a stored-query/`query SELECT` sees the new date and the new movement completes at
+  `volume -m`), AC 14. If pipe input proves unworkable with the module-level `console`, fall back
+  to testing a `handle_add(...)` function extracted from the loop, and note it here.
+
+### 6. `repl-add: document add` (Opus)
+Close-out updates in the same commit.
+- `docs/cli-reference.md`: `add` section (prompts table in user terms, a sample session, Tab
+  prefill, which file it writes to with `@include`, Ctrl+C to cancel).
+- `SPEC.md` "What works today": CLI bullet lists `add`.
+- `CHANGELOG.md` Unreleased: an `add` entry in the user's words.
+- `docs/work/TODO.md`: delete #10.
+- `CLAUDE.md`: `add.py` and `test_add.py`/`test_cli_add.py` in the project structure.
+- Tests: AC 15 (full suite and ruff).
