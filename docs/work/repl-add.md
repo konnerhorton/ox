@@ -72,3 +72,118 @@ already used prefills every movement from that session's most recent instance.
 7. **Appending:** if the file doesn't end with a newline, one is added first; then a blank line,
    then the session. After writing, the log is reloaded as `reload` does, so the new session is
    immediately in queries and completion.
+
+## Spec
+
+### Changes
+- **`src/ox/add.py` (new):** the `add` flow. Pure pieces that tests call directly (prefill lookups,
+  line validation, building and appending the text) and one driver that runs the prompts through
+  an injected prompt function, so tests can script the answers.
+- **`src/ox/completion.py`:** a completer for movement lines and one for session names, built from
+  the same index as `ReplCompleter`.
+- **`src/ox/cli.py`:** `add` in `REPL_COMMANDS` and `help`; the REPL calls the driver, then reloads.
+  Startup and `reload` share one load helper so `add` can reuse it.
+- **`docs/cli-reference.md`:** an `add` section with an example session.
+- **`SPEC.md`** "What works today": the CLI bullet lists `add`.
+
+### Decisions
+1. **Prompts, in order.** Each is one line, edited with the usual prompt_toolkit keys.
+
+   | Prompt | Default (prefilled, editable) | Empty input | Checked |
+   |---|---|---|---|
+   | `date` | today, ISO | today | `YYYY-MM-DD`, a real calendar date. Past and future both accepted |
+   | `name` | none | ad hoc session | none (the grammar takes any text up to the newline) |
+   | `format` | the named session's last `format:` | no format | none |
+   | movement lines (prefilled) | one per movement of the named session's last instance | drops that movement | parsed (D5) |
+   | movement lines (new) | none | ends the movements | parsed (D5) |
+   | `srpe` | none | no sRPE | parsed as `srpe: <text>` (D5) |
+   | `note` | none | no note | must not contain `"` |
+
+   The `srpe` prompt takes the line without its `srpe:` keyword (`7 PT1H "felt strong"`); the
+   `note` prompt takes the text without quotes, and `add` writes the quotes.
+2. **The named session's last instance** is the completed session with exactly that name (case
+   matters, as in the log) and the latest date; on a tie, the one later in the log. If there is
+   none, `format` and the prefilled movement lines are skipped and new movement lines follow `name`.
+3. **A movement's last instance** is the same rule applied to movements in completed sessions:
+   latest date, later in the log on a tie. Its prefill text is `Movement.to_ox()` of that
+   movement with the note removed. A prefilled session line uses the same rule but takes its
+   movements from the named session (D2), not from each movement's own latest instance, so the
+   session comes back as you last did it.
+4. **Movement-line completion.** While the cursor is in the name part of a movement line (no `:`
+   typed yet), Tab offers movement names in `_movement_index` order with the same notes
+   (`repl-completion` spec D4, D7). Accepting a name with a completed instance replaces the
+   whole line with its prefill text (D3), e.g. `sq` → `squat: 185lb 5x5`; a name with none
+   (`planned`, `defined`) inserts `name: `. After the `:`, nothing is offered. The menu shows the
+   bare name, not the inserted line.
+5. **A line is checked by parsing it inside a minimal block**
+   (`@session` / `date: <date>` / line / `@end`) with the grammar. If `collect_diagnostics`
+   reports anything, its first message is shown (so the lint hints such as `135lbs` → `135lb`
+   appear here too) and the same prompt comes back with the text kept.
+6. **Session-name completion.** At `name`, Tab offers names of completed sessions, latest first,
+   with the date as the note; then names used only in planned sessions, alphabetically, noted
+   `planned`. A planned-only name gets no prefill (D2).
+7. **What gets written** is `TrainingSession(...).to_ox()` with `completed=True`. One movement with
+   no name, format, sRPE or note becomes a single-line entry; anything else is a block. A session
+   with no movements is written if it has an sRPE or note (a game or a class logged by effort
+   only). With no movements, sRPE or note, `add` prints `Nothing to add.` and writes nothing.
+8. **Before writing**, the text is parsed on its own. It must give no diagnostics and exactly one
+   session equal to the one built; otherwise `add` prints the problem and writes nothing (a guard
+   against a `to_ox()` bug, not something a user should hit).
+9. **Preview and confirm.** The text is printed as it will be written, then
+   `Append to <path>? [Y/n]`. Enter or `y` writes; `n` prints `Not written.`
+10. **Appending** opens the root file (intent decision 1) in append mode. If the file is non-empty
+    and doesn't end with `\n`, a `\n` is written first; if non-empty, a blank line follows; then the
+    session text and a final `\n`. Nothing before the end of the file changes.
+11. **After writing**, the log is reloaded exactly as `reload` does (parse, DB, plugins,
+    completer, summary line), and `add` prints `Added <date> <name or "session"> to <path>.`
+12. **Cancelling.** Ctrl+C or Ctrl+D at any prompt ends `add` with `Cancelled.`, writes nothing,
+    and returns to `ox>` (Ctrl+D doesn't exit the REPL here).
+13. **`add` takes no arguments.** `add <anything>` prints `Usage: add` and does nothing.
+
+### Acceptance criteria
+Fixture log (root file, with an `@include` of a second file holding the 2025-01-03 session):
+- 2025-01-01 `Upper Day`, `format: 5/3/1 wave`: `bench-press: 135lb 5x5 "easy"`, `pullups: BW 3x8`
+- 2025-01-03 single-line `squat: 185lb 5x5`
+- 2025-01-08 `Upper Day`, `format: 5/3/1 wave`: `bench-press: 140lb 5x5`, `pullups: BW 3x10`
+- 2025-02-01 planned `Lower Day`: `squat: 200lb 5x5`, `deadlift: 225lb 1x5`
+
+1. **Session prefill:** name `Upper Day` prefills `format` with `5/3/1 wave` and offers
+   `bench-press: 140lb 5x5` then `pullups: BW 3x10` (2025-01-08, not 2025-01-01).
+2. **Movement prefill:** on a new movement line, completing `sq` replaces the line with
+   `squat: 185lb 5x5` (from the included file); completing `bench` gives `bench-press: 140lb 5x5`;
+   completing `dead` inserts `deadlift: ` (planned only). Notes are dropped: a log whose last bench
+   is `bench-press: 135lb 5x5 "easy"` prefills `bench-press: 135lb 5x5`.
+3. **Session-name completion:** `U` offers `Upper Day` (note `2025-01-08`); empty offers
+   `Upper Day` then `Lower Day` (`planned`). `Lower Day` gets no prefill.
+4. **Single line:** date `2025-03-01`, no name, one line `squat: 190lb 5x5`, no sRPE or note →
+   appends `2025-03-01 T squat: 190lb 5x5`.
+5. **Block:** date `2025-03-02`, `Upper Day`, prefills kept except pullups cleared, new line
+   `dips: BW 3x10`, sRPE `7 PT1H "felt strong"`, note `deload` → appends
+   ```
+   @session
+   date: 2025-03-02
+   name: Upper Day
+   format: 5/3/1 wave
+   srpe: 7 PT1H "felt strong"
+   note: "deload"
+   bench-press: 140lb 5x5
+   dips: BW 3x10
+   @end
+   ```
+6. **Effort-only session:** no movements, sRPE `6 PT1H30M` → a block with `date:` and `srpe:`.
+   No movements, sRPE or note → `Nothing to add.`, file unchanged.
+7. **Line validation:** `squat: 185lbs 5x5` is rejected with the lint hint for `lbs` and
+   re-prompted with the text kept; `5.5 PT1H` at `srpe` is rejected with the srpe hint; a note
+   containing `"` is rejected; `2025-02-30` at `date` is rejected.
+8. **Date default:** empty `date` uses today (the driver takes `today` as a parameter for tests).
+9. **Append only:** for a root file without a trailing newline, and for one with, the result is the
+   original bytes unchanged, then `\n` if needed, a blank line, the session and `\n`. An empty file
+   gets just the session and `\n`. The included file is never touched.
+10. **Confirm:** `n` leaves the file byte-identical and prints `Not written.`
+11. **Cancel:** Ctrl+C or Ctrl+D at each prompt (`date`, a movement line, `srpe`, confirm) leaves
+    the file byte-identical, prints `Cancelled.`, and the REPL keeps running.
+12. **Reload:** after `add`, `query SELECT ...` sees the new session and `volume -m <new movement>`
+    and movement completion know a movement first logged by `add`.
+13. **Round trip:** every appended text in ACs 4–6 re-parses to the session that was built (D8).
+14. **Usage:** `add foo` prints `Usage: add` and doesn't prompt.
+15. **No regressions:** existing REPL commands behave as before; full test suite and ruff pass.
