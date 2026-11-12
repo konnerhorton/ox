@@ -1,6 +1,7 @@
 """Command-line interface for ox."""
 
 import sqlite3
+from datetime import date
 from importlib.metadata import version as _pkg_version
 
 import click
@@ -10,7 +11,9 @@ from rich.console import Console
 from rich import box
 from rich.table import Table
 from prompt_toolkit import PromptSession
+from prompt_toolkit.key_binding import KeyBindings
 
+from ox.add import run_add
 from ox.parse import process_include_directive, process_plugin_directive, process_node
 from ox.data import (
     Diagnostic,
@@ -41,6 +44,7 @@ console = Console()
 DEFAULT_TABLE_BOX = box.SIMPLE
 
 REPL_COMMANDS = [
+    "add",
     "plugins",
     "query",
     "tables",
@@ -226,9 +230,66 @@ def parse_file(file_path: Path) -> TrainingLog:
     )
 
 
+def load_log(file: Path) -> tuple[TrainingLog, sqlite3.Connection, PluginContext]:
+    """Parse the log, build its database and load its plugins."""
+    log = parse_file(file)
+    db = create_db(log)
+    load_plugins(log, file)
+    return log, db, PluginContext(db=db, log=log)
+
+
+def print_load_summary(log: TrainingLog) -> None:
+    """Print the counts, user plugins and parse-error warning after a load."""
+    console.print(
+        f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
+        f"{len(log.planned_sessions)} planned sessions, "
+        f"{len(log.weigh_ins)} weigh-in(s)"
+    )
+    if USER_PLUGINS:
+        console.print(
+            f"[green]✓[/green] Loaded user plugins: {', '.join(sorted(USER_PLUGINS))}\n"
+        )
+    else:
+        console.print()
+    if log.diagnostics:
+        console.print(
+            f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
+            "Run 'lint' for details.[/yellow]\n"
+        )
+
+
+def make_add_ask(session: PromptSession):
+    """The `ask` function `run_add` prompts through, on its own PromptSession."""
+
+    def ask(label: str, default: str = "", completer=None) -> str:
+        session.completer = completer
+        return session.prompt(label, default=default)
+
+    return ask
+
+
+def make_add_session() -> PromptSession:
+    """A prompt session for `add`: its own history, and Ctrl+D always cancels,
+    even on a prefilled line (where it would otherwise delete a character)."""
+    keys = KeyBindings()
+
+    @keys.add("c-d")
+    def _(event):
+        event.app.exit(exception=EOFError, style="class:exiting")
+
+    return PromptSession(key_bindings=keys, complete_while_typing=False)
+
+
+def _echo(text: str) -> None:
+    console.print(text, markup=False, highlight=False)
+
+
 def show_help():
     """Display help message with available commands."""
     console.print("\n[bold cyan]Available Commands:[/bold cyan]")
+    console.print(
+        "  [green]add[/green]                - Add a session to the end of the log file"
+    )
     console.print("  [green]plugins[/green]            - List available plugins")
     console.print(
         "  [green]<plugin>[/green] [ARGS]    - Run a plugin by name (e.g. [green]volume -m squat[/green])"
@@ -354,31 +415,14 @@ def cli(file):
     # Parse the file once
     try:
         console.print(f"[cyan]Loading {file}...[/cyan]")
-        log = parse_file(file)
-        db = create_db(log)
-        load_plugins(log, file)
-        ctx = PluginContext(db=db, log=log)
-        console.print(
-            f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
-            f"{len(log.planned_sessions)} planned sessions, "
-            f"{len(log.weigh_ins)} weigh-in(s)"
-        )
-        if USER_PLUGINS:
-            console.print(
-                f"[green]✓[/green] Loaded user plugins: {', '.join(sorted(USER_PLUGINS))}\n"
-            )
-        else:
-            console.print()
-        if log.diagnostics:
-            console.print(
-                f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
-                "Run 'lint' for details.[/yellow]\n"
-            )
+        log, db, ctx = load_log(file)
+        print_load_summary(log)
     except Exception as e:
         console.print(f"[red]✗[/red] Error loading file: {e}", style="red")
         raise click.Abort()
 
     session = PromptSession(completer=build_completer(log))
+    add_session = make_add_session()
 
     console.print("Type 'help' for commands, 'exit' to quit\n")
 
@@ -435,33 +479,40 @@ def cli(file):
                 else:
                     show_query(db, args)
 
+            elif command == "add":
+                if args:
+                    console.print("[yellow]Usage: add[/yellow]")
+                    continue
+                written = run_add(
+                    log, file, make_add_ask(add_session), date.today(), _echo
+                )
+                if written is None:
+                    console.print()
+                    continue
+                try:
+                    new_log, new_db, new_ctx = load_log(file)
+                    db.close()
+                    log, db, ctx = new_log, new_db, new_ctx
+                    print_load_summary(log)
+                    session.completer = build_completer(log)
+                except Exception as e:
+                    console.print(f"[red]✗[/red] Error reloading file: {e}\n")
+                name = written.name or "session"
+                console.print(
+                    f"Added {written.date.isoformat()} {name} to {file}.\n",
+                    markup=False,
+                )
+
             elif command == "tables":
                 show_tables(db, headers="-h" in args.split())
 
             elif command == "reload":
                 try:
                     console.print(f"[cyan]Reloading {file}...[/cyan]")
-                    log = parse_file(file)
+                    new_log, new_db, new_ctx = load_log(file)
                     db.close()
-                    db = create_db(log)
-                    load_plugins(log, file)
-                    ctx = PluginContext(db=db, log=log)
-                    console.print(
-                        f"[green]✓[/green] Loaded {len(log.completed_sessions)} completed, "
-                        f"{len(log.planned_sessions)} planned sessions, "
-                        f"{len(log.weigh_ins)} weigh-in(s)"
-                    )
-                    if USER_PLUGINS:
-                        console.print(
-                            f"[green]✓[/green] Loaded user plugins: {', '.join(sorted(USER_PLUGINS))}"
-                        )
-                    else:
-                        console.print()
-                    if log.diagnostics:
-                        console.print(
-                            f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
-                            "Run 'lint' for details.[/yellow]\n"
-                        )
+                    log, db, ctx = new_log, new_db, new_ctx
+                    print_load_summary(log)
                     session.completer = build_completer(log)
                 except Exception as e:
                     console.print(f"[red]✗[/red] Error reloading file: {e}\n")

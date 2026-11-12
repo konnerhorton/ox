@@ -117,6 +117,62 @@ class ReplCompleter(Completer):
             yield from _match(options, word)
 
 
+class MovementLineCompleter(Completer):
+    """Completer for a movement line at the `add` prompt.
+
+    Before any `:`, offers movement names (as `_movement_index` orders and
+    notes them). Accepting one replaces the whole line with that movement's
+    prefill text, or `name: ` if it has none.
+    """
+
+    def __init__(self, movements: list[tuple[str, str]], prefills: dict[str, str]):
+        self.movements = movements
+        self.prefills = prefills
+
+    def get_completions(self, document: Document, complete_event: CompleteEvent):
+        text = document.text_before_cursor
+        if ":" in text:
+            return
+        low = text.strip().lower()
+        for name, note in self.movements:
+            if name.lower().startswith(low):
+                yield Completion(
+                    self.prefills.get(name, f"{name}: "),
+                    start_position=-len(text),
+                    display=name,
+                    display_meta=note,
+                )
+
+
+def _session_name_index(log: TrainingLog) -> list[tuple[str, str]]:
+    """Session names: completed ones latest first (noted with the date), then
+    names used only in planned sessions, alphabetically (noted `planned`)."""
+    last_done: dict[str, str] = {}
+    planned: set[str] = set()
+    for session in log.sessions:
+        if session.name is None:
+            continue
+        if session.completed:
+            iso = session.date.isoformat()
+            if iso > last_done.get(session.name, ""):
+                last_done[session.name] = iso
+        else:
+            planned.add(session.name)
+    done = sorted(last_done.items(), key=lambda kv: kv[0])
+    done.sort(key=lambda kv: kv[1], reverse=True)
+    return done + [(n, "planned") for n in sorted(planned - last_done.keys())]
+
+
+class SessionNameCompleter(Completer):
+    """Completer for the `name` prompt of `add`: the whole line is the name."""
+
+    def __init__(self, log: TrainingLog):
+        self.names = _session_name_index(log)
+
+    def get_completions(self, document: Document, complete_event: CompleteEvent):
+        yield from _match(self.names, document.text_before_cursor)
+
+
 def _match(options: list[tuple[str, str]], prefix: str):
     low = prefix.lower()
     for text, note in options:

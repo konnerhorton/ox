@@ -24,17 +24,6 @@ renumbered. When an item is resolved, move any decision into `SPEC.md` (or the u
   ```
   Then add Open VSX back to the install section of `docs/editor-support.md`.
 
-- [ ] **#10 `add` command in the REPL.** Append a session to the log from the interactive prompt:
-  date defaults to today, movement names complete from the loaded log, and the file is only ever
-  appended to (never rewritten). This is the REPL's first write path. Open questions: which file
-  receives the append when the log uses `@include` (the root file passed to `ox`, or a configurable
-  target); validating the new block by parsing it before writing, then reloading. Prefill works at
-  two levels: a movement's line gets its last recorded weight/reps, and a session name already used
-  prefills every movement from that session's most recent instance. It doesn't wait for the REPL
-  overhaul: it is the `repl-add` unit, guided prompts in the plain prompt with both prefill levels
-  (`docs/work/repl-completion.md`, intent decisions 2–3). Movement completion is done
-  (`ox.completion.movement_names`).
-
 - [ ] **#11 Syntax highlighting for nano and micro.** Ship `editors/nano/ox.nanorc` and
   `editors/micro/ox.yaml` with install steps in `docs/editor-support.md`. Both are regex-based, so
   they approximate the tree-sitter grammar the way the TextMate grammar does, and each is another

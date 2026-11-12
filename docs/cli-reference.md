@@ -43,6 +43,69 @@ ox> query SELECT * FROM sessions LIMIT 10
 ox> query SELECT movement_name, COUNT(*) FROM movements GROUP BY movement_name
 ```
 
+### `add`
+
+Add a session to the end of the log file, one prompt at a time. Every prompt is an editable line:
+Enter accepts it as shown, and Ctrl+C or Ctrl+D cancels the whole `add` with nothing written.
+
+| Prompt | Starts with | Leave it empty to |
+|---|---|---|
+| `date` | today | use today. Any `YYYY-MM-DD` date, past or future |
+| `name` | nothing; Tab offers session names from the log | log an ad hoc session |
+| `format` | the format from the last time you did that session | leave it out |
+| `-` (one per movement) | each movement from the last time you did that session | drop that movement |
+| `-` (new movements) | nothing; Tab completes a movement with its last sets | finish the movements |
+| `srpe` | nothing. Type `<rating> <duration> ["note"]`, e.g. `7 PT1H` | leave it out |
+| `note` | nothing. Type the text without quotes | leave it out |
+
+`format` and the prefilled movements appear only when the name matches a session you've completed
+before, using its most recent instance.
+
+On a movement line, Tab completes the movement name and fills in the rest of the line from the
+last time you did it, so `sq<Tab>` becomes `squat: 185lb 5x5`, ready to edit. The note from that
+day isn't copied. A movement you've only planned completes to just its name, `deadlift: `.
+
+Each line is checked as you enter it. A line with a mistake is reported with the same message
+`lint` gives, and the prompt comes back with your text so you can fix it:
+
+```
+ox> add
+date: 2025-03-02
+name: Upper Day
+format: 5/3/1 wave
+Movements: Tab completes a name with its last sets; an empty line ends.
+- bench-press: 140lb 5x5
+- pullups: BW 3x10
+- dips: BW 3x10lbs
+Unknown unit `lbs`: use `lb`
+- dips: BW 3x10
+-
+srpe: 7 PT1H "felt strong"
+note: deload
+
+@session
+date: 2025-03-02
+name: Upper Day
+format: 5/3/1 wave
+srpe: 7 PT1H "felt strong"
+note: "deload"
+bench-press: 140lb 5x5
+pullups: BW 3x10
+dips: BW 3x10
+@end
+
+Append to training.ox? [Y/n]
+```
+
+`add` shows the session as it will be written, then asks before writing. A lone movement with no
+name, format, sRPE or note is written as a single line (`2025-03-02 T squat: 190lb 5x5`); anything
+else is a `@session` block. A session with no movements is fine if it has an sRPE or note, e.g. a
+class logged by effort only.
+
+`add` only ever appends: it adds a blank line and the session at the end of the file, and leaves
+everything before it untouched. It writes to the file you opened with `ox`, even when that file
+`@include`s others. The log then reloads, so queries and completion see the new session at once.
+
 ### `tables [-h]`
 
 List database tables and views. Use `-h` to show column details.
@@ -86,8 +149,8 @@ Exit the REPL. `Ctrl+D` also works.
 | Key | Action |
 |---|---|
 | Tab | Auto-complete commands, plugin flags, movement names and stored queries |
-| Ctrl+C | Cancel current input |
-| Ctrl+D | Exit |
+| Ctrl+C | Cancel current input (inside `add`, cancel the whole `add`) |
+| Ctrl+D | Exit (inside `add`, cancel the whole `add`) |
 | Up/Down | Command history |
 
 ### Tab completion
