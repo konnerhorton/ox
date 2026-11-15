@@ -25,6 +25,10 @@ Uses a custom tree-sitter grammar to parse `.ox` log files into structured data 
   (`/usr/share/code/resources/app/extensions/theme-defaults/themes/`) resolves them, not from
   memory. VS Code's defaults are now Dark 2026 / Light 2026, and `keyword.operator` is uncolored
   in all of them.
+- The micro plugin (`editors/micro`) likewise ships no colorscheme. Its `syntax/ox.yaml` uses only groups that
+  micro's built-in colorschemes define, checked against the `color-link` lines in the binary
+  (`strings /usr/bin/micro | grep '^color-link'`). RE2 takes the first matching alternative, not the longest,
+  so put longer alternatives (progressive weights) first.
 
 ## Commands
 
@@ -78,6 +82,7 @@ tree-sitter-ox/
 setup.py      - Builds ox._grammar from tree-sitter-ox/src/parser.c (metadata lives in pyproject.toml)
 editors/
   vscode/     - VSCode extension for .ox syntax highlighting
+  micro/      - micro editor plugin for .ox syntax highlighting
 examples/
   plugins/            - Example plugin scripts (wendler531.py)
   plugin_template.py  - Template for writing user plugins
