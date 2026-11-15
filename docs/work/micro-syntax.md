@@ -177,3 +177,61 @@ screen, and the ANSI color codes are compared per token.
 - `docs/work/TODO.md`: reword #11 to cover nano only. Add items for installing through ox (with the three command
   options), lint on save, and listing in micro's plugin channel.
 - `CHANGELOG.md` Unreleased: the micro plugin.
+
+## Plan
+
+Two build commits, both on Opus, so the build fits in one session. Step 1 is regex work judged against the screen.
+Step 2 is short, and it carries the close-out, which needs Opus anyway.
+
+### Verification harness (scratchpad, not committed)
+A fresh session has to recreate this, since the scratchpad doesn't carry over.
+- `MICRO_CONFIG_HOME=$SCRATCH/mcfg`. Copy `editors/micro` to `$SCRATCH/mcfg/plug/ox` (use `cp -r`, not a symlink, so
+  AC 7 tests what the docs say). Never touch `~/.config/micro`.
+- `cases.ox` in the scratchpad holds one line for each row of the spec's color group table and each example in "How
+  the order resolves", inside the right blocks: a single-line `T` entry, a weigh-in with `T06:30` and a scale, a
+  `note` with a colon in its string, a `query`, and a session with `date:`, `name: 5x5 Day`, `completed: false`,
+  `format: 5/3/1 wave`, `srpe: 5 PT45M "note"`, `note:`, plus items with `BW`, `24kg+32kg`, `160/185/210lb`,
+  `BW/25lb`, `5x5`, `5/5/5`, `PT30S/PT25S`, `100/200/400m` and `5km`. Also `@movement squat` with `equipment:`,
+  `tags:` and a `note:` containing `5x5`, a `@template`, `@include`, `@plugin`, and top-level and indented comments.
+- `check.py` (run with `python3 -I`) starts micro in a detached tmux pane:
+  `tmux new-session -d -x 160 -y 60 -e MICRO_CONFIG_HOME=... -e COLORTERM=truecolor "micro <file>"`. It waits until
+  the status line shows the filetype, then runs `tmux capture-pane -e -p` and parses the SGR codes into a color per
+  character. For each case it prints each token with its foreground and the expected group's color from the spec's
+  resolved colors table, and flags mismatches. If tmux reduces the colors to 256 (`38;5;n`), compare against the
+  nearest xterm-256 color of each hex instead.
+- Kill the tmux session after each capture.
+
+### Step 1: `micro-syntax: add the micro plugin with syntax highlighting` (Opus)
+Files: `editors/micro/ox.lua`, `editors/micro/syntax/ox.yaml`, `editors/micro/help/ox.md`,
+`editors/micro/repo.json`.
+- `ox.lua`: `VERSION = "0.1.0"`. `preinit()` calls `config.AddRuntimeFile("ox", config.RTSyntax,
+  "syntax/ox.yaml")` and `config.AddRuntimeFile("ox", config.RTHelp, "help/ox.md")`.
+- `ox.yaml`: rules 1–17 in order, with the weight, distance and duration regexes copied from `grammar.js` (there's
+  a comment above each saying so, to keep them in step).
+- Resolve the 🟡 decisions as the harness shows them. Decision 1: if `preinit()` fails AC 1, switch to `init()`
+  plus `config.Reload()`. Decision 5: if `default` isn't accepted as a group, drop rule 14. Colorscheme identity:
+  if the screen doesn't match the resolved colors table, correct the table. Record any change in `## Spec` in this
+  same commit.
+- Proves:
+  - AC 1: `micro examples/example.ox` and a new `new.ox`, with the status line captured.
+  - AC 2: `micro -plugin list` and a clean first frame, with no error in the info bar.
+  - AC 3: `check.py` on `cases.ox` and `examples/example.ox`, with no mismatches.
+  - AC 4: grep the `- group:` keys in `ox.yaml` against the spec table.
+  - AC 5: send `Ctrl-e`, `help ox`, `Enter` through `tmux send-keys`, then capture.
+  - AC 6: open a scratch `.py` file and capture the status line.
+- After the harness passes, look at one full capture of `examples/example.ox` yourself, as a human-facing check.
+
+### Step 2: `micro-syntax: document the micro plugin and close out` (Opus)
+Files: `docs/editor-support.md`, `SPEC.md`, `CLAUDE.md`, `docs/work/TODO.md`, `CHANGELOG.md`.
+- `docs/editor-support.md`: the micro section and the updated Tree-sitter sentence, per `## Spec` → Changes.
+- Close-out, as `## Spec` → Close-out lists:
+  - the micro bullet in `SPEC.md` "What works today";
+  - the colorscheme note in `CLAUDE.md` next to the VSCode one;
+  - TODO #11 reworded to nano only;
+  - new TODO items for installing through ox (the options: `ox --install-micro`, an `ox-editor install micro`
+    script, `ox` as a command group), lint on save, and the micro plugin channel;
+  - a `CHANGELOG.md` Unreleased entry.
+- Proves:
+  - AC 7: wipe `$SCRATCH/mcfg`, follow the doc's install steps exactly, and rerun the AC 1 capture.
+  - AC 8: `git diff --stat main` lists only the expected paths, and `uv run pytest` and
+    `uv run ruff check src/ tests/` pass.
