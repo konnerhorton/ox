@@ -37,10 +37,6 @@ What's built, what's open and what's next: [`STATUS.md`](STATUS.md).
 - LSP completions for session templates
 - Snippets for common entry patterns
 
-### Distribution
-
-- Publish the VSCode extension to Open VSX — see `docs/work/TODO.md` #8
-
 ## Non-Goals
 
 - **Not a workout planner or coach.** Ox records and analyzes. It doesn't prescribe.
