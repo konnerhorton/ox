@@ -1,0 +1,48 @@
+filetype: ox
+
+detect:
+    filename: '\.ox$'
+
+# micro colors the whole match of each rule, and later rules override earlier
+# ones. Go's RE2 has no lookaround and no capture groups, so context comes from
+# `^` anchors and rule order. Keep in step with tree-sitter-ox/grammar.js and
+# editors/vscode/syntaxes/ox.tmLanguage.json.
+rules:
+    # Movement names: in a block, before a colon; in a single-line T entry; after @movement.
+    - special: '^\s*[^\s#@:][^\s:]*:'
+    - special: '^\d{4}-\d{2}-\d{2}\s+T\s+[^\s:]+:'
+    - special: '^\s*@movement\s+[^\s:]+'
+
+    # Entry markers, after a date that opens the line.
+    - statement: '^\d{4}-\d{2}-\d{2}\s+(T|W|note|query)\b'
+
+    - type: '\b\d{4}-\d{2}-\d{2}\b'
+
+    - preproc: '^\s*@(session|movement|template|end|include|plugin)\b'
+
+    # Rep schemes: grammar.js `rep_scheme`.
+    - identifier: '\b\d+x\d+\b'
+    - identifier: '\b\d+(/\d+)+\b'
+
+    # Weights: grammar.js `weight` (progressive, single or combined, BW). RE2 takes the
+    # first alternative that matches, not the longest, so progressive comes first.
+    - constant.number: '\b(((BW|\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)?)/)+(BW|\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))|\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat)((\+\d+(\.\d+)?(g|gram|kg|kilogram|lb|pound|oz|ounce|stone|t|tonne|grain|gr|ct|carat))+)?|BW)\b'
+
+    # Distances: grammar.js `distance` (progressive, single).
+    - constant.number: '\b(((\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi)?)/)+(\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi))|\d+(\.\d+)?(m|meter|metre|km|kilometer|cm|centimeter|mm|millimeter|in|inch|ft|foot|yd|yard|mi|mile|nmi))\b'
+
+    # Durations: grammar.js `duration` (ISO 8601, single or progressive).
+    - constant.number: '\bPT(\d+H(\d+M(\d+(\.\d+)?S)?)?|\d+M(\d+(\.\d+)?S)?|\d+(\.\d+)?S)(/PT(\d+H(\d+M(\d+(\.\d+)?S)?)?|\d+M(\d+(\.\d+)?S)?|\d+(\.\d+)?S))*'
+
+    - constant.number: '^\s*srpe:\s*\d+\b'
+    - constant.bool: '^\s*completed:\s*(true|false)\b'
+
+    # Session names, and free text whose numbers aren't set data.
+    - type: '^\s*name:.*$'
+    - default: '^\s*(format|equipment|tags?|url|note):.*$'
+
+    - statement: '^\s*(date|name|completed|format|srpe|note|equipment|tags?|url):'
+
+    - constant.string: '"[^"]*"'
+
+    - comment: '^\s*#.*$'

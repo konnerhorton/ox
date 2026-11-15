@@ -80,7 +80,7 @@ so context comes from `^` anchors and rule order. The rules appear below in file
 | 5 | Date | `\b\d{4}-\d{2}-\d{2}\b` | `type` |
 | 6 | Block keyword, directive | `^\s*@(session\|movement\|template\|end\|include\|plugin)\b` | `preproc` |
 | 7 | Rep scheme | `\b\d+x\d+\b`, `\b\d+(/\d+)+\b` | `identifier` |
-| 8 | Weight, single, combined, progressive, `BW` | the `grammar.js` `weight` alternatives, wrapped in `\b` | `constant.number` |
+| 8 | Weight, progressive, single, combined, `BW` | the `grammar.js` `weight` alternatives, progressive first, wrapped in `\b` | `constant.number` |
 | 9 | Distance, single, progressive | the `grammar.js` `distance` alternatives, wrapped in `\b` | `constant.number` |
 | 10 | Duration, single, progressive | the `grammar.js` `duration` regex, after `\b` | `constant.number` |
 | 11 | sRPE rating | `^\s*srpe:\s*\d+\b` | `constant.number` |
@@ -104,14 +104,18 @@ How the order resolves the context-dependent cases:
 - `2025-01-10 note "deload: week"`: the colon inside the string can't start an item, since rule 1 needs no
   whitespace before the colon. Rule 16 colors the string.
 - A colon ends item names, so the `:` gets the name's color. The TextMate grammar leaves it plain. This is accepted.
+- `85lb/95lb/110lb`: RE2 takes the first alternative that matches, not the longest the way tree-sitter does, so the
+  progressive weight alternative comes first. Otherwise the single one matches `85lb` and leaves the slashes plain.
+  The `distance` alternatives in `grammar.js` already put progressive first.
+- `note: "Cycle 2 Week 1"`: rule 16 comes after rule 14, so a quoted string in free text keeps the string color.
 
 ### Resolved colors
 
 Colorschemes are read from the `color-link` lines embedded in the micro 2.0.13 binary (`strings /usr/bin/micro`).
 All 25 built-in colorschemes define `comment`, `constant`, `identifier`, `preproc`, `special`, `statement` and
 `type`. `constant.string` is defined in 21 of them, `constant.bool` in 6 and `constant.number` in 5. Where a
-dotted group is missing, micro falls back to `constant`. 🟡 The `default` colorscheme is assumed to be the block
-with a monokai palette on `#282828`, since the blocks in the binary aren't labelled. AC 3 confirms it on screen:
+dotted group is missing, micro falls back to `constant`. The blocks in the binary aren't labelled. The `default`
+colorscheme is the monokai palette on `#282828`, confirmed on screen in truecolor during the build:
 
 | Group | Tokens | Color |
 |---|---|---|
@@ -126,10 +130,11 @@ with a monokai palette on `#282828`, since the blocks in the binary aren't label
 | `constant.string` | quoted strings | `#E6DB74` yellow |
 
 ### Decisions
-1. 🟡 **Register in `preinit()`, not `init()`.** micro calls `init()` after buffers exist, so `micro log.ox` would
+1. **Register in `preinit()`, not `init()`.** micro calls `init()` after buffers exist, so `micro log.ox` would
    open before the syntax file is registered. The built-in `literate` plugin works around this with
    `config.Reload()` and `buf:UpdateRules()`. Registering in `preinit()` should avoid the problem altogether. If
-   the build shows otherwise, the fallback is `init()` plus `config.Reload()`. AC 1 decides.
+   the build shows otherwise, the fallback is `init()` plus `config.Reload()`. The build confirmed it: a file named
+   on the command line is highlighted on the first frame.
 2. **Markers and field keys share `statement`.** Both are the fixed words that give a line its structure, and in
    the default colorscheme `statement` is the strongest color. `keyword`-like categories are what VS Code uses for
    the markers too.
@@ -139,10 +144,10 @@ with a monokai palette on `#282828`, since the blocks in the binary aren't label
    sit next to each other in almost every line, so they need different colors. In the default colorscheme
    `identifier` matches `type`, so reps and dates are both cyan. They never sit next to each other (dates open a
    line, reps sit among the values), so this is accepted.
-5. 🟡 **Free-text values are reset to `default`,** so numbers inside `format:` or a movement's `note:` don't look like
+5. **Free-text values are reset to `default`,** so numbers inside `format:` or a movement's `note:` don't look like
    set data. Without block context, this applies to these keys anywhere, which is harmless, since none of them
-   is a movement name in practice. It assumes micro accepts `default` as a rule group, as it does in colorschemes.
-   If it doesn't, rule 14 is dropped and free text keeps the number colors.
+   is a movement name in practice. The build confirmed that micro accepts `default` as a rule group, rendering it
+   in the colorscheme's default foreground.
 6. **`repo.json` without `Versions`.** micro's docs ask for a `repo.json` in every plugin, but `Versions` needs a
    download URL, which only exists once the plugin is in a channel. That's out of scope.
 7. **The plugin is versioned on its own,** starting at `0.1.0` like the VSCode extension. Whether it follows the
@@ -235,3 +240,13 @@ Files: `docs/editor-support.md`, `SPEC.md`, `CLAUDE.md`, `docs/work/TODO.md`, `C
   - AC 7: wipe `$SCRATCH/mcfg`, follow the doc's install steps exactly, and rerun the AC 1 capture.
   - AC 8: `git diff --stat main` lists only the expected paths, and `uv run pytest` and
     `uv run ruff check src/ tests/` pass.
+
+### Notes from the build
+- micro 2.0.13 renders truecolor only with `MICRO_TRUECOLOR=1`, so pass `-e MICRO_TRUECOLOR=1` to tmux too.
+  `COLORTERM` alone doesn't do it. Without it, tcell's 256-color downsampling doesn't match a plain nearest-color
+  calculation (`#F92672` becomes 161, not 197), so compare exact hex values rather than 256-color indices.
+- Make the pane taller than the file (`-y` set to the line count plus 5), so a single capture covers every line
+  with no scrolling.
+- `check.py`'s oracle doesn't reuse the micro rules. It splits each line into tokens (`"[^"]*"|\S+`), classifies
+  them by line type (comment, directive, dated entry, field key, item), and matches values against the `grammar.js`
+  regexes with `fullmatch`. Text with no color group is plain: `#F8F8F2` in truecolor.
