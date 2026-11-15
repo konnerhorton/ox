@@ -21,34 +21,7 @@ Developers and power users comfortable with text files and CLIs.
 
 ## Current State
 
-### What works today
-
-- **Tree-sitter grammar** (`tree-sitter-ox/grammar.js`) — parses `.ox` files into syntax trees; supports many mass units (kg, lb, oz, stone, grain, etc.), ISO 8601 durations, and distance units
-- **Python parser** (`src/ox/parse.py`) — tree-sitter nodes → dataclasses
-- **Data model** (`src/ox/data.py`) — `TrainingSet`, `Movement`, `TrainingSession`, `TrainingLog`, `Note`, `WeighIn`, `StoredQuery`, `Diagnostic`
-- **Set fields** — reps, weight, duration, and distance are independent per-set fields; a set may carry all four. Weight, duration and distance each apply to every rep in the set, so totals multiply by reps (`3x6 50yd` is 900yd; `3x5 PT30S` is 7m30s)
-- **SQLite query layer** (`src/ox/db.py`) — in-memory DB with `sessions`, `movements`, `sets`, `notes`, `session_notes`, `weigh_ins`, `queries` tables and `training` view
-- **Plugin system** (`src/ox/plugins.py`) — built-in plugins plus user plugins loaded via `@plugin` directives in `.ox` files
-- **Built-in plugins** (`src/ox/builtins/`) — `volume` (volume over time), `e1rm` (estimated 1RM via Brzycki/Epley), `weighin` (weight tracking with stats/plot/rolling average), `srpe` (session RPE training load), `wendler531` (5/3/1 cycle generator)
-- **CLI** (`src/ox/cli.py`) — interactive REPL with `add`, `plugins`, `query`, `tables`, `lint`, `reload` commands, plugins invoked by name, and context-aware tab completion (commands, plugin flags, movement names, stored queries)
-- **LSP** (`src/ox/lsp.py`) — diagnostics (syntax errors + include validation), movement name and session-field completion, comment folding ranges
-- **Weigh-in tracking** — full pipeline: parse → `WeighIn` dataclass → DB → builtin report with table/plot/stats output
-- **Notes** — standalone and session-level notes, parse → `Note` dataclass → DB, `to_ox()` round-trip
-- **Stored queries** — named SQL queries embedded in `.ox` files, accessible via CLI `query` command
-- **Include directives** — `@include "path.ox"` with recursive resolution and cycle detection
-- **Lint** (`src/ox/lint.py`) — parse error collection for CLI and LSP
-- **VSCode extension** (`editors/vscode`) — syntax highlighting, and diagnostics and completions via `ox-lsp`; published on the VS Code Marketplace as `konnerhorton.ox-training-log`
-- **micro plugin** (`editors/micro`) — syntax highlighting for `.ox` files in micro, installed by hand
-- **MkDocs documentation site** (`docs/`)
-- **PyPI** — published as `ox-train` (`ox` is taken), keeping the `ox` / `ox-lsp` commands and the `ox` import name; the grammar is compiled into the wheel as `ox._grammar`, and a `v*` tag releases through `.github/workflows/release.yml`
-- **First-class sRPE** — `srpe: <rating> <duration> ["note"]` on a session, stored on the `sessions` table and read directly by the `srpe` plugin
-- **Round-trip serialization** — `to_ox()` methods write data back to `.ox` format
-- **Unit handling** — weights and distances tracked as `pint.Quantity`, durations as `timedelta`
-
-### What's incomplete
-
-- Planned sessions (`completed: false`) — parsed and queryable, but no analysis treats them specially
-- Template blocks (`@template`) — grammar exists, no processing; `format:` is a free-text stub with no linkage to them
+What's built, what's open and what's next: [`STATUS.md`](STATUS.md).
 
 ## Direction
 

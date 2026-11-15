@@ -2,6 +2,7 @@
 
 Plain text training log parser and analyzer.
 Uses a custom tree-sitter grammar to parse `.ox` log files into structured data for querying and analysis.
+Status and what's next: `STATUS.md`.
 
 ## Usage Notes
 - `SPEC.md` is your guide for the goals, non-goals, and roadmap for this repo.
