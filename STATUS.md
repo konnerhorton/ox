@@ -4,7 +4,7 @@
 intent is on main (`docs/work/format-vocabulary.md`) with no branch yet; it waits on TODO #6's undecided
 `intervals` argument style.
 
-Last checkpoint: none yet.
+Last checkpoint: 1, after micro-syntax, 2026-11-15, `e9d430c`.
 
 ## Open
 
