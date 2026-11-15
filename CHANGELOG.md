@@ -1,5 +1,8 @@
 # Unreleased
 
+- **Syntax highlighting in micro.** A plugin for the micro editor lives in `editors/micro`. Copy it to
+  `~/.config/micro/plug/ox` and `.ox` files open highlighted in your current colorscheme. See
+  "micro Plugin" in the editor support docs.
 - **`add` logs a session from the REPL.** Type `add` at the `ox>` prompt and answer one prompt per
   field: date (today by default), name, format, one line per movement, sRPE and note. Give a
   session name you've used before and its last format and movements come back prefilled, ready to

@@ -38,6 +38,7 @@ Developers and power users comfortable with text files and CLIs.
 - **Include directives** — `@include "path.ox"` with recursive resolution and cycle detection
 - **Lint** (`src/ox/lint.py`) — parse error collection for CLI and LSP
 - **VSCode extension** (`editors/vscode`) — syntax highlighting, and diagnostics and completions via `ox-lsp`; published on the VS Code Marketplace as `konnerhorton.ox-training-log`
+- **micro plugin** (`editors/micro`) — syntax highlighting for `.ox` files in micro, installed by hand
 - **MkDocs documentation site** (`docs/`)
 - **PyPI** — published as `ox-train` (`ox` is taken), keeping the `ox` / `ox-lsp` commands and the `ox` import name; the grammar is compiled into the wheel as `ox._grammar`, and a `v*` tag releases through `.github/workflows/release.yml`
 - **First-class sRPE** — `srpe: <rating> <duration> ["note"]` on a session, stored on the `sessions` table and read directly by the `srpe` plugin
