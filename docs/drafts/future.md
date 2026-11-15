@@ -47,9 +47,7 @@ A 10-minute amrap crossfit session might by quick but feel like an 8 (two steps 
 Using these arbitrary units, I can then track total volume over whatever time period I am interested in.
 Typically that will probably be weeks and months.
 
-Syntax is the big question though, should I track these using first class citizens in `ox` or just use something like `spre: "4, PT30M"`
-I'll do the above for now, until I figure out the path forward.
-As of 0.6 this is first-class: `srpe: <rating> <duration> ["note"]` inside a session block, read by the `srpe` builtin.
+This is first-class: `srpe: <rating> <duration> ["note"]` inside a session block, read by the `srpe` builtin.
 
 ## Cardio zones
 
@@ -70,7 +68,7 @@ I would need some standard nomenclature to describe the scheme fully, though som
 And certain protocols will require certain metadata.
 Alt-EMOM would require a list of movements and duration for set (if not a minute but say 30 seconds), duration would be derived later from the interval and total sets.
 
-For now, since my sessions are quite simple, I will use `meta: "alt-emom, PT1M"`
+For now this goes in the session's free-text `format:` field (e.g. `format: "alt-emom" PT30M`); a vocabulary for it is TODO #6 and `format-vocabulary`.
 
 There may need to be some provision for specifying target work/rest ratios, but that might get too verbose and could probably be handled with some text metadata instead of a proper data structure.
 

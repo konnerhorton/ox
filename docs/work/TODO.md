@@ -10,7 +10,7 @@ renumbered. When an item is resolved, move any decision into `SPEC.md` (or the u
   verbose and confusing. Instead, a format name could refer to a definition written once elsewhere,
   in the same way as the existing ideas: `@template` blocks (SPEC "What's incomplete": "grammar
   exists, no processing; `format:` is a free-text stub with no linkage to them") and
-  `docs/future.md` "Protocol metadata" ("defined once for the named session"). Also undecided: how
+  `docs/drafts/future.md` "Protocol metadata" ("defined once for the named session"). Also undecided: how
   `intervals` writes its work and rest arguments. The log uses `"intervals work-PT1M rest-PT1M"` for
   now, but it isn't settled. Related unit: `docs/work/format-vocabulary.md`.
 
