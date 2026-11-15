@@ -1,18 +1,18 @@
 # TODO
 
 Items to fix, research or decide. Refer to them as "TODO #n"; numbers are never reused or
-renumbered. When an item is resolved, move any decision into `SPEC.md` (or the unit's
-`docs/work/<id>.md`) and delete it here.
+renumbered. When an item is resolved, move any decision into `SPEC.md` or the feature's
+living doc and delete it here.
 
 - [ ] **#6 Map `format:` values to a more descriptive data structure.** A short `format:` value (e.g.
-  `"pavel-sprints"`) can't hold a full protocol on its own. Pavel sprints are 6 × (8s work / 22s
-  rest) per set with 2 min between sets, and a `set-rest` argument on `intervals` was rejected as
-  verbose and confusing. Instead, a format name could refer to a definition written once elsewhere,
-  in the same way as the existing ideas: `@template` blocks (SPEC "What's incomplete": "grammar
-  exists, no processing; `format:` is a free-text stub with no linkage to them") and
-  `docs/future.md` "Protocol metadata" ("defined once for the named session"). Also undecided: how
-  `intervals` writes its work and rest arguments. The log uses `"intervals work-PT1M rest-PT1M"` for
-  now, but it isn't settled. Related unit: `docs/work/format-vocabulary.md`.
+  `"pavel-sprints"`) can't hold a full protocol on its own. Pavel sprints are 6 × (8s work / 22s rest)
+  per set with 2 min between sets, and a `set-rest` argument on `intervals` was rejected as verbose and
+  confusing. Instead, a format name could refer to a definition written once elsewhere, in the same way
+  as the existing ideas: `@template` blocks (`STATUS.md` Open: the grammar parses them, nothing
+  processes them, and `format:` has no link to them) and `docs/drafts/future.md` "Protocol metadata"
+  ("defined once for the named session"). Also undecided: how `intervals` writes its work and rest
+  arguments. The log uses `"intervals work-PT1M rest-PT1M"` for now, but it isn't settled. Related unit:
+  `docs/work/format-vocabulary.md`.
 
 - [ ] **#8 Publish the VSCode extension to Open VSX** (for VSCodium/Cursor users). It is on the VS Code
   Marketplace as `konnerhorton.ox-training-log`. Sign in to https://open-vsx.org with GitHub, sign
@@ -46,3 +46,15 @@ renumbered. When an item is resolved, move any decision into `SPEC.md` (or the u
 
 - [ ] **#15 List the micro plugin in micro's plugin channel** so `micro -plugin install ox` works.
   Needs a download URL per release and `Versions` in `editors/micro/repo.json`.
+
+- [ ] **#16 Make the movement index public.** `completion._movement_index` (each movement with its
+  last-trained date, most recent first) is imported by `add.py` and `cli.py`, and the `movements`
+  panel planned in `repl-summary` would be a third user. Make it public, in `completion.py` or moved to
+  `data.py`/`db.py`, so the panel reuses it instead of computing last-trained a second way. Do it
+  before `repl-summary` builds.
+
+- [ ] **#17 Make the plugin helpers in `sql_utils` public.** `_weight_sql_expr` and `_time_bin_expr` are
+  plugin helpers (`volume.py` imports them, and user plugins are meant to), and `completion.py`
+  imports `_flag_name`, yet the names say private. Rename them (keeping the old names as aliases if
+  user plugins may already use them) and document them in `docs/plugins.md`. Do it before
+  `repl-summary` adds builtins that use them.

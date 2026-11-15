@@ -12,6 +12,7 @@ theme:
 # Process docs live under docs/ but aren't part of the user-facing site.
 exclude_docs: |
   work/
+  drafts/
 
 nav:
   - Home: index.md
@@ -20,7 +21,6 @@ nav:
   - Reports & Plugins: plugins.md
   - API Reference: api-reference.md
   - Editor Support: editor-support.md
-  - Future Improvements: future.md
 
 markdown_extensions:
   - pymdownx.highlight:

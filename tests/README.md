@@ -1,93 +1,25 @@
 # Tests
 
-Minimal test suite for ox v0.1.
-
-## Running Tests
+## Running
 
 ```bash
-# Install test dependencies
-uv pip install --dev
-
-# Run all tests
-pytest
-
-# Run with verbose output
-pytest -v
-
-# Run specific test file
-pytest tests/test_data.py
-
-# Run specific test
-pytest tests/test_data.py::TestTrainingSet::test_create_bodyweight_set
+uv run pytest                                  # everything
+uv run pytest tests/test_parse.py              # one file
+uv run pytest tests/test_data.py -k bodyweight # matching tests
 ```
 
-## Test Structure
+`uv run` builds the compiled grammar (`ox._grammar`) if `tree-sitter-ox/src/parser.c` changed. A wave of
+unexpected "Syntax error" failures usually means a stale build: `uv sync --reinstall-package ox-train`.
 
-### conftest.py
-Shared fixtures used across test files:
-- `simple_log_content` - Simple training log string for testing
-- `simple_log_file` - Temporary file with training log content
-- `weight_edge_cases` - Edge cases for weight parsing
+## Layout
 
-### test_data.py
-Tests for data structures in isolation:
-- `TestTrainingSet` - TrainingSet properties (reps, weight, volume)
-- `TestMovement` - Movement aggregations (total_reps, total_volume, top_set_weight)
-- `TestTrainingLog` - Query methods (movements, movement_history, most_recent_session)
+One test file per module or plugin (`test_parse.py`, `test_db.py`, `test_srpe.py`, …). A few that aren't
+obvious from the name:
 
-**Why**: These tests verify business logic without needing the parser.
-
-### test_parse.py
-Tests for parsing functions:
-- `TestWeightTextToQuantity` - Parsing individual weights ("24kg", "135lbs")
-- `TestProcessWeights` - Complex weight formats (combined, progressive)
-  - **Note**: Contains `@pytest.mark.xfail` for known bug with implied units
-
-**Why**: Weight parsing is the most error-prone part and has a known bug.
-
-### test_integration.py
-End-to-end tests:
-- `TestParseFile` - Full pipeline from text file to data structures
-- `TestEndToEndScenarios` - User workflows (analyze progression, calculate volume)
-
-**Why**: These verify the complete user experience works.
-
-## Test Philosophy
-
-For v0.1, we focus on:
-
-1. **Critical paths work** - Can users parse files and query data?
-2. **Known problem areas** - Weight parsing is tested thoroughly
-3. **Example file validity** - The example file we ship must be valid
-4. **Business logic** - Calculations like total_volume are correct
-
-We explicitly don't test:
-- Every possible edge case (not needed for v0.1)
-- CLI interactive features (hard to test, low value)
-- Error messages (can improve later)
-- Performance (not a concern yet)
-
-## Known Issues
-
-### Weight Parsing Bug
-The test `test_progressive_weights_implied_unit` is marked as `xfail` because we know it fails:
-
-```python
-# This doesn't work yet:
-process_weights("160/185/210lbs")
-
-# But this does:
-process_weights("160lbs/185lbs/210lbs")
-```
-
-This is tracked as a known issue for v0.1 release.
-
-## Coverage
-
-We don't measure coverage for v0.1. These tests give us confidence the core functionality works, which is sufficient for an initial release.
-
-If you want to add coverage later:
-```bash
-pip install pytest-cov
-pytest --cov=ox --cov-report=html
-```
+- `conftest.py`: shared fixtures, including small logs (`simple_log_*`, `log_with_*`), weight edge cases and
+  ready-built databases (`simple_db`, and `example_db` from `examples/example.ox`).
+- `test_reports.py`: SQL helpers, argument parsing, the plugin registry and the `volume` plugin.
+- `test_add.py` drives `add` with a scripted prompt function; `test_cli_add.py` runs it end to end through
+  prompt_toolkit pipe input, paced because completion is asynchronous.
+- `smoke.py` isn't collected by pytest. It checks an installed wheel and is run by cibuildwheel and the
+  release workflow.

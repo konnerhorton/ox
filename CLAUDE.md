@@ -2,6 +2,7 @@
 
 Plain text training log parser and analyzer.
 Uses a custom tree-sitter grammar to parse `.ox` log files into structured data for querying and analysis.
+Status and what's next: `STATUS.md`.
 
 ## Usage Notes
 - `SPEC.md` is your guide for the goals, non-goals, and roadmap for this repo.
@@ -41,127 +42,45 @@ uv run ruff format src/ tests/ # format
 
 ## Project Structure
 
+Where the layout isn't obvious from the file names:
+
 ```
 src/ox/
   parse.py      - Tree-sitter node → data structures (the core parser)
-  data.py       - Dataclasses: TrainingSet, Movement, TrainingSession, TrainingLog, Note, WeighIn, StoredQuery, Diagnostic
-  db.py         - In-memory SQLite layer: create_db(log) → Connection
-  plugins.py    - Plugin discovery, registry, PluginContext, result types (TableResult, TextResult, PlotResult)
-  sql_utils.py  - SQL helper utilities for plugins (parse_plugin_args, plugin_usage, _weight_sql_expr, _time_bin_expr)
-  units.py      - Pint unit registry (shared instance)
-  cli.py        - Click CLI with interactive REPL (add, run, query, tables, lint, reload)
-  add.py        - REPL `add`: prefill lookups, line checks, append-only write, run_add driver
-  completion.py - REPL tab completion: movement_names(log), ReplCompleter, add's line/name completers
-  lsp.py        - LSP server: diagnostics, movement completion, comment folding
-  lint.py       - Parse error collection for CLI lint command and LSP
-  grammar.py    - LANGUAGE: the compiled tree-sitter grammar (C extension ox._grammar, from _grammar.c)
-  builtins/
-    volume.py      - Volume over time plugin
-    e1rm.py        - Estimated 1RM plugin (Brzycki/Epley)
-    weighin.py     - Weigh-in stats/plot plugin (rolling average, trend, multi-scale)
-    srpe.py        - Session RPE training load plugin (ACWR, monotony, strain)
-    wendler531.py  - Wendler 5/3/1 cycle generator plugin
+  sql_utils.py  - Helpers for plugins: parse_plugin_args, plugin_usage, _weight_sql_expr, _time_bin_expr
+  plot.py       - Thin facade over plotext (scatter, multi_line, bar); returns PlotResult lines
+  completion.py - REPL tab completion, including add's line and name completers
+  grammar.py    - LANGUAGE: the compiled grammar (C extension ox._grammar, built from _grammar.c by setup.py)
 tests/
-  conftest.py        - Shared fixtures (simple_log_*, weight_edge_cases, log_with_query_*, log_with_weigh_ins_*, weigh_in_multi_scale_*, simple_db, example_db)
-  test_parse.py      - Weight/rep parsing
-  test_data.py       - Data structures
-  test_db.py         - SQLite schema, loading, views, queries
-  test_reports.py    - SQL utils, volume plugin, arg parsing, plugin registry
-  test_plugins.py    - Plugin registration, loading, builtins
-  test_integration.py - End-to-end parsing
-  test_weighin.py    - Weigh-in plugin (rolling avg, trend, table/plot/stats)
-  test_notes.py      - Note parsing, session notes, DB population
-  test_srpe.py       - sRPE plugin (training load, ACWR, monotony, strain)
-  test_lint.py       - Diagnostic collection
-  test_completion.py - REPL tab completion (commands, flags, movement names, queries)
-  test_add.py        - add: lookups, line checks, append, run_add with a scripted ask
-  test_cli_add.py    - add end to end through prompt_toolkit pipe input (paced: completion is async)
-  smoke.py           - Installed-package smoke test (run by cibuildwheel and the release workflow, not pytest)
-tree-sitter-ox/
-  grammar.js  - Tree-sitter grammar definition for .ox format; `tree-sitter generate` writes src/parser.c
-setup.py      - Builds ox._grammar from tree-sitter-ox/src/parser.c (metadata lives in pyproject.toml)
-editors/
-  vscode/     - VSCode extension for .ox syntax highlighting
-  micro/      - micro editor plugin for .ox syntax highlighting
+  conftest.py      - Shared fixtures (simple_log_*, log_with_*, weigh_in_multi_scale_*, simple_db, example_db)
+  test_reports.py  - SQL utils, volume plugin, arg parsing, plugin registry
+  test_cli_add.py  - add end to end through prompt_toolkit pipe input (paced: completion is async)
+  smoke.py         - Installed-package smoke test (run by cibuildwheel and the release workflow, not pytest)
 examples/
-  plugins/            - Example plugin scripts (wendler531.py)
-  plugin_template.py  - Template for writing user plugins
-docs/         - MkDocs documentation source
-examples/
-  example.ox   - Reference training log with all supported formats
-  advanced.ox  - sRPE tracking example with 8 weeks of training data
+  example.ox       - Reference log: entries, sessions, movement definitions
+  advanced.ox      - 8 weeks of sRPE-tracked training
+  plugin_template.py, plugins/ - Starting points for user plugins
 ```
 
 ## .ox File Format
 
+Every form, with examples: `docs/getting-started.md` (`@template` is only in the grammar). The notation:
+
 ```
 # Comments start with #
+2025-01-10 T pullups: BW 5x10            # single-line entry: date T movement: weight distance duration reps "note"
+@session ... @end                         # session block; date: is required and comes first
+2025-01-10 W 185lb T06:30 "home"         # weigh-in: date W weight [time] [scale]
+2025-01-10 note "deload week"            # note
+2025-01-10 query "name" "SQL"            # stored query
+@include "other.ox"   @plugin "my_plugin.py"
+@movement squat ... @end   @template "name" ... @end
 
-# Single-line entry: date T movement: weight distance duration reps "note"
-2025-01-10 T pullups: BW 5x10
-2025-01-10 T plank: BW PT45S 3x1
-2025-01-10 T run: 5km PT25M
-2025-01-10 T farmer-carry: 32kg 40m 4x1
-
-# Session block. Only `date:` is required, and it must come first.
-@session
-date: 2025-01-11
-name: Upper Day
-bench-press: 135lb 5x5
-kb-oh-press: 24kg 5/5/5
-@end
-
-# Ad hoc session: no name needed
-@session
-date: 2025-01-10
-pullups: BW 3x10
-pushups: BW 3x15
-@end
-
-# Planned session, and session RPE: srpe: <rating> <duration> ["note"]
-@session
-date: 2025-01-15
-name: Upper Day
-completed: false
-format: 5/3/1 wave
-srpe: 5 PT45M "felt strong"
-bench-press: 185lb 5x5
-@end
-
-# Weigh-in: date W weight [time] [scale]
-2025-01-10 W 185lb T06:30 "home"
-
-# Note: date note "text"
-2025-01-10 note "deload week"
-
-# Stored query: date query "name" "SQL"
-2025-01-10 query "recent" "SELECT * FROM training LIMIT 10"
-
-# Include another file
-@include "other.ox"
-
-# Movement definition
-@movement squat
-equipment: barbell
-tags: squat, lower
-note: back squat
-@end
-
-# Template block
-@template "my-template"
-squat: 185lb 5x5
-bench-press: 135lb 5x5
-@end
-
-# Load a plugin
-@plugin "my_plugin.py"
-
-# Markers: T = training entry, W = weigh-in
-# Session fields: date: (required, first), name:, completed:, format:, srpe:, note:
+# Session fields: date: (required, first), name:, completed:, format:, srpe: <rating> <duration> ["note"], note:
 # completed: defaults to true; false marks a planned session
-# Weight units: kg, lb, g, oz, stone, grain, and more (any pint-compatible mass unit)
-# Weight formats: 24kg, BW, 24kg+32kg (combined), 24kg/32kg/48kg (progressive), 160/185/210lb (implied unit)
-# Rep formats: 5x5 (sets x reps), 5/5/5 (per-set reps)
+# Weight: 24kg, BW, 24kg+32kg (combined), 24kg/32kg/48kg (progressive), 160/185/210lb (implied unit);
+#   any pint-compatible mass unit
+# Reps: 5x5 (sets x reps), 5/5/5 (per-set reps)
 # Duration: ISO 8601 (PT30M, PT1H30M15S), progressive PT30S/PT25S/PT20S
 # Distance: numeric + unit (m, km, ft, mi, etc.), progressive 100m/200m/400m or 100/200/400m
 ```
