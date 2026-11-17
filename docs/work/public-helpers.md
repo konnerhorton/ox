@@ -123,3 +123,56 @@ plugin helpers (TODO #17) and the movement index (TODO #16). The plugin helpers 
 6. **Docs example runs:** the example plugin in `docs/plugins.md`'s Helpers section, loaded with
    `@plugin` against `examples/example.ox`, returns a table without error. This is checked by hand
    at the test step.
+
+## Plan
+
+Three commits, each with `uv run ruff check src/ tests/`, `uv run ruff format --check src/ tests/` and
+`uv run pytest` green. Steps 1 and 2 are refactors with no behavior change. Step 3 is docs and
+close-out. Steps 1 and 2 run in one Sonnet session; start a new Opus session for step 3.
+
+### 1. `public-helpers: make the sql_utils plugin helpers public` (Sonnet)
+- `src/ox/sql_utils.py`: rename `_weight_sql_expr` → `weight_sql_expr`, `_time_bin_expr` →
+  `time_bin_expr`, `_flag_name` → `flag_name`, including the internal calls in
+  `parse_plugin_args` and `plugin_usage`. The module docstring lists `parse_plugin_args`,
+  `plugin_usage`, `weight_sql_expr` and `time_bin_expr` as the helpers plugins may use.
+- `src/ox/builtins/volume.py`, `src/ox/completion.py`: import the new names.
+- `tests/test_reports.py`: `TestTimeBins` uses `time_bin_expr`. Add a `TestWeightSqlExpr`
+  covering `weight_sql_expr("x", "y", "blorp")` → `ValueError` matching `blorp` (AC 4).
+  `test_volume_values` stays as it is and proves `volume` output is unchanged (AC 4).
+
+### 2. `public-helpers: move the movement index to TrainingLog` (Sonnet)
+- `src/ox/data.py`: add `MovementIndexEntry` (frozen, `slots=True`; `status` typed with
+  `Literal`) before `TrainingLog`. Add `TrainingLog.movement_index()`, moved from
+  `completion._movement_index` with the rules in Spec D2, comparing `date`s instead of ISO strings.
+  Its docstring states the status rules and the order.
+- `src/ox/completion.py`: delete `_movement_index` and `movement_names`. Add
+  `_movement_note(entry) -> str` (Spec D3). `ReplCompleter.__init__` and
+  `MovementLineCompleter.__init__` take `list[MovementIndexEntry]` and build the note with
+  `_movement_note`. Update the docstring that mentions `_movement_index`.
+- `src/ox/cli.py` (`build_completer`), `src/ox/add.py` (the `MovementLineCompleter` call): pass
+  `log.movement_index()` and drop the `_movement_index` import.
+- `tests/test_completion.py`: the three completer constructions pass `log.movement_index()`.
+  Replace `test_movement_names_order` with `test_movement_index`, which asserts the four entries
+  of AC 1 field by field. Add `test_movement_index_tie_order`: two movements completed on the
+  same date are listed by name (AC 2). The existing completion and `add` tests stay unchanged and
+  prove AC 3. `tests/test_add.py` and `tests/test_cli_add.py` need no changes unless they import
+  the old name.
+
+### 3. `public-helpers: document the plugin helpers, close out` (Opus)
+- `docs/plugins.md`: add `### Helpers` after "Descriptor fields" covering
+  `from ox.sql_utils import weight_sql_expr, time_bin_expr`, each helper's arguments, what it
+  covers and its errors (Spec D6), and a short example plugin: weekly volume in a chosen unit
+  that uses both helpers.
+- AC 6, by hand: write that example to the scratchpad, load it with `@plugin` from a copy of
+  `examples/example.ox`, and run it. It returns a table without error.
+- AC 5: run the grep from AC 5 and get no output.
+- Close-out:
+  - `CLAUDE.md`: the `sql_utils.py` line lists `weight_sql_expr` and `time_bin_expr`.
+  - `CHANGELOG.md` Unreleased: an entry saying plugins can import `weight_sql_expr` and
+    `time_bin_expr` from `ox.sql_utils`, now documented, and that the underscore names are gone.
+  - `STATUS.md`: "Next" no longer points at #16 and #17, and the `repl-summary` line drops
+    "TODO #16 and #17 come first".
+  - `docs/work/TODO.md`: delete #16 and #17. Decisions that need a permanent home go in the
+    docs above, not `SPEC.md` (intent: no SPEC section touched).
+  - Ask whether to run `project-checkpoint`: the last checkpoint was after `micro-syntax`, two
+    units back.
