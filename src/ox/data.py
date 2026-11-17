@@ -316,7 +316,9 @@ class TrainingSession(Entry):
         movements: Tuple of Movement objects
         name: Session name (e.g., "Upper Day"), None for ad hoc sessions
         notes: Freeform notes attached to the session
-        format: Free-text stub naming the session's shape, e.g. "5/3/1 wave"
+        format: The session's timing as written, e.g. '"emom PT2M"'. The vocabulary
+            is in ox.formats; other values still load, and the formats plugin
+            reports them
         date: Inherited from Entry
         completed: Inherited from Entry
         srpe_rating: Session RPE, 1-10 perceived exertion for the whole session

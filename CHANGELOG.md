@@ -1,5 +1,14 @@
 # Unreleased
 
+- **A vocabulary for `format:`, and a `formats` command to check it.** Write a session's timing as
+  one quoted value: `"emom"`, `"emom PT2M"`, `"alt-emom PT30S"`, `"intervals PT4M:PT3M"` (work:rest),
+  `"superset 2-3-2"`, or a named protocol (`"pavel-sprints"`, `"ladder"`, `"circuit"`). `formats`
+  lists every value in your log with what it means; `formats -o problems` shows only the ones that
+  don't fit (not quoted, an unknown name, wrong arguments, or superset groups that don't add up to
+  the session's movements), and `formats -o vocabulary` prints the rules. Other values still load
+  unchanged.
+- **Square brackets show up in tables.** A note like `"[pr] felt strong"` in a `query` result, or any
+  plugin table cell with `[...]` in it, lost the bracketed text.
 - **Syntax highlighting in micro.** A plugin for the micro editor lives in `editors/micro`. Copy it to
   `~/.config/micro/plug/ox` and `.ox` files open highlighted in your current colorscheme. See
   "micro Plugin" in the editor support docs.

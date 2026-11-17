@@ -1,6 +1,7 @@
 """Tests for the session `format:` vocabulary (ox.formats) and the formats plugin."""
 
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 
@@ -222,3 +223,9 @@ class TestFormatsPlugin:
         sessions = sorted(ctx.log.sessions, key=lambda s: s.date)
         assert "format: emom PT2M\n" in sessions[0].to_ox()
         assert 'format: "tabata"\n' in sessions[1].to_ox()
+
+    def test_example_log_has_no_problems(self):
+        log = parse_file(Path(__file__).parent.parent / "examples" / "example.ox")
+        ctx = PluginContext(db=create_db(log), log=log)
+        assert formats_report(ctx).rows
+        assert formats_report(ctx, output="problems").rows == []

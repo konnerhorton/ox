@@ -292,3 +292,9 @@ can run on Sonnet in one session after step 1.
   its three views, and that other values still load), TODO #6 wording if anything changed. Suggest
   `project-checkpoint` only if `STATUS.md`'s last checkpoint is two or more units back (it isn't:
   checkpoint 1 was just before this unit).
+
+### Notes from the build
+- `docs/cli-reference.md`'s `add` transcript keeps a `format:` line, as `"superset 1-2"`, instead of
+  dropping it: the transcript shows the prompt, so removing it would misdescribe `add`.
+- The vocabulary view showed `emom` for `emom [interval]`: `render_result` and `show_query` passed cells
+  to rich as markup. Fixed for every table in its own commit (`cli: render table cells as plain text`).

@@ -72,7 +72,7 @@ Each line is checked as you enter it. A line with a mistake is reported with the
 ox> add
 date: 2025-03-02
 name: Upper Day
-format: 5/3/1 wave
+format: "superset 1-2"
 Movements: Tab completes a name with its last sets; an empty line ends.
 - bench-press: 140lb 5x5
 - pullups: BW 3x10
@@ -86,7 +86,7 @@ note: deload
 @session
 date: 2025-03-02
 name: Upper Day
-format: 5/3/1 wave
+format: "superset 1-2"
 srpe: 7 PT1H "felt strong"
 note: "deload"
 bench-press: 140lb 5x5

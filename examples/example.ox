@@ -128,6 +128,7 @@ pullup: BW 4x10
 @session
 date: 2024-01-17
 name: KB Workout
+format: "emom PT2M"
 kb-swing: 32kg 5x15
 kb-snatch: 24kg 5x5 "each arm"
 kb-clean-and-press: 24kg 5x3 "each arm"
@@ -168,6 +169,7 @@ pullup: BW 5x8
 @session
 date: 2024-01-24
 name: Conditioning
+format: "superset 2-2"
 burpee: BW 10x10
 kb-swing: 32kg 10x15
 box-jump: BW 10x5
