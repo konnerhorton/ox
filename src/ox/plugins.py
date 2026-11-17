@@ -98,9 +98,9 @@ def _load_from_log_directives(log: TrainingLog, base_path: Path) -> None:
 
 def _load_builtins() -> None:
     """Load plugins that ship with ox."""
-    from ox.builtins import e1rm, srpe, volume, weighin, wendler531
+    from ox.builtins import e1rm, formats, srpe, volume, weighin, wendler531
 
-    for mod in (volume, e1rm, weighin, wendler531, srpe):
+    for mod in (volume, e1rm, weighin, wendler531, srpe, formats):
         _register_descriptors(mod.register(), f"builtin:{mod.__name__}")
 
 
