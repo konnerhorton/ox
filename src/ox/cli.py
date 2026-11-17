@@ -10,6 +10,7 @@ from tree_sitter import Parser
 from rich.console import Console
 from rich import box
 from rich.table import Table
+from rich.text import Text
 from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 
@@ -332,7 +333,7 @@ def render_result(result):
         for col in result.columns:
             table.add_column(col, style="cyan")
         for row in result.rows:
-            table.add_row(*(str(v) for v in row))
+            table.add_row(*(Text(str(v)) for v in row))
         console.print(table)
         console.print(f"\n[dim]{len(result.rows)} row(s)[/dim]\n")
     elif isinstance(result, TextResult):
@@ -381,7 +382,7 @@ def show_query(conn: sqlite3.Connection, sql: str):
             table.add_column(col, style="cyan")
 
         for row in rows:
-            table.add_row(*(str(v) for v in row))
+            table.add_row(*(Text(str(v)) for v in row))
 
         console.print(table)
         console.print(f"\n[dim]{len(rows)} row(s)[/dim]\n")
