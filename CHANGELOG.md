@@ -1,5 +1,9 @@
 # Unreleased
 
+- **Plugin helpers are public and documented.** Import `weight_sql_expr` (convert weights to a unit
+  you choose) and `time_bin_expr` (group dates by day, week or month) from `ox.sql_utils`; "Helpers"
+  in the plugin docs shows how, with an example plugin. They were `_weight_sql_expr` and
+  `_time_bin_expr`, and those names are gone.
 - **A vocabulary for `format:`, and a `formats` command to check it.** Write a session's timing as
   one quoted value: `"emom"`, `"emom PT2M"`, `"alt-emom PT30S"`, `"intervals PT4M:PT3M"` (work:rest),
   `"superset 2-3-2"`, or a named protocol (`"pavel-sprints"`, `"ladder"`, `"circuit"`). `formats`

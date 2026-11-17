@@ -176,3 +176,11 @@ close-out. Steps 1 and 2 run in one Sonnet session; start a new Opus session for
     docs above, not `SPEC.md` (intent: no SPEC section touched).
   - Ask whether to run `project-checkpoint`: the last checkpoint was after `micro-syntax`, two
     units back.
+
+### Notes from the build
+- All three steps ran on Opus in one session, at the user's request, not Sonnet for steps 1 and 2.
+- AC 4 and AC 6 were checked with a script calling `load_log` and the plugin function, since the REPL
+  ignores piped stdin. `volume` output on `examples/example.ox` (three flag sets) matched HEAD~ exactly.
+- AC 5's pattern has no word boundaries and also matches unrelated names (`lsp._collect_movement_names`,
+  `test_movement_index`, a local `movement_names` in `test_integration.py`). With `grep -w`, the only hit is
+  that local variable, so no old name remains.
