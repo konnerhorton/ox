@@ -8,8 +8,8 @@ plus fixed arguments), and a builtin plugin parses it into structured timing: in
 and movement groups. Values outside the vocabulary still load, and the plugin lists them.
 
 ### Why
-- `format:` is free text today (SPEC "What's incomplete"), so it can't be queried beyond string
-  matching. `docs/future.md` "Protocol metadata" asks for standard names for EMOM, alt-EMOM,
+- `format:` is free text today (`STATUS.md` Open), so it can't be queried beyond string
+  matching. `docs/drafts/future.md` "Protocol metadata" asks for standard names for EMOM, alt-EMOM,
   ladders, etc. so a session's layout can still be understood years later.
 - Evidence from a real log (~1150 sessions): 257 `format:` lines had already settled into a few
   shapes: `"emom"` (198), `"alt-emom" PT30M` (20), `"emom" PT30M` (16), `"fighter-ladder"` (11),
@@ -41,7 +41,7 @@ The whole value is one quoted string: `format: "<name> [args]"`.
 |---|---|
 | `"emom [interval]"` | One set starts every `interval` (default `PT1M`); sub-minute intervals allowed, e.g. `"emom PT30S"`. `"emom PT2M"` replaces `e2mom`. |
 | `"alt-emom [interval]"` | Like `emom`, but rotating through the movements, one per interval. |
-| `"intervals work-<dur> rest-<dur>"` | Fixed work and rest durations, e.g. `"intervals work-PT1M rest-PT1M"`, `"intervals work-PT4M rest-PT3M"` (Norwegian 4x4). 🟡 Argument style not settled (TODO #6). |
+| `"intervals <work>:<rest>"` | Fixed work and rest durations, e.g. `"intervals PT1M:PT1M"`, `"intervals PT4M:PT3M"` (Norwegian 4x4). |
 | `"superset <n>-<n>-…"` | Movements grouped in listed order, e.g. `"superset 2-3-2"` for 7 movements. |
 | `"pavel-sprints"` | Named protocol, no arguments: one set = 6 sprints of 8s work / 22s rest, then 2 min walking rest. Logged as `pavel-sprints: 3x6`. |
 | `"ladder"` | Named protocol, no arguments (replaces `fighter-ladder`). |
@@ -55,7 +55,7 @@ Examples from the converted log:
 @session
 date: 2026-10-21
 name: run-intervals
-format: "intervals work-PT1M rest-PT1M"
+format: "intervals PT1M:PT1M"
 run-warmup: PT10M
 run-interval: 3x1 PT1M "80% effort"
 run-recovery: 3x1 PT1M "easy jog"
@@ -83,10 +83,10 @@ srpe: 3 PT13M
 - Migrating old logs. `scripts/migrate_ox.py` stays as is; the one real log has been converted by hand.
 
 ### SPEC sections touched
-- "What works today": add the new builtin to the plugin list.
-- "What's incomplete": `format:` is no longer just a free-text stub.
+- None. Status moved out of SPEC at checkpoint 1: `STATUS.md` Done (new builtin) and Open (`format:` is
+  no longer only free text).
 - Docs: `docs/getting-started.md` (session field table, which still shows the `5/3/1 wave` example),
-  `docs/plugins.md` (new plugin section), `docs/future.md` "Protocol metadata" (point to this
+  `docs/plugins.md` (new plugin section), `docs/drafts/future.md` "Protocol metadata" (point to this
   vocabulary), `CHANGELOG.md`.
 
 ### Decisions (intent review, 2026-10-24)
@@ -113,20 +113,14 @@ srpe: 3 PT13M
 8. **`intervals` has no set-rest argument.** A third argument for rest between sets (for pavel
    sprints) was rejected as verbose and confusing. Multi-level protocols get a name instead
    (`"pavel-sprints"`), and a fuller way to define them is TODO #6.
-9. **`intervals` arguments are labeled for now** (`work-PT1M rest-PT1M`), so the order is explicit.
-   This isn't settled either (TODO #6).
+9. **`intervals` takes one `<work>:<rest>` argument** (`"intervals PT1M:PT1M"`), amended
+   2026-11-17. It reads the way coaches write ratios ("1:1", "4:3"), work first. Rejected: labeled
+   `work-PT1M rest-PT1M` (verbose), labeled `work:PT1M` (looks like a nested `key: value` field), and
+   `PT1M/PT1M` (clashes with per-set `/` lists, as in Decision 5). A colon is safe here: ISO 8601
+   durations never contain one, the grammar reads `format:` as text to the end of the line, and both
+   highlighters anchor their field rules at the start of the line.
 10. **Pavel sprints are counted as sets of 6 sprints** (`3x6`, not `3x1`), matching the 2025 entries.
     The 2026 entries that used `Nx1` for N rounds were converted.
 
 ### Open for the spec step
-- 🟡 Plugin name and output: e.g. `formats` showing a table of date, session name, format, interval,
-  work, rest, work:rest ratio, plus a flag that lists only values it can't parse.
-- 🟡 Builtin (`src/ox/builtins/`) rather than an example plugin, since every user with `format:`
-  values benefits.
-- 🟡 Superset group sizes that don't add up to the movement count: warn or ignore?
-- 🟡 Derived values (`docs/future.md`): `emom` duration = interval × total sets, and work:rest ratio
-  for `intervals`. Decide which ones the first version shows.
-- 🟡 Exposing parsed fields to SQL (e.g. a view or temporary table) vs. plugin output only.
-- 🟡 Unquoted values (e.g. a hand-typed `emom PT2M`): accept them too, or report them as unknown?
-- ❓ Named protocols (`pavel-sprints`): does the plugin expand them to timing values (6 × 8s/22s)
-  from its own table, or only recognise the name until TODO #6 gives them a definition?
+Resolved in `## Spec`, Decisions.
