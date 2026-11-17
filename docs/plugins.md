@@ -283,3 +283,57 @@ A multi-word param named `start_date` is passed as `--start-date`; `--start_date
 
 A param named `movement` or `movements` gets movement-name completion in the REPL: pressing Tab
 after its flag offers movement names from the log (for `movements`, per comma-separated item).
+
+### Helpers
+
+`ox.sql_utils` has two helpers for building plugin SQL. Each returns a SQL expression as a string, to
+put in your query with an f-string.
+
+```python
+from ox.sql_utils import time_bin_expr, weight_sql_expr
+```
+
+**`weight_sql_expr(magnitude_col, unit_col, target_unit)`** converts a weight column to
+`target_unit`. `magnitude_col` and `unit_col` name the columns holding the number and its unit (in
+the `training` view, `weight_magnitude` and `weight_unit`). `target_unit` is any Pint mass unit:
+`"kg"`, `"lb"`, `"pound"`, `"oz"`. The units the database stores, `kilogram` and `pound`, are
+converted; a value stored in any other unit passes through unconverted. A `target_unit` Pint doesn't
+know raises `ValueError`, and one that isn't a mass (`"meter"`) raises Pint's `DimensionalityError`.
+
+**`time_bin_expr(bin, col="date")`** groups a date column into periods. `bin` is one of `daily`
+(`2025-01-08`), `weekly` (the date of that week's Sunday), `weekly-num` (`2025-W01`) or `monthly`
+(`2025-01`); any other name raises `ValueError`. `col` names the date column.
+
+Weekly tonnage across all movements, in a unit you choose:
+
+```python
+from ox.plugins import PluginContext, TableResult
+from ox.sql_utils import time_bin_expr, weight_sql_expr
+
+
+def tonnage(ctx: PluginContext, unit: str = "kg", bin: str = "weekly"):
+    period = time_bin_expr(bin, "date")
+    weight = weight_sql_expr("weight_magnitude", "weight_unit", unit)
+    rows = ctx.db.execute(
+        f"""
+        SELECT {period} AS period, ROUND(SUM(reps * {weight}), 1)
+        FROM training
+        WHERE weight_magnitude IS NOT NULL
+        GROUP BY period
+        ORDER BY period
+        """
+    ).fetchall()
+    return TableResult(["period", f"tonnage ({unit})"], rows)
+
+
+def register():
+    return [{
+        "name": "tonnage",
+        "fn": tonnage,
+        "description": "Total weight lifted per period",
+        "params": [
+            {"name": "unit", "type": str, "required": False, "default": "kg", "short": "u"},
+            {"name": "bin", "type": str, "required": False, "default": "weekly", "short": "b"},
+        ],
+    }]
+```

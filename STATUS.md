@@ -1,6 +1,6 @@
 # Status
 
-**Next:** not chosen. TODO #16 and #17 come before `repl-summary` resumes (see Open).
+**Next:** not chosen.
 
 Last checkpoint: 1, after micro-syntax, 2026-11-15, `e9d430c`.
 
@@ -13,7 +13,7 @@ Last checkpoint: 1, after micro-syntax, 2026-11-15, `e9d430c`.
   link to them (TODO #6).
 - **`repl-summary`** (branch, intent and spec committed): a summary of `rich` panels when the REPL starts.
   Parked. Its intent predates `repl-add` and says `add` follows it, so it needs a rebase and a rewritten
-  intent before it resumes; TODO #16 and #17 come first.
+  intent before it resumes.
 
 ## Done
 

@@ -4,7 +4,12 @@ import pytest
 
 from ox.data import TrainingLog
 from ox.plugins import PLUGINS, PluginContext, TableResult, load_plugins
-from ox.sql_utils import _time_bin_expr, parse_plugin_args, plugin_usage
+from ox.sql_utils import (
+    parse_plugin_args,
+    plugin_usage,
+    time_bin_expr,
+    weight_sql_expr,
+)
 from ox.builtins.volume import volume
 
 
@@ -12,26 +17,34 @@ class TestTimeBins:
     """Test time bin expression helper."""
 
     def test_daily(self):
-        assert _time_bin_expr("daily") == "strftime('%Y-%m-%d', date)"
+        assert time_bin_expr("daily") == "strftime('%Y-%m-%d', date)"
 
     def test_weekly(self):
         assert (
-            _time_bin_expr("weekly")
+            time_bin_expr("weekly")
             == "date(date, '-' || strftime('%w', date) || ' days')"
         )
 
     def test_weekly_num(self):
-        assert _time_bin_expr("weekly-num") == "strftime('%Y-W%W', date)"
+        assert time_bin_expr("weekly-num") == "strftime('%Y-W%W', date)"
 
     def test_monthly(self):
-        assert _time_bin_expr("monthly") == "strftime('%Y-%m', date)"
+        assert time_bin_expr("monthly") == "strftime('%Y-%m', date)"
 
     def test_custom_col(self):
-        assert _time_bin_expr("daily", "s.date") == "strftime('%Y-%m-%d', s.date)"
+        assert time_bin_expr("daily", "s.date") == "strftime('%Y-%m-%d', s.date)"
 
     def test_invalid_raises(self):
         with pytest.raises(ValueError, match="Unknown time bin"):
-            _time_bin_expr("yearly")
+            time_bin_expr("yearly")
+
+
+class TestWeightSqlExpr:
+    """Test the weight conversion expression helper."""
+
+    def test_unknown_unit_raises(self):
+        with pytest.raises(ValueError, match="blorp"):
+            weight_sql_expr("x", "y", "blorp")
 
 
 class TestVolumeOverTime:

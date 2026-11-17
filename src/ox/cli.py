@@ -25,7 +25,7 @@ from ox.data import (
     TrainingSession,
     WeighIn,
 )
-from ox.completion import ReplCompleter, _movement_index
+from ox.completion import ReplCompleter
 from ox.db import create_db
 from ox.grammar import LANGUAGE
 from ox.lint import collect_diagnostics
@@ -62,7 +62,7 @@ def build_completer(log: TrainingLog) -> ReplCompleter:
     return ReplCompleter(
         REPL_COMMANDS + list(PLUGINS),
         PLUGINS,
-        _movement_index(log),
+        log.movement_index(),
         [q.name for q in log.queries],
     )
 

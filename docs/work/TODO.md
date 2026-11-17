@@ -45,15 +45,3 @@ living doc and delete it here.
 
 - [ ] **#15 List the micro plugin in micro's plugin channel** so `micro -plugin install ox` works.
   Needs a download URL per release and `Versions` in `editors/micro/repo.json`.
-
-- [ ] **#16 Make the movement index public.** `completion._movement_index` (each movement with its
-  last-trained date, most recent first) is imported by `add.py` and `cli.py`, and the `movements`
-  panel planned in `repl-summary` would be a third user. Make it public, in `completion.py` or moved to
-  `data.py`/`db.py`, so the panel reuses it instead of computing last-trained a second way. Do it
-  before `repl-summary` builds.
-
-- [ ] **#17 Make the plugin helpers in `sql_utils` public.** `_weight_sql_expr` and `_time_bin_expr` are
-  plugin helpers (`volume.py` imports them, and user plugins are meant to), and `completion.py`
-  imports `_flag_name`, yet the names say private. Rename them (keeping the old names as aliases if
-  user plugins may already use them) and document them in `docs/plugins.md`. Do it before
-  `repl-summary` adds builtins that use them.

@@ -16,7 +16,6 @@ from tree_sitter import Parser
 from ox.completion import (
     MovementLineCompleter,
     SessionNameCompleter,
-    _movement_index,
 )
 from ox.data import Movement, TrainingLog, TrainingSession
 from ox.grammar import LANGUAGE
@@ -263,7 +262,7 @@ def _run_add(log, path, ask, today, echo):
                 lines.append(line)
 
     prefills = {n: prefill_text(m) for n, m in last_movements(log).items()}
-    completer = MovementLineCompleter(_movement_index(log), prefills)
+    completer = MovementLineCompleter(log.movement_index(), prefills)
     while line := _ask_checked(ask, echo, MOVEMENT_PROMPT, check, completer=completer):
         lines.append(line)
 
