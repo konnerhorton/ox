@@ -10,9 +10,8 @@ living doc and delete it here.
   confusing. Instead, a format name could refer to a definition written once elsewhere, in the same way
   as the existing ideas: `@template` blocks (`STATUS.md` Open: the grammar parses them, nothing
   processes them, and `format:` has no link to them) and `docs/drafts/future.md` "Protocol metadata"
-  ("defined once for the named session"). Also undecided: how `intervals` writes its work and rest
-  arguments. The log uses `"intervals work-PT1M rest-PT1M"` for now, but it isn't settled. Related unit:
-  `docs/work/format-vocabulary.md`.
+  ("defined once for the named session"). Until then, `formats` recognizes a named protocol by name and
+  describes it in text. Related unit: `docs/work/format-vocabulary.md`.
 
 - [ ] **#8 Publish the VSCode extension to Open VSX** (for VSCodium/Cursor users). It is on the VS Code
   Marketplace as `konnerhorton.ox-training-log`. Sign in to https://open-vsx.org with GitHub, sign

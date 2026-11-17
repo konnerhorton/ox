@@ -8,8 +8,8 @@ plus fixed arguments), and a builtin plugin parses it into structured timing: in
 and movement groups. Values outside the vocabulary still load, and the plugin lists them.
 
 ### Why
-- `format:` is free text today (SPEC "What's incomplete"), so it can't be queried beyond string
-  matching. `docs/future.md` "Protocol metadata" asks for standard names for EMOM, alt-EMOM,
+- `format:` is free text today (`STATUS.md` Open), so it can't be queried beyond string
+  matching. `docs/drafts/future.md` "Protocol metadata" asks for standard names for EMOM, alt-EMOM,
   ladders, etc. so a session's layout can still be understood years later.
 - Evidence from a real log (~1150 sessions): 257 `format:` lines had already settled into a few
   shapes: `"emom"` (198), `"alt-emom" PT30M` (20), `"emom" PT30M` (16), `"fighter-ladder"` (11),
@@ -41,7 +41,7 @@ The whole value is one quoted string: `format: "<name> [args]"`.
 |---|---|
 | `"emom [interval]"` | One set starts every `interval` (default `PT1M`); sub-minute intervals allowed, e.g. `"emom PT30S"`. `"emom PT2M"` replaces `e2mom`. |
 | `"alt-emom [interval]"` | Like `emom`, but rotating through the movements, one per interval. |
-| `"intervals work-<dur> rest-<dur>"` | Fixed work and rest durations, e.g. `"intervals work-PT1M rest-PT1M"`, `"intervals work-PT4M rest-PT3M"` (Norwegian 4x4). 🟡 Argument style not settled (TODO #6). |
+| `"intervals <work>:<rest>"` | Fixed work and rest durations, e.g. `"intervals PT1M:PT1M"`, `"intervals PT4M:PT3M"` (Norwegian 4x4). |
 | `"superset <n>-<n>-…"` | Movements grouped in listed order, e.g. `"superset 2-3-2"` for 7 movements. |
 | `"pavel-sprints"` | Named protocol, no arguments: one set = 6 sprints of 8s work / 22s rest, then 2 min walking rest. Logged as `pavel-sprints: 3x6`. |
 | `"ladder"` | Named protocol, no arguments (replaces `fighter-ladder`). |
@@ -55,7 +55,7 @@ Examples from the converted log:
 @session
 date: 2026-10-21
 name: run-intervals
-format: "intervals work-PT1M rest-PT1M"
+format: "intervals PT1M:PT1M"
 run-warmup: PT10M
 run-interval: 3x1 PT1M "80% effort"
 run-recovery: 3x1 PT1M "easy jog"
@@ -83,10 +83,10 @@ srpe: 3 PT13M
 - Migrating old logs. `scripts/migrate_ox.py` stays as is; the one real log has been converted by hand.
 
 ### SPEC sections touched
-- "What works today": add the new builtin to the plugin list.
-- "What's incomplete": `format:` is no longer just a free-text stub.
+- None. Status moved out of SPEC at checkpoint 1: `STATUS.md` Done (new builtin) and Open (`format:` is
+  no longer only free text).
 - Docs: `docs/getting-started.md` (session field table, which still shows the `5/3/1 wave` example),
-  `docs/plugins.md` (new plugin section), `docs/future.md` "Protocol metadata" (point to this
+  `docs/plugins.md` (new plugin section), `docs/drafts/future.md` "Protocol metadata" (point to this
   vocabulary), `CHANGELOG.md`.
 
 ### Decisions (intent review, 2026-10-24)
@@ -113,20 +113,188 @@ srpe: 3 PT13M
 8. **`intervals` has no set-rest argument.** A third argument for rest between sets (for pavel
    sprints) was rejected as verbose and confusing. Multi-level protocols get a name instead
    (`"pavel-sprints"`), and a fuller way to define them is TODO #6.
-9. **`intervals` arguments are labeled for now** (`work-PT1M rest-PT1M`), so the order is explicit.
-   This isn't settled either (TODO #6).
+9. **`intervals` takes one `<work>:<rest>` argument** (`"intervals PT1M:PT1M"`), amended
+   2026-11-17. It reads the way coaches write ratios ("1:1", "4:3"), work first. Rejected: labeled
+   `work-PT1M rest-PT1M` (verbose), labeled `work:PT1M` (looks like a nested `key: value` field), and
+   `PT1M/PT1M` (clashes with per-set `/` lists, as in Decision 5). A colon is safe here: ISO 8601
+   durations never contain one, the grammar reads `format:` as text to the end of the line, and both
+   highlighters anchor their field rules at the start of the line.
 10. **Pavel sprints are counted as sets of 6 sprints** (`3x6`, not `3x1`), matching the 2025 entries.
     The 2026 entries that used `Nx1` for N rounds were converted.
 
 ### Open for the spec step
-- 🟡 Plugin name and output: e.g. `formats` showing a table of date, session name, format, interval,
-  work, rest, work:rest ratio, plus a flag that lists only values it can't parse.
-- 🟡 Builtin (`src/ox/builtins/`) rather than an example plugin, since every user with `format:`
-  values benefits.
-- 🟡 Superset group sizes that don't add up to the movement count: warn or ignore?
-- 🟡 Derived values (`docs/future.md`): `emom` duration = interval × total sets, and work:rest ratio
-  for `intervals`. Decide which ones the first version shows.
-- 🟡 Exposing parsed fields to SQL (e.g. a view or temporary table) vs. plugin output only.
-- 🟡 Unquoted values (e.g. a hand-typed `emom PT2M`): accept them too, or report them as unknown?
-- ❓ Named protocols (`pavel-sprints`): does the plugin expand them to timing values (6 × 8s/22s)
-  from its own table, or only recognise the name until TODO #6 gives them a definition?
+Resolved in `## Spec`, Decisions.
+
+## Spec
+
+### Changes
+- **`src/ox/formats.py` (new):** the vocabulary table, `parse_format(value)` and
+  `check_movement_count(parsed, count)`, plain Python with no plugin or output code (intent
+  constraint), so `lint` or the grammar can reuse them later.
+- **`src/ox/builtins/formats.py` (new):** the `formats` builtin plugin.
+- **`src/ox/data.py`, `TrainingSession.format`:** the docstring says the value follows the vocabulary,
+  that other values still load, and that `formats` reports them.
+- **`docs/plugins.md`:** a `### formats` section with the vocabulary table, usage and an example.
+- **`docs/getting-started.md`:** the `format:` row in the session field table links to that section, and
+  its example becomes `"emom PT2M"`. The `5/3/1 wave` examples in `docs/getting-started.md` and
+  `docs/cli-reference.md` are replaced (5/3/1 is straight sets, so no `format:`). Tests that use
+  `format: 5/3/1 wave` as free text stay unchanged: the parser still accepts any text.
+- **`examples/example.ox`:** one session with `format: "emom PT2M"` and one with
+  `format: "superset 2-2"`, so the reference log shows the vocabulary.
+- **`docs/drafts/future.md` "Protocol metadata":** points to the `formats` section, not to TODO #6
+  and this unit.
+- **Close-out:** `STATUS.md`, `CHANGELOG.md`.
+
+### Decisions
+1. **The plugin is a builtin named `formats`** (spec review, 2026-11-17). Every log with `format:`
+   values benefits from it.
+2. **Output only, no SQL** (spec review, 2026-11-17). Parsed fields aren't written to the database.
+   A view or table waits until the vocabulary has settled in real use.
+3. **No derived values** (spec review, 2026-11-17): no total EMOM duration and no work:rest ratio.
+4. **Unquoted values are reported, not accepted** (spec review, 2026-11-17). `emom PT2M` without quotes
+   gets a `not quoted` problem. Accepting both spellings would leave two ways to write the same thing.
+5. **Named protocols are recognized by name only** (spec review, 2026-11-17). `pavel-sprints`,
+   `ladder` and `circuit` each have a text description in the vocabulary table, and no structured
+   timing. Structured definitions are TODO #6.
+6. **A superset whose groups don't add up to the session's movement count gets a warning**
+   (spec review, 2026-11-17). The row still shows the parsed meaning, so the problem is visible but
+   nothing is hidden. Since rows are unique values (Decision 7) and the check is per session, the
+   warning names the dates of the sessions that don't match. The movement count is the number of movement lines in the session, in the order
+   written, so a movement logged on two lines counts twice.
+7. **Three views through `-o/--output`**, matching `weighin` and `srpe`:
+   - `formats` (default): one row per unique `format:` value as written, with columns `format`,
+     `sessions` (how many sessions use it), `meaning` and `problem` (blank when it parses cleanly).
+     Rows are ordered by `sessions`, most first, then by `format`. Planned sessions count, since the
+     format describes structure whether or not the session happened.
+   - `problems`: the same columns, only rows with a problem.
+   - `vocabulary`: the rules table, with columns `format` (e.g. `emom [interval]`) and `description`.
+     It comes from the same table `parse_format` uses, so the two can't drift.
+   Sessions without `format:` aren't counted. Any other `-o` value raises
+   `ValueError("output must be 'formats', 'problems', or 'vocabulary'")`, as `weighin` does.
+   (Spec review, 2026-11-17: unique values rather than one row per session.)
+8. **Names are case-sensitive and lowercase**, like movement names. `"EMOM"` is an unknown format.
+9. **Every duration argument is a single ISO 8601 duration greater than zero**, parsed with
+   `ox.duration.parse_iso_duration`. Progressive durations (`PT1M/PT2M`) aren't allowed.
+10. **The `meaning` text** keeps durations in ISO form, so it matches what was written:
+    | Value | `meaning` |
+    |---|---|
+    | `"emom"` | `one set every PT1M` |
+    | `"emom PT2M"` | `one set every PT2M` |
+    | `"alt-emom PT30S"` | `one set every PT30S, rotating through movements` |
+    | `"intervals PT4M:PT3M"` | `PT4M work, PT3M rest` |
+    | `"superset 2-3-2"` | `movements grouped 2, 3, 2` |
+    | `"pavel-sprints"` | `6 sprints of 8s work / 22s rest per set, 2 min walk between sets` |
+    | `"ladder"` | `reps climb by one each round` |
+    | `"circuit"` | `one set of each movement in turn, repeated` |
+    A row with a parse problem has a blank `meaning`. A superset warning keeps its meaning (Decision 6).
+11. **Problem messages:**
+    | Case | `problem` |
+    |---|---|
+    | No surrounding `"…"` | `not quoted` |
+    | `""` or only spaces | `empty` |
+    | Name not in the vocabulary | `unknown format "<name>"` |
+    | Wrong number or shape of arguments, or a zero or invalid duration | `expected "<usage>"`, e.g. `expected "emom [interval]"` |
+    | Superset groups ≠ movement lines (plugin) | `groups add up to <n>, not the movement count on <date>, <date>, …` |
+
+### Acceptance criteria
+`parse_format` (in `tests/test_formats.py`):
+1. **emom:** `"emom"` parses to interval 60 s; `"emom PT2M"` to 120 s; `"emom PT30S"` to 30 s.
+2. **alt-emom:** `"alt-emom"` parses to interval 60 s with rotation; `"alt-emom PT30S"` to 30 s.
+3. **intervals:** `"intervals PT1M:PT1M"` parses to work 60 s, rest 60 s; `"intervals PT4M:PT3M"` to
+   240 s, 180 s.
+4. **superset:** `"superset 2-3-2"` with 7 movements parses to groups (2, 3, 2) and no problem.
+5. **Named protocols:** `"pavel-sprints"`, `"ladder"` and `"circuit"` parse with no timing fields and
+   the descriptions in Decision 10.
+6. **Not quoted:** `emom PT2M` gives `not quoted`.
+7. **Empty:** `""` and `"  "` give `empty`.
+8. **Unknown:** `"tabata"`, `"EMOM"` and `"e2mom"` give `unknown format "<name>"`.
+9. **Bad arguments**, each giving `expected "<usage>"`: `"emom PT2M PT3M"`, `"emom 2"`, `"emom PT0S"`,
+   `"emom PT1M/PT2M"`, `"intervals"`, `"intervals PT1M"`, `"intervals PT1M:"`, `"intervals PT1M:PT0S"`,
+   `"intervals PT1M PT1M"`, `"superset"`, `"superset 2-0"`, `"superset 2/3"`, `"ladder 5"`.
+10. **Superset mismatch:** `"superset 2-3-2"` with 6 movements gives groups (2, 3, 2) and a mismatch
+    the plugin can report.
+
+The `formats` plugin (in `tests/test_formats.py`, through `PluginContext` on a fixture log):
+11. **formats view:** a log with `"emom"` on two sessions, `"intervals PT1M:PT1M"` on one, an unquoted
+    `emom PT2M` on one and a session without `format:` gives three rows: `"emom"` (2 sessions) first,
+    then the other two by `format`, with the meanings and problems of Decisions 10 and 11.
+12. **problems view:** the same log gives only the unquoted row.
+13. **Superset dates:** `"superset 2-2"` on three sessions, two of which have 3 movements, gives one
+    row with `sessions` 3 and a problem naming those two dates in date order.
+14. **vocabulary view:** one row per vocabulary entry: `emom [interval]`, `alt-emom [interval]`,
+    `intervals <work>:<rest>`, `superset <n>-<n>-…`, `pavel-sprints`, `ladder`, `circuit`.
+15. **Bad output:** `-o table` raises the `ValueError` in Decision 7.
+16. **Registered:** `formats` appears in `plugins`, and the REPL runs `formats -o problems`.
+17. **Nothing dropped:** loading a log with an unparseable `format:` value gives no new parse
+    diagnostics, and `to_ox()` writes the value back unchanged (SPEC "Plain text is the source of truth").
+18. **Example log:** `examples/example.ox` loads with no `formats` problems.
+
+## Plan
+
+Three build commits, each with `uv run pytest` and `uv run ruff check src/ tests/` green. Steps 2 and 3
+can run on Sonnet in one session after step 1.
+
+### 1. `format-vocabulary: add parse_format and the vocabulary table` (Opus)
+- `src/ox/formats.py` (new):
+  - `FormatRule` (frozen, slots): `name`, `usage` (e.g. `emom [interval]`), `description`.
+    `VOCABULARY: tuple[FormatRule, ...]` in the order of AC 14. Named protocols' `description` is the
+    `meaning` text of Decision 10.
+  - `ParsedFormat` (frozen, slots): `name`, `interval: timedelta | None`, `rotating: bool`,
+    `work`/`rest: timedelta | None`, `groups: tuple[int, ...] | None`, `meaning: str`,
+    `problem: str | None` (`meaning` is `""` when `problem` is set).
+  - `parse_format(value: str) -> ParsedFormat`: strip whitespace, check the quotes (`not quoted`),
+    split the inner text on whitespace (`empty`), look up the name case-sensitively (`unknown format`),
+    then one small parser per argument shape: optional duration (`emom`, `alt-emom`), `<d>:<d>`
+    (`intervals`), `<n>-<n>-…` (`superset`), none (named protocols). Durations go through
+    `ox.duration.parse_iso_duration`; a `ValueError`, a `/`, or a zero duration gives
+    `expected "<usage>"`.
+  - `check_movement_count(parsed, count) -> bool`: true unless `groups` is set and its sum ≠ `count`.
+    The dated message is built by the plugin, since dates are only known across sessions.
+- Tests: `tests/test_formats.py`, parametrized, AC 1–10. AC 10 calls `check_movement_count` with 6
+  and 7.
+
+### 2. `format-vocabulary: add the formats builtin plugin` (Sonnet)
+- `src/ox/builtins/formats.py` (new): module docstring with usage, like `srpe.py`.
+  `formats_report(ctx, output="formats")` validates `output` first (Decision 7 `ValueError`), then:
+  - `vocabulary`: `TableResult(["format", "description"], ...)` from `VOCABULARY`.
+  - otherwise walk `ctx.log.sessions` (planned included) with a `format` value, group by the value as
+    written, parse each unique value once, and collect the dates (sorted) of sessions where
+    `check_movement_count(parsed, len(session.movements))` is false. `problem` is the parse problem,
+    else the superset message from Decision 11, else `""`. Sort by `(-sessions, format)`; `problems`
+    keeps only rows with a problem. Columns `format`, `sessions`, `meaning`, `problem`.
+  - `register()`: one param, `output`, `str`, default `"formats"`, short `o`.
+- `src/ox/plugins.py` `_load_builtins`: import and register `formats`.
+- Tests in `tests/test_formats.py`, building logs with `tmp_path` + `parse_file` as
+  `tests/test_integration.py` does:
+  - AC 11–13: the logs those criteria describe; check rows exactly.
+  - AC 14: vocabulary view `format` column equals the listed usages.
+  - AC 15: `-o table` raises with the exact message.
+  - AC 16: `"formats" in PLUGINS` after `load_plugins()` (also add it to
+    `tests/test_reports.py` `test_all_builtins_registered`), and `ox.cli.run_plugin(ctx, "formats",
+    "-o problems")` returns the problems table.
+  - AC 17: a log with `format: emom PT2M` and `format: "tabata"` has no diagnostics, and each
+    session's `to_ox()` contains the `format:` line unchanged.
+
+### 3. `format-vocabulary: document the vocabulary, close out` (Sonnet)
+- `docs/plugins.md`: `### formats` after `### wendler531`: what it does, the vocabulary table (the
+  intent's table with `intervals <work>:<rest>`), `-o` values, an example of each view's output, and a
+  line saying unparseable values still load.
+- `docs/getting-started.md:78`: the `format:` row reads "Session timing in the format vocabulary, e.g.
+  `"emom PT2M"`" and links to `plugins.md#formats`. Replace the `5/3/1 wave` example in
+  `docs/cli-reference.md:75,89` (drop the line; 5/3/1 is straight sets).
+- `src/ox/data.py` `TrainingSession.format` docstring (Changes).
+- `docs/drafts/future.md:71`: point to the `formats` section.
+- `examples/example.ox`: add `format: "emom PT2M"` and a `superset` whose groups fit to two
+  *existing* sessions, so session and volume counts in other tests don't change. AC 18 test in
+  `tests/test_formats.py`: no `problems` rows for `example.ox`.
+- Close-out: `STATUS.md` (Next, Open: `format:` no longer only free text; Done: `formats` in the
+  builtin list), `CHANGELOG.md` Unreleased entry in the user's words (the vocabulary, `formats` and
+  its three views, and that other values still load), TODO #6 wording if anything changed. Suggest
+  `project-checkpoint` only if `STATUS.md`'s last checkpoint is two or more units back (it isn't:
+  checkpoint 1 was just before this unit).
+
+### Notes from the build
+- `docs/cli-reference.md`'s `add` transcript keeps a `format:` line, as `"superset 1-2"`, instead of
+  dropping it: the transcript shows the prompt, so removing it would misdescribe `add`.
+- The vocabulary view showed `emom` for `emom [interval]`: `render_result` and `show_query` passed cells
+  to rich as markup. Fixed for every table in its own commit (`cli: render table cells as plain text`).

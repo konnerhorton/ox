@@ -287,7 +287,7 @@ class TestRegistry:
 
     def test_all_builtins_registered(self):
         load_plugins()
-        for name in ("volume", "e1rm", "weighin", "wendler531"):
+        for name in ("volume", "e1rm", "weighin", "wendler531", "srpe", "formats"):
             assert name in PLUGINS, f"Builtin '{name}' not registered"
 
     def test_all_plugins_have_fn(self):

@@ -68,7 +68,8 @@ I would need some standard nomenclature to describe the scheme fully, though som
 And certain protocols will require certain metadata.
 Alt-EMOM would require a list of movements and duration for set (if not a minute but say 30 seconds), duration would be derived later from the interval and total sets.
 
-For now this goes in the session's free-text `format:` field (e.g. `format: "alt-emom" PT30M`); a vocabulary for it is TODO #6 and `format-vocabulary`.
+A first vocabulary for the session's `format:` field exists (`"emom PT2M"`, `"intervals PT4M:PT3M"`,
+`"superset 2-3-2"`, …): see `formats` in `docs/plugins.md`. Defining a named protocol once, in full, is TODO #6.
 
 There may need to be some provision for specifying target work/rest ratios, but that might get too verbose and could probably be handled with some text metadata instead of a proper data structure.
 

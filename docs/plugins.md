@@ -140,6 +140,74 @@ ox> wendler531 -m squat:315 -f log.ox
 | `-r/--rm` | `true` | `true`, `false` — tag sets with `^rm` |
 | `-f/--file` | none | Append the cycle to this `.ox` file (created if missing). Relative paths are relative to the current directory; `~` is expanded |
 
+### `formats`
+
+Reads each session's `format:` line against the format vocabulary below, and lists every value in
+your log with what it means. A value that doesn't fit the vocabulary still loads and stays as you
+wrote it; `formats` only reports it.
+
+```
+ox> formats
+ox> formats -o problems
+ox> formats -o vocabulary
+```
+
+| Param | Default | Options |
+|---|---|---|
+| `-o/--output` | `formats` | `formats`, `problems`, `vocabulary` |
+
+**Output modes:**
+
+- **formats** — one row per unique `format:` value: how many sessions use it, what it means, and
+  any problem. Most-used first.
+- **problems** — the same, only values with a problem.
+- **vocabulary** — the rules below.
+
+**The vocabulary.** The whole value is one quoted string: a name, then its arguments. Durations are
+ISO 8601 (`PT30S`, `PT2M`).
+
+| Value | Meaning |
+|---|---|
+| `"emom [interval]"` | One set starts every `interval` (default `PT1M`), e.g. `"emom PT2M"`, `"emom PT30S"` |
+| `"alt-emom [interval]"` | Like `emom`, rotating through the movements, one per interval |
+| `"intervals <work>:<rest>"` | Fixed work and rest durations, e.g. `"intervals PT4M:PT3M"` |
+| `"superset <n>-<n>-…"` | Movements grouped in the order listed, e.g. `"superset 2-3-2"` for 7 movements |
+| `"pavel-sprints"` | 6 sprints of 8s work / 22s rest per set, 2 min walk between sets |
+| `"ladder"` | Reps climb by one each round |
+| `"circuit"` | One set of each movement in turn, repeated |
+
+Leave `format:` out for straight sets. The format describes timing only: the number of rounds comes
+from the sets, and the session's length from `srpe:`.
+
+```
+@session
+date: 2026-10-21
+name: run-intervals
+format: "intervals PT1M:PT1M"
+run-warmup: PT10M
+run-interval: 3x1 PT1M "80% effort"
+run-recovery: 3x1 PT1M "easy jog"
+srpe: 3 PT16M
+@end
+```
+
+A value is reported when it isn't quoted, uses an unknown name, or has the wrong arguments for its
+name; a `superset` is also reported, with the dates, when its groups don't add up to a session's
+movement lines.
+
+```
+ox> formats
+  format           sessions   meaning                  problem
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
+  "emom"           3          one set every PT1M
+  "emom PT2M"      2          one set every PT2M
+  "e2mom"          1                                   unknown format "e2mom"
+  "superset 2-2"   1          movements grouped 2, 2   groups add up to 4, not the movement count
+                                                       on 2026-01-10
+
+4 row(s)
+```
+
 ## Loading Plugins
 
 Plugins come from two sources:

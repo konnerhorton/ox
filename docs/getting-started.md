@@ -75,7 +75,7 @@ jump-rope: PT10M
 | `date:` | Required, and must be the first line |
 | `name:` | Optional; omit for an ad hoc session |
 | `completed:` | `true` (default) or `false` for planned work |
-| `format:` | Free text naming the session's shape, e.g. `5/3/1 wave` |
+| `format:` | The session's timing, e.g. `"emom PT2M"` — see the [format vocabulary](plugins.md#formats) |
 | `srpe:` | Session RPE — see below |
 | `note:` | Freeform note attached to the session |
 
