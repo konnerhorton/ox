@@ -1,17 +1,18 @@
 """Tests for REPL tab completion (ox.completion)."""
 
+from datetime import date
+
 import pytest
 from prompt_toolkit.completion import CompleteEvent
 from prompt_toolkit.document import Document
 
 from ox.cli import REPL_COMMANDS, build_completer, parse_file
 from ox.add import last_movements, prefill_text
+from ox.data import MovementIndexEntry
 from ox.completion import (
     MovementLineCompleter,
     ReplCompleter,
     SessionNameCompleter,
-    _movement_index,
-    movement_names,
 )
 from ox.plugins import PLUGINS, load_plugins
 
@@ -55,7 +56,7 @@ def completer(log):
     return ReplCompleter(
         COMMANDS + list(PLUGINS),
         dict(PLUGINS),
-        _movement_index(log),
+        log.movement_index(),
         [q.name for q in log.queries],
     )
 
@@ -72,8 +73,27 @@ def texts(c, text):
 
 
 # AC 1
-def test_movement_names_order(log):
-    assert movement_names(log) == ["squat", "bench-press", "deadlift", "front-squat"]
+def test_movement_index(log):
+    assert log.movement_index() == [
+        MovementIndexEntry("squat", date(2025, 1, 8), "trained"),
+        MovementIndexEntry("bench-press", date(2025, 1, 3), "trained"),
+        MovementIndexEntry("deadlift", None, "planned"),
+        MovementIndexEntry("front-squat", None, "defined"),
+    ]
+
+
+def test_movement_index_tie_order(tmp_path):
+    path = tmp_path / "tie.ox"
+    path.write_text(
+        "2025-01-01 T zercher: 135lb 5x5\n"
+        "2025-01-05 T row: 95lb 5x5\n"
+        "2025-01-05 T curl: 25lb 3x10\n"
+    )
+    assert [(e.name, e.last) for e in parse_file(path).movement_index()] == [
+        ("curl", date(2025, 1, 5)),
+        ("row", date(2025, 1, 5)),
+        ("zercher", date(2025, 1, 1)),
+    ]
 
 
 # AC 2
@@ -147,7 +167,7 @@ def test_user_plugin(log):
             ],
         }
     }
-    c = ReplCompleter(["mine"], plugins, _movement_index(log), [])
+    c = ReplCompleter(["mine"], plugins, log.movement_index(), [])
     assert texts(c, "mine -x b") == ["bench-press"]
     assert texts(c, "mine --movement f") == ["front-squat"]
 
@@ -213,7 +233,7 @@ def add_log(tmp_path):
 @pytest.fixture
 def line_completer(add_log):
     prefills = {n: prefill_text(m) for n, m in last_movements(add_log).items()}
-    return MovementLineCompleter(_movement_index(add_log), prefills)
+    return MovementLineCompleter(add_log.movement_index(), prefills)
 
 
 def completions(c, text):

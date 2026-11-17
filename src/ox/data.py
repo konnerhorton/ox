@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime, date, time, timedelta
-from typing import Optional, List, Iterator
+from typing import Optional, List, Iterator, Literal
 from pint import Quantity
 
 from ox.duration import format_iso_duration
@@ -388,6 +388,23 @@ class TrainingSession(Entry):
         return "\n".join(lines)
 
 
+@dataclass(frozen=True, slots=True)
+class MovementIndexEntry:
+    """One movement name in the log, as `TrainingLog.movement_index` lists it.
+
+    Attributes:
+        name: Movement name
+        last: Date of the latest completed session with the movement; set
+            exactly when status is "trained"
+        status: "trained" (in a completed session), "planned" (only in
+            planned sessions) or "defined" (only in an @movement block)
+    """
+
+    name: str
+    last: date | None
+    status: Literal["trained", "planned", "defined"]
+
+
 @dataclass
 class TrainingLog:
     """A collection of training sessions with query methods.
@@ -459,3 +476,35 @@ class TrainingLog:
             Tuple of (date, Movement) for most recent session
         """
         return self.movement_history(name)[-1]
+
+    def movement_index(self) -> list[MovementIndexEntry]:
+        """Every movement name in the log, most recently trained first.
+
+        A movement in any completed session is "trained", with `last` the date
+        of the latest such session, even if it also appears in a planned
+        session or an @movement block. Of the rest, one in a planned session is
+        "planned", and one only in an @movement block is "defined".
+
+        Returns:
+            Trained entries by `last` descending, ties by name, then the rest
+            by name
+        """
+        last_done: dict[str, date] = {}
+        planned: set[str] = set()
+        for session in self.sessions:
+            for movement in session.movements:
+                if session.completed:
+                    prev = last_done.get(movement.name)
+                    if prev is None or session.date > prev:
+                        last_done[movement.name] = session.date
+                else:
+                    planned.add(movement.name)
+        defined = {d.name for d in self.movement_definitions}
+
+        trained = sorted(last_done.items(), key=lambda kv: kv[0])
+        trained.sort(key=lambda kv: kv[1], reverse=True)
+        rest = sorted((planned | defined) - last_done.keys())
+        return [MovementIndexEntry(n, d, "trained") for n, d in trained] + [
+            MovementIndexEntry(n, None, "planned" if n in planned else "defined")
+            for n in rest
+        ]

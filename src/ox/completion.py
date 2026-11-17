@@ -10,41 +10,18 @@ from collections.abc import Iterable
 from prompt_toolkit.completion import CompleteEvent, Completer, Completion
 from prompt_toolkit.document import Document
 
-from ox.data import TrainingLog
+from ox.data import MovementIndexEntry, TrainingLog
 from ox.sql_utils import flag_name
 
 # A plugin param with one of these names takes movement names as its value.
 MOVEMENT_PARAMS = ("movement", "movements")
 
 
-def _movement_index(log: TrainingLog) -> list[tuple[str, str]]:
-    """Movement names in the log with a note, most recently trained first.
-
-    The note is the ISO date of the latest completed session, `planned` if the
-    name appears only in planned sessions, or `defined` if only in `@movement`.
-    Trained names come first by date descending; the rest follow by name.
-    """
-    last_done: dict[str, str] = {}
-    planned: set[str] = set()
-    for session in log.sessions:
-        for movement in session.movements:
-            if session.completed:
-                iso = session.date.isoformat()
-                if iso > last_done.get(movement.name, ""):
-                    last_done[movement.name] = iso
-            else:
-                planned.add(movement.name)
-    defined = {d.name for d in log.movement_definitions}
-
-    trained = sorted(last_done.items(), key=lambda kv: kv[0])
-    trained.sort(key=lambda kv: kv[1], reverse=True)
-    rest = sorted((planned | defined) - last_done.keys())
-    return trained + [(n, "planned" if n in planned else "defined") for n in rest]
-
-
-def movement_names(log: TrainingLog) -> list[str]:
-    """Movement names in the log, most recently trained first."""
-    return [name for name, _ in _movement_index(log)]
+def _movement_note(entry: MovementIndexEntry) -> str:
+    """Completion note for a movement: its last trained date, or its status."""
+    if entry.status == "trained":
+        return entry.last.isoformat()
+    return entry.status
 
 
 def _flag_note(param: dict) -> str:
@@ -68,12 +45,12 @@ class ReplCompleter(Completer):
         self,
         commands: Iterable[str],
         plugins: dict[str, dict],
-        movements: list[tuple[str, str]],
+        movements: list[MovementIndexEntry],
         queries: Iterable[str],
     ):
         self.commands = list(commands)
         self.plugins = plugins
-        self.movements = movements
+        self.movements = [(e.name, _movement_note(e)) for e in movements]
         self.queries = list(queries)
 
     def get_completions(self, document: Document, complete_event: CompleteEvent):
@@ -120,13 +97,13 @@ class ReplCompleter(Completer):
 class MovementLineCompleter(Completer):
     """Completer for a movement line at the `add` prompt.
 
-    Before any `:`, offers movement names (as `_movement_index` orders and
-    notes them). Accepting one replaces the whole line with that movement's
+    Before any `:`, offers movement names (in `TrainingLog.movement_index`
+    order, noted by `_movement_note`). Accepting one replaces the whole line with that movement's
     prefill text, or `name: ` if it has none.
     """
 
-    def __init__(self, movements: list[tuple[str, str]], prefills: dict[str, str]):
-        self.movements = movements
+    def __init__(self, movements: list[MovementIndexEntry], prefills: dict[str, str]):
+        self.movements = [(e.name, _movement_note(e)) for e in movements]
         self.prefills = prefills
 
     def get_completions(self, document: Document, complete_event: CompleteEvent):
