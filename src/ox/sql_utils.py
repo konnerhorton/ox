@@ -1,6 +1,7 @@
 """SQL helper utilities for ox plugins.
 
-Shared functions used by plugins that query the SQLite database.
+Plugins may import `parse_plugin_args`, `plugin_usage`, `weight_sql_expr` and
+`time_bin_expr` from here; see docs/plugins.md, "Helpers".
 """
 
 import shlex
@@ -20,7 +21,7 @@ TIME_BINS = {
 }
 
 
-def _weight_sql_expr(magnitude_col: str, unit_col: str, target_unit: str) -> str:
+def weight_sql_expr(magnitude_col: str, unit_col: str, target_unit: str) -> str:
     """SQL CASE expression converting weight_magnitude to target_unit.
 
     Uses Pint to derive conversion factors, so any valid mass unit string is accepted.
@@ -39,7 +40,7 @@ def _weight_sql_expr(magnitude_col: str, unit_col: str, target_unit: str) -> str
     return f"CASE {unit_col} {' '.join(cases)} ELSE {magnitude_col} END"
 
 
-def _time_bin_expr(bin: str, col: str = "date") -> str:
+def time_bin_expr(bin: str, col: str = "date") -> str:
     """Return a SQL expression for a time bin name.
 
     Args:
@@ -56,7 +57,7 @@ def _time_bin_expr(bin: str, col: str = "date") -> str:
     return TIME_BINS[bin].format(col=col)
 
 
-def _flag_name(param: dict) -> str:
+def flag_name(param: dict) -> str:
     """CLI long-flag name for a param: its name with `_` replaced by `-`."""
     return param["name"].replace("_", "-")
 
@@ -84,10 +85,10 @@ def parse_plugin_args(params: list[dict], arg_string: str) -> dict:
         token = tokens[i]
         if token.startswith("--"):
             key = token[2:]
-            param = next((p for p in params if _flag_name(p) == key), None)
+            param = next((p for p in params if flag_name(p) == key), None)
             if param is None:
                 hyphenated = key.replace("_", "-")
-                if "_" in key and any(_flag_name(p) == hyphenated for p in params):
+                if "_" in key and any(flag_name(p) == hyphenated for p in params):
                     raise ValueError(
                         f"Unknown flag: --{key} (did you mean --{hyphenated}?)"
                     )
@@ -112,7 +113,7 @@ def parse_plugin_args(params: list[dict], arg_string: str) -> dict:
         if name not in parsed:
             if param.get("required", False):
                 required_names = [
-                    f"--{_flag_name(p)}" for p in params if p.get("required", False)
+                    f"--{flag_name(p)}" for p in params if p.get("required", False)
                 ]
                 raise ValueError(
                     f"Missing required flag(s): {', '.join(required_names)}"
@@ -135,7 +136,7 @@ def plugin_usage(name: str, entry: dict) -> str:
     parts = [name]
     for p in entry["params"]:
         short = f"-{p['short']}/" if p.get("short") else ""
-        flag = f"{short}--{_flag_name(p)} <{_flag_name(p)}>"
+        flag = f"{short}--{flag_name(p)} <{flag_name(p)}>"
         if p.get("required", False):
             parts.append(flag)
         else:

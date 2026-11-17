@@ -6,7 +6,7 @@ Usage:
 """
 
 from ox.plugins import PluginContext, TableResult
-from ox.sql_utils import _time_bin_expr, _weight_sql_expr
+from ox.sql_utils import time_bin_expr, weight_sql_expr
 
 
 def volume(ctx: PluginContext, movement: str, bin: str = "weekly", unit: str = "lb"):
@@ -18,8 +18,8 @@ def volume(ctx: PluginContext, movement: str, bin: str = "weekly", unit: str = "
         bin: Time bin size ("daily", "weekly", "monthly")
         unit: Weight unit for output values (default "lb")
     """
-    expr = _time_bin_expr(bin, "date")
-    w = _weight_sql_expr("weight_magnitude", "weight_unit", unit)
+    expr = time_bin_expr(bin, "date")
+    w = weight_sql_expr("weight_magnitude", "weight_unit", unit)
     rows = ctx.db.execute(
         f"""
         SELECT

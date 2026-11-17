@@ -11,7 +11,7 @@ from prompt_toolkit.completion import CompleteEvent, Completer, Completion
 from prompt_toolkit.document import Document
 
 from ox.data import TrainingLog
-from ox.sql_utils import _flag_name
+from ox.sql_utils import flag_name
 
 # A plugin param with one of these names takes movement names as its value.
 MOVEMENT_PARAMS = ("movement", "movements")
@@ -55,7 +55,7 @@ def _flag_note(param: dict) -> str:
 
 
 def _param_flags(param: dict) -> set[str]:
-    flags = {f"--{_flag_name(param)}"}
+    flags = {f"--{flag_name(param)}"}
     if param.get("short"):
         flags.add(f"-{param['short']}")
     return flags
@@ -110,7 +110,7 @@ class ReplCompleter(Completer):
         if word.startswith("-"):
             used = set(words[1:-1])
             options = [
-                (f"--{_flag_name(p)}", _flag_note(p))
+                (f"--{flag_name(p)}", _flag_note(p))
                 for p in params
                 if not (_param_flags(p) & used)
             ]
