@@ -128,8 +128,9 @@ Resolved in `## Spec`, Decisions.
 ## Spec
 
 ### Changes
-- **`src/ox/formats.py` (new):** the vocabulary table and `parse_format(value, movement_count)`, plain
-  Python with no plugin or output code (intent constraint), so `lint` or the grammar can reuse it later.
+- **`src/ox/formats.py` (new):** the vocabulary table, `parse_format(value)` and
+  `check_movement_count(parsed, count)`, plain Python with no plugin or output code (intent
+  constraint), so `lint` or the grammar can reuse them later.
 - **`src/ox/builtins/formats.py` (new):** the `formats` builtin plugin.
 - **`src/ox/data.py`, `TrainingSession.format`:** the docstring says the value follows the vocabulary,
   that other values still load, and that `formats` reports them.
@@ -227,3 +228,67 @@ The `formats` plugin (in `tests/test_formats.py`, through `PluginContext` on a f
 17. **Nothing dropped:** loading a log with an unparseable `format:` value gives no new parse
     diagnostics, and `to_ox()` writes the value back unchanged (SPEC "Plain text is the source of truth").
 18. **Example log:** `examples/example.ox` loads with no `formats` problems.
+
+## Plan
+
+Three build commits, each with `uv run pytest` and `uv run ruff check src/ tests/` green. Steps 2 and 3
+can run on Sonnet in one session after step 1.
+
+### 1. `format-vocabulary: add parse_format and the vocabulary table` (Opus)
+- `src/ox/formats.py` (new):
+  - `FormatRule` (frozen, slots): `name`, `usage` (e.g. `emom [interval]`), `description`.
+    `VOCABULARY: tuple[FormatRule, ...]` in the order of AC 14. Named protocols' `description` is the
+    `meaning` text of Decision 10.
+  - `ParsedFormat` (frozen, slots): `name`, `interval: timedelta | None`, `rotating: bool`,
+    `work`/`rest: timedelta | None`, `groups: tuple[int, ...] | None`, `meaning: str`,
+    `problem: str | None` (`meaning` is `""` when `problem` is set).
+  - `parse_format(value: str) -> ParsedFormat`: strip whitespace, check the quotes (`not quoted`),
+    split the inner text on whitespace (`empty`), look up the name case-sensitively (`unknown format`),
+    then one small parser per argument shape: optional duration (`emom`, `alt-emom`), `<d>:<d>`
+    (`intervals`), `<n>-<n>-…` (`superset`), none (named protocols). Durations go through
+    `ox.duration.parse_iso_duration`; a `ValueError`, a `/`, or a zero duration gives
+    `expected "<usage>"`.
+  - `check_movement_count(parsed, count) -> bool`: true unless `groups` is set and its sum ≠ `count`.
+    The dated message is built by the plugin, since dates are only known across sessions.
+- Tests: `tests/test_formats.py`, parametrized, AC 1–10. AC 10 calls `check_movement_count` with 6
+  and 7.
+
+### 2. `format-vocabulary: add the formats builtin plugin` (Sonnet)
+- `src/ox/builtins/formats.py` (new): module docstring with usage, like `srpe.py`.
+  `formats_report(ctx, output="formats")` validates `output` first (Decision 7 `ValueError`), then:
+  - `vocabulary`: `TableResult(["format", "description"], ...)` from `VOCABULARY`.
+  - otherwise walk `ctx.log.sessions` (planned included) with a `format` value, group by the value as
+    written, parse each unique value once, and collect the dates (sorted) of sessions where
+    `check_movement_count(parsed, len(session.movements))` is false. `problem` is the parse problem,
+    else the superset message from Decision 11, else `""`. Sort by `(-sessions, format)`; `problems`
+    keeps only rows with a problem. Columns `format`, `sessions`, `meaning`, `problem`.
+  - `register()`: one param, `output`, `str`, default `"formats"`, short `o`.
+- `src/ox/plugins.py` `_load_builtins`: import and register `formats`.
+- Tests in `tests/test_formats.py`, building logs with `tmp_path` + `parse_file` as
+  `tests/test_integration.py` does:
+  - AC 11–13: the logs those criteria describe; check rows exactly.
+  - AC 14: vocabulary view `format` column equals the listed usages.
+  - AC 15: `-o table` raises with the exact message.
+  - AC 16: `"formats" in PLUGINS` after `load_plugins()` (also add it to
+    `tests/test_reports.py` `test_all_builtins_registered`), and `ox.cli.run_plugin(ctx, "formats",
+    "-o problems")` returns the problems table.
+  - AC 17: a log with `format: emom PT2M` and `format: "tabata"` has no diagnostics, and each
+    session's `to_ox()` contains the `format:` line unchanged.
+
+### 3. `format-vocabulary: document the vocabulary, close out` (Sonnet)
+- `docs/plugins.md`: `### formats` after `### wendler531`: what it does, the vocabulary table (the
+  intent's table with `intervals <work>:<rest>`), `-o` values, an example of each view's output, and a
+  line saying unparseable values still load.
+- `docs/getting-started.md:78`: the `format:` row reads "Session timing in the format vocabulary, e.g.
+  `"emom PT2M"`" and links to `plugins.md#formats`. Replace the `5/3/1 wave` example in
+  `docs/cli-reference.md:75,89` (drop the line; 5/3/1 is straight sets).
+- `src/ox/data.py` `TrainingSession.format` docstring (Changes).
+- `docs/drafts/future.md:71`: point to the `formats` section.
+- `examples/example.ox`: add `format: "emom PT2M"` and a `superset` whose groups fit to two
+  *existing* sessions, so session and volume counts in other tests don't change. AC 18 test in
+  `tests/test_formats.py`: no `problems` rows for `example.ox`.
+- Close-out: `STATUS.md` (Next, Open: `format:` no longer only free text; Done: `formats` in the
+  builtin list), `CHANGELOG.md` Unreleased entry in the user's words (the vocabulary, `formats` and
+  its three views, and that other values still load), TODO #6 wording if anything changed. Suggest
+  `project-checkpoint` only if `STATUS.md`'s last checkpoint is two or more units back (it isn't:
+  checkpoint 1 was just before this unit).
