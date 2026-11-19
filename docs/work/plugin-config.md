@@ -85,3 +85,101 @@ config that can't be read while you edit:
    silently dropping the rest. Builtins follow the same rule. Not decided here: requiring the plugin's name to match
    its file name, which would let lint know user plugin names without running them (decisions 3 and 5); with one
    plugin per file it can be added later without breaking anything.
+
+## Spec
+
+### Changes
+- **`tree-sitter-ox/grammar.js`:** `plugin_directive` becomes `"@plugin"`, `field("target", $.file_path)`,
+  `optional(field("config", $.plugin_config))`, `optional("\n")`. New token `plugin_config: /"[^"]*"/`, newlines
+  allowed (D1). The field is renamed `path` → `target` because a name isn't a path. Regenerate the parser.
+- **`src/ox/data.py`:** new frozen `PluginDirective(target: str, config: str | None, file: Path, line: int)`; `config`
+  is the raw text between the quotes, `file` the absolute path of the `.ox` file holding it, `line` 1-based; property
+  `loads_file` is `target.endswith(".py")`. `TrainingLog.plugin_paths` is replaced by
+  `plugin_directives: tuple[PluginDirective, ...]` (load order), with `plugin_paths` kept as a property returning the
+  targets of file directives. New field `plugin_configs: dict[str, object]` (empty by default) and method
+  `plugin_config(name) -> object | None`.
+- **`src/ox/parse.py`:** `process_plugin_directive(node, file)` returns a `PluginDirective`.
+- **`src/ox/cli.py`:** `_parse_single_file` and `_load_recursive` carry directives instead of path strings.
+  `load_log` sets the configs with `dataclasses.replace(log, plugin_configs=load_plugins(log))` before building the
+  `PluginContext`. `print_load_summary` prints each entry of `LOAD_WARNINGS` as a yellow line.
+- **`src/ox/plugins.py`:**
+  - `read_plugin_config(text) -> object`: `ast.literal_eval`, raising `ValueError` with a one-line reason for any
+    failure (syntax error, or a non-literal such as a name or call). Used by loading and by lint.
+  - `load_plugins(log=None) -> dict[str, object]`: loads builtins, then each file directive resolved against its own
+    `directive.file`, then returns the configs (rules below). The `base_path` parameter goes.
+  - `_register_descriptors` accepts a dict or a list; a list longer than one is refused (D8).
+  - New module-level `LOAD_WARNINGS: list[str]`, cleared by `load_plugins`, beside `PLUGINS` and `USER_PLUGINS`.
+- **`src/ox/lint.py`:** `collect_diagnostics` adds plugin checks (below). The LSP gets them through
+  `collect_diagnostics` with no change of its own.
+- **`editors/vscode/syntaxes/ox.tmLanguage.json`:** the plugin directive becomes a `begin`/`end` rule: begins at
+  `@plugin`, the target and an optional opening config quote; the config to its closing `"` is
+  `string.quoted.double.ox`, across lines. The single-line form keeps its current scopes. Bump `version` in
+  `package.json` with a `CHANGELOG.md` entry; uploading the `.vsix` is by hand after merge.
+- **`editors/micro/syntax/ox.yaml`:** a region from a config's opening quote to its closing one, `constant.string`,
+  so lines inside a multi-line config stay one color.
+- **`docs/plugins.md`:** "Loading" gains the config forms; new "Configuring a plugin" section (both forms, the literal
+  rules, first one wins, how a plugin reads `ctx.log.plugin_config(name)`); "Writing a Plugin" shows `register()`
+  returning one dict and states one file, one plugin.
+- **`docs/getting-started.md`** "Loading plugins", **`CLAUDE.md`** format notation: the config forms.
+- **`SPEC.md`** (changed in this commit): new section "Plugins" with the cross-cutting decisions: every analysis
+  feature is a plugin; one file registers one plugin; a plugin is configured from the log, by name or on its file's
+  line; the config is a Python literal that ox parses and the plugin interprets; the first config wins.
+- **`CHANGELOG.md`** Unreleased: configuring plugins; the include path fix; one plugin per file (a file registering
+  several no longer loads).
+
+### Decisions
+1. **Config resolution, in `load_plugins`.** Walk `plugin_directives` in load order. A file directive with a config
+   configures the plugin its file registered; if the file failed to load, no extra warning (its load failure already
+   says so). A name directive with a config configures that name. A name directive without one is ignored at load
+   (lint reports it). Each config is read with `read_plugin_config`; one that fails adds
+   `<file>:<line>: config for '<name>' doesn't parse: <reason>` to `LOAD_WARNINGS` and leaves that plugin
+   unconfigured (D4). A name already configured adds `<file>:<line>: '<name>' is already configured at <file>:<line>;
+   this config is ignored` (D3). After all directives, a configured name not in `PLUGINS` adds
+   `<file>:<line>: config for unknown plugin '<name>'` (D5). A `None` config is indistinguishable from none.
+2. **Load order is the existing one:** a file's own directives in order, then each `@include`d file's, in include
+   order. Decision 3 said "includes in place"; keeping the existing order avoids also changing which user plugin
+   overrides which.
+3. **Plugin paths in included files resolve against the file that holds them,** as `docs/plugins.md` already says.
+   Today they resolve against the root log (`plugins.py`, `_load_from_log_directives`). Fixed here because directives
+   now carry their file.
+4. **One file, one plugin** (D8): `register()` returning a dict or a one-item list registers it; a list of more than
+   one adds `<path> registers <n> plugins; a file may register one. Not loaded.` to `LOAD_WARNINGS` and registers
+   nothing. An empty list registers nothing, as now.
+5. **Lint checks, per file** (lint and the LSP see one file at a time):
+   - A config that `read_plugin_config` rejects: error `Plugin config doesn't parse: <reason>`, spanning the config.
+   - A name directive with no config: error `@plugin "<name>" does nothing: add a config, or a .py path to load a
+     file`, spanning the target.
+   - A name configured a second time in the same file: warning `'<name>' is already configured on line <n>; this
+     config is ignored`, spanning the target. Across files, and file-plus-name, only the REPL warns.
+   - No unknown-name check. D5 limits lint to builtin names, but any other name may be a user plugin, so in practice
+     lint reports none; the REPL's load warning covers it.
+6. **Unclosed config quote.** The token runs to the next `"` in the file, so the config ends in the wrong place and
+   fails to parse (an error at the directive), with syntax errors after it. No special hint: the config error points
+   at the cause.
+7. **Not in scope:** `to_ox()` for directives (none exists today), an LSP check that a `.py` path exists, completion
+   after `@plugin`.
+
+### Acceptance criteria
+1. **Grammar:** `@plugin "mix"` + a config on one line, and a config spanning four lines with single-quoted strings,
+   `[`, `{`, `#` and blank lines inside, each parse with no error into `plugin_directive` with `target` and `config`
+   fields. `@plugin "plugins/x.py"` still parses, with no `config`. Entries after a multi-line config parse normally.
+2. **Directive data:** parsing a log gives `PluginDirective`s with the raw config, the absolute file and the 1-based
+   line; `plugin_paths` returns only the `.py` targets.
+3. **Reading a config:** with a fixture plugin file and `@plugin "fixture.py" "{'a': [1, 2]}"`,
+   `ctx.log.plugin_config("fixture")` returns `{'a': [1, 2]}`; with the config given by name instead, the same; an
+   unconfigured plugin returns `None`. A builtin configured by name (`@plugin "volume" "{'x': 1}"`) returns its value.
+4. **Includes:** a config in an included file is read; a `.py` path in `sub/inc.ox` loads `sub/plugins/x.py` (D3).
+5. **First wins:** two name configs for one plugin, in one file and across an include, and a file config followed by a
+   name config: the first value is returned and `LOAD_WARNINGS` has one entry per ignored config naming both lines.
+6. **Unparsable config:** `"{'a': [}"` and `"open('x')"` leave the plugin unconfigured, add one warning each, and the
+   REPL still starts; `query` works.
+7. **Unknown name:** `@plugin "nope" "{}"` adds `config for unknown plugin 'nope'`; no lint diagnostic.
+8. **One file, one plugin:** a file returning one dict loads; a one-item list loads; a two-item list adds the warning
+   and registers neither. Every builtin's `register()` returns exactly one descriptor.
+9. **Load summary:** `print_load_summary` prints each `LOAD_WARNINGS` entry in yellow after the counts.
+10. **Lint:** the three checks of decision 5 report the stated severity, message and span, through `lint` and through
+    the LSP's `get_diagnostics`; a valid config, and a config after a `.py` path, report nothing.
+11. **Highlighting (checked by eye):** in VS Code and micro, a four-line config is string-colored on every line,
+    `@plugin` and the target keep their colors, and the line after the closing quote is colored normally. A
+    single-line `@plugin "x.py"` looks as before.
+12. **No regressions:** existing `@plugin "x.py"` logs load the same plugins; full test suite and ruff pass.

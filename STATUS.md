@@ -7,8 +7,8 @@ Last checkpoint: 1, after micro-syntax, 2026-11-15, `e9d430c`.
 
 ## In progress
 
-- `plugin-config` (branch): intent committed in `docs/work/plugin-config.md`. Next: write `## Spec`, starting
-  with the grammar token (decision 1) and the lint rules (decisions 3–6).
+- `plugin-config` (branch): intent and spec committed in `docs/work/plugin-config.md`. Next: `## Plan`, in a
+  new session.
 
 ## Open
 
