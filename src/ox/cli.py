@@ -20,6 +20,7 @@ from ox.data import (
     Diagnostic,
     MovementDefinition,
     Note,
+    PluginDirective,
     StoredQuery,
     TrainingLog,
     TrainingSession,
@@ -69,11 +70,11 @@ def build_completer(log: TrainingLog) -> ReplCompleter:
 
 def _parse_single_file(
     file_path: Path, parser: Parser
-) -> tuple[list, list, list, list, list, list[str], list[str], list]:
+) -> tuple[list, list, list, list, list, list[str], list[PluginDirective], list]:
     """Parse a single .ox file without resolving includes.
 
     Returns:
-        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, include_paths, plugin_paths, movement_definitions)
+        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, include_paths, plugin_directives, movement_definitions)
     """
     with open(file_path, "r") as f:
         data = bytes(f.read(), encoding="utf-8")
@@ -86,14 +87,14 @@ def _parse_single_file(
     log_queries = []
     log_weigh_ins = []
     include_paths = []
-    plugin_paths = []
+    plugin_directives = []
     movement_definitions = []
     for child in root_node.children:
         if child.type == "include_directive":
             include_paths.append(process_include_directive(child))
             continue
         if child.type == "plugin_directive":
-            plugin_paths.append(process_plugin_directive(child))
+            plugin_directives.append(process_plugin_directive(child, file_path))
             continue
         result = process_node(child)
         if isinstance(result, TrainingSession):
@@ -115,7 +116,7 @@ def _parse_single_file(
         log_weigh_ins,
         diagnostics,
         include_paths,
-        plugin_paths,
+        plugin_directives,
         movement_definitions,
     )
 
@@ -128,7 +129,7 @@ def _load_recursive(
     """Recursively load a file and its includes with cycle detection.
 
     Returns:
-        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, plugin_paths, movement_definitions)
+        Tuple of (sessions, notes, queries, weigh_ins, diagnostics, plugin_directives, movement_definitions)
     """
     abs_path = file_path.resolve()
 
@@ -163,7 +164,7 @@ def _load_recursive(
         weigh_ins,
         diagnostics,
         include_paths,
-        plugin_paths,
+        plugin_directives,
         movement_definitions,
     ) = _parse_single_file(abs_path, parser)
 
@@ -183,7 +184,7 @@ def _load_recursive(
         queries.extend(inc_queries)
         weigh_ins.extend(inc_weigh_ins)
         diagnostics.extend(inc_diagnostics)
-        plugin_paths.extend(inc_plugins)
+        plugin_directives.extend(inc_plugins)
         movement_definitions.extend(inc_defs)
 
     return (
@@ -192,7 +193,7 @@ def _load_recursive(
         queries,
         weigh_ins,
         diagnostics,
-        plugin_paths,
+        plugin_directives,
         movement_definitions,
     )
 
@@ -216,7 +217,7 @@ def parse_file(file_path: Path) -> TrainingLog:
         queries,
         weigh_ins,
         diagnostics,
-        plugin_paths,
+        plugin_directives,
         movement_definitions,
     ) = _load_recursive(file_path, parser, visited=set())
 
@@ -226,7 +227,7 @@ def parse_file(file_path: Path) -> TrainingLog:
         tuple(diagnostics),
         tuple(queries),
         tuple(weigh_ins),
-        tuple(plugin_paths),
+        tuple(plugin_directives),
         tuple(movement_definitions),
     )
 

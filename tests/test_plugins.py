@@ -1,8 +1,9 @@
 """Tests for the plugin system."""
 
 import textwrap
+from pathlib import Path
 
-from ox.data import TrainingLog
+from ox.data import PluginDirective, TrainingLog
 from ox.plugins import (
     PLUGINS,
     _load_from_log_directives,
@@ -23,7 +24,10 @@ def _make_log(plugin_paths: tuple[str, ...]) -> TrainingLog:
         diagnostics=(),
         queries=(),
         weigh_ins=(),
-        plugin_paths=plugin_paths,
+        plugin_directives=tuple(
+            PluginDirective(p, None, Path("log.ox").resolve(), i + 1)
+            for i, p in enumerate(plugin_paths)
+        ),
     )
 
 

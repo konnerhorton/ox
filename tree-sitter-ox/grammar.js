@@ -33,9 +33,13 @@ module.exports = grammar({
 
     plugin_directive: ($) => prec.right(seq(
       "@plugin",
-      field("path", $.file_path),
+      field("target", $.file_path),
+      optional(field("config", $.plugin_config)),
       optional("\n")
     )),
+
+    // A plugin's config: a Python literal in double quotes, which may span lines
+    plugin_config: ($) => /"[^"]*"/,
 
     file_path: ($) => seq('"', /[^"\n]+/, '"'),
 

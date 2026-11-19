@@ -872,3 +872,62 @@ class TestQueryEntryParsing:
         assert log.queries[0].date == date(2025, 1, 15)
 
     pass
+
+
+class TestPluginDirective:
+    """@plugin directives become PluginDirectives with their config, file and line."""
+
+    SRC = (
+        "# plugins\n"
+        '@plugin "plugins/x.py"\n'
+        "@plugin \"mix\" \"{'categories': ['strength']}\"\n"
+        '@plugin "plugins/y.py" "{\n'
+        "  'a': [1, 2],  # comment\n"
+        "\n"
+        "  'b': {'c': 'd'},\n"
+        '}"\n'
+        "2025-01-10 T pullups: BW 5x10\n"
+    )
+
+    def _parse(self, tmp_path, src):
+        from ox.cli import parse_file
+
+        p = tmp_path / "log.ox"
+        p.write_text(src)
+        return parse_file(p)
+
+    def test_fields(self, tmp_path):
+        log = self._parse(tmp_path, self.SRC)
+        file = (tmp_path / "log.ox").resolve()
+        x, mix, y = log.plugin_directives
+        assert (x.target, x.config, x.file, x.line) == ("plugins/x.py", None, file, 2)
+        assert (mix.target, mix.config, mix.line) == (
+            "mix",
+            "{'categories': ['strength']}",
+            3,
+        )
+        assert y.target == "plugins/y.py"
+        assert y.config == "{\n  'a': [1, 2],  # comment\n\n  'b': {'c': 'd'},\n}"
+        assert y.line == 4
+
+    def test_loads_file(self, tmp_path):
+        log = self._parse(tmp_path, self.SRC)
+        assert [d.loads_file for d in log.plugin_directives] == [True, False, True]
+        assert log.plugin_paths == ("plugins/x.py", "plugins/y.py")
+
+    def test_entry_after_multiline_config(self, tmp_path):
+        log = self._parse(tmp_path, self.SRC)
+        assert log.diagnostics == ()
+        assert [s.movements[0].name for s in log.sessions] == ["pullups"]
+
+    def test_included_file(self, tmp_path):
+        (tmp_path / "sub").mkdir()
+        (tmp_path / "sub" / "inc.ox").write_text('\n@plugin "volume" "{}"\n')
+        log = self._parse(tmp_path, '@plugin "a.py"\n@include "sub/inc.ox"\n')
+        a, vol = log.plugin_directives
+        assert a.file == (tmp_path / "log.ox").resolve()
+        assert (vol.target, vol.file, vol.line) == (
+            "volume",
+            (tmp_path / "sub" / "inc.ox").resolve(),
+            2,
+        )

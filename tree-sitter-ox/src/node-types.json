@@ -284,7 +284,17 @@
     "type": "plugin_directive",
     "named": true,
     "fields": {
-      "path": {
+      "config": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "plugin_config",
+            "named": true
+          }
+        ]
+      },
+      "target": {
         "multiple": false,
         "required": true,
         "types": [
@@ -663,6 +673,10 @@
   {
     "type": "note:",
     "named": false
+  },
+  {
+    "type": "plugin_config",
+    "named": true
   },
   {
     "type": "query",

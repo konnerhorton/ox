@@ -3,7 +3,9 @@
 from tree_sitter import Node
 from datetime import datetime, timedelta
 from ox.duration import parse_iso_duration
+from pathlib import Path
 from ox.data import (
+    PluginDirective,
     DATE_FORMAT,
     Movement,
     MovementDefinition,
@@ -389,10 +391,19 @@ def process_include_directive(node: Node) -> str:
     return raw.strip('"')
 
 
-def process_plugin_directive(node: Node) -> str:
-    """Extract file path from a plugin_directive node."""
-    raw = node.child_by_field_name("path").text.decode("utf-8")
-    return raw.strip('"')
+def process_plugin_directive(node: Node, file: Path) -> PluginDirective:
+    """Build a PluginDirective from a plugin_directive node.
+
+    Args:
+        node: The plugin_directive node
+        file: Absolute path of the .ox file holding it
+    """
+    target = node.child_by_field_name("target").text.decode("utf-8")[1:-1]
+    config_node = node.child_by_field_name("config")
+    config = None if config_node is None else config_node.text.decode("utf-8")[1:-1]
+    return PluginDirective(
+        target=target, config=config, file=file, line=node.start_point[0] + 1
+    )
 
 
 def process_node(node: Node) -> TrainingSession | Note | StoredQuery | None:
