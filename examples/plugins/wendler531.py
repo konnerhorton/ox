@@ -77,28 +77,26 @@ def wendler531(ctx: PluginContext, movement, training_max, unit="lb", start_date
 
 
 def register():
-    return [
-        {
-            "name": "wendler531",
-            "fn": wendler531,
-            "description": "Generate a Wendler 5/3/1 cycle for one movement",
-            "params": [
-                {"name": "movement", "type": str, "required": True, "short": "m"},
-                {"name": "training_max", "type": str, "required": True, "short": "t"},
-                {
-                    "name": "unit",
-                    "type": str,
-                    "default": "lb",
-                    "required": False,
-                    "short": "u",
-                },
-                {
-                    "name": "start_date",
-                    "type": str,
-                    "default": None,
-                    "required": False,
-                    "short": "d",
-                },
-            ],
-        }
-    ]
+    return {
+        "name": "wendler531",
+        "fn": wendler531,
+        "description": "Generate a Wendler 5/3/1 cycle for one movement",
+        "params": [
+            {"name": "movement", "type": str, "required": True, "short": "m"},
+            {"name": "training_max", "type": str, "required": True, "short": "t"},
+            {
+                "name": "unit",
+                "type": str,
+                "default": "lb",
+                "required": False,
+                "short": "u",
+            },
+            {
+                "name": "start_date",
+                "type": str,
+                "default": None,
+                "required": False,
+                "short": "d",
+            },
+        ],
+    }

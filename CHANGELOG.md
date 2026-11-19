@@ -1,5 +1,15 @@
 # Unreleased
 
+- **Configure a plugin from your log.** Put a config after a plugin's name, `@plugin "volume" "{'x': 1}"`, or
+  after the path that loads its file, `@plugin "plugins/mix.py" "{'categories': ['strength']}"`. The config is
+  a Python literal in double quotes; it may span lines, and strings inside it use single quotes. A plugin reads
+  it with `ctx.log.plugin_config(name)`. `lint` and the editor flag a config that doesn't parse, a name with
+  no config, and a name configured twice; the REPL warns about these at startup and still starts. VS Code and
+  micro highlight a config as a string across lines. See "Configuring a Plugin" in the plugin docs.
+- **One plugin per file.** A plugin file's `register()` may now return its descriptor dict directly. A file
+  whose `register()` returns more than one plugin no longer loads; the REPL says which file.
+- **Fixed: `@plugin` paths in an included file** now resolve against that file, as the docs said, instead of
+  against the log you opened.
 - **Plugin helpers are public and documented.** Import `weight_sql_expr` (convert weights to a unit
   you choose) and `time_bin_expr` (group dates by day, week or month) from `ox.sql_utils`; "Helpers"
   in the plugin docs shows how, with an example plugin. They were `_weight_sql_expr` and

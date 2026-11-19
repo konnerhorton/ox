@@ -257,3 +257,17 @@ and tests decide), then steps 4–6 on Opus (config resolution, lint messages, d
   `STATUS.md` (clear "In progress", move plugin-config to Done, set Next from `repl-summary` decision 13);
   `docs/work/TODO.md` for anything deferred with a trigger (plugin name matching its file name, D8; a declared config
   schema). AC 12: full suite and ruff. Then merge with `--no-ff` (approval), and upload the `.vsix` by hand.
+
+### Notes from the build
+- **micro highlighting differs from step 3.** A micro region's start match takes the region's color, and RE2 has no
+  lookbehind, so a region starting only at a config's quote would recolor `@plugin` and its target. Every quoted
+  string is a `"`…`"` region instead, and comments a region (`^\s*#` to `$`) so a quote in one opens no string.
+  Checked in micro through tmux: AC 11 holds there. VS Code is left to the by-eye check.
+- **`tree-sitter test` had 5 failures before this unit** (`comments`, `include_directive`, `multiline_entry`,
+  `singleline_entry_*`): those corpora still use the old `*` flag. The new `plugin_directive` corpus passes.
+- **An unclosed config quote** leaves an ERROR inside the `plugin_directive`, so lint skips only a broken target,
+  not a directive with an error, to report the config (spec decision 6).
+- **A failing first config still counts as the first** for "first wins": a later config for the same name is
+  ignored, matching lint's same-file duplicate check.
+- **Non-literal configs** report the offending source (`'x' is not a literal (line 2)`) rather than
+  `ast.literal_eval`'s `<ast.Name object at …>`; an empty config is `the config is empty`.

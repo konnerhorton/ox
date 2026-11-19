@@ -77,6 +77,7 @@ Every form, with examples: `docs/getting-started.md` (`@template` is only in the
 2025-01-10 note "deload week"            # note
 2025-01-10 query "name" "SQL"            # stored query
 @include "other.ox"   @plugin "my_plugin.py"
+@plugin "volume" "{'a': [1]}"   @plugin "my_plugin.py" "{...}"   # config: Python literal, may span lines
 @movement squat ... @end   @template "name" ... @end
 
 # Session fields: date: (required, first), name:, completed:, format:, srpe: <rating> <duration> ["note"], note:

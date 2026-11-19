@@ -45,3 +45,12 @@ living doc and delete it here.
 
 - [ ] **#15 List the micro plugin in micro's plugin channel** so `micro -plugin install ox` works.
   Needs a download URL per release and `Versions` in `editors/micro/repo.json`.
+
+- [ ] **#16 Require a plugin's name to match its file name.** With one plugin per file, `@plugin "x.py"` would
+  then register `x`, so `lint` could check configured names against user plugins without running them, and catch
+  a file configured on its line and again by name. Not breaking to add. Trigger: a user plugin configured by a
+  name that doesn't exist goes unnoticed in the editor.
+
+- [ ] **#17 A declared config schema for plugins.** A plugin could declare the keys and types its config takes,
+  so `lint` checks them instead of each plugin validating its own. Trigger: several plugins read configs
+  (`summary`, `mix`, ...) and repeat the same validation.

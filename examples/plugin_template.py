@@ -3,9 +3,13 @@
 Copy this file and modify it to create your own plugin.
 Reference it in your .ox file with: @plugin "path/to/your_plugin.py"
 
-A plugin is a Python module with a register() function that returns a list
-of plugin descriptors. Each plugin receives a PluginContext and returns one
-of: TableResult, TextResult, or PlotResult.
+A plugin is a Python module with a register() function that returns its
+descriptor, a dict; a file registers one plugin. The plugin receives a
+PluginContext and returns one of: TableResult, TextResult, or PlotResult.
+
+The log can configure it on the line that loads it,
+@plugin "path/to/your_plugin.py" "{'key': 'value'}", and the plugin reads
+the parsed value with ctx.log.plugin_config("my-plugin") (None if unset).
 """
 
 from ox.plugins import PluginContext, PlotResult, TableResult, TextResult
@@ -47,22 +51,20 @@ def my_plugin(ctx: PluginContext, exercise: str, unit: str = "lb"):
 
 
 def register():
-    return [
-        {
-            "name": "my-plugin",
-            "fn": my_plugin,
-            "description": "Short description shown in plugin list",
-            # Each param's "name" is the keyword argument fn receives; its CLI
-            # flag swaps "_" for "-", so "start_date" becomes --start-date.
-            "params": [
-                {"name": "exercise", "type": str, "required": True, "short": "e"},
-                {
-                    "name": "unit",
-                    "type": str,
-                    "default": "lb",
-                    "required": False,
-                    "short": "u",
-                },
-            ],
-        }
-    ]
+    return {
+        "name": "my-plugin",
+        "fn": my_plugin,
+        "description": "Short description shown in plugin list",
+        # Each param's "name" is the keyword argument fn receives; its CLI
+        # flag swaps "_" for "-", so "start_date" becomes --start-date.
+        "params": [
+            {"name": "exercise", "type": str, "required": True, "short": "e"},
+            {
+                "name": "unit",
+                "type": str,
+                "default": "lb",
+                "required": False,
+                "short": "u",
+            },
+        ],
+    }
