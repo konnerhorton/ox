@@ -7,8 +7,8 @@ Last checkpoint: 1, after micro-syntax, 2026-11-15, `e9d430c`.
 
 ## In progress
 
-- `plugin-config` (branch): intent and spec committed in `docs/work/plugin-config.md`. Next: `## Plan`, in a
-  new session.
+- `plugin-config` (branch): intent, spec and plan committed in `docs/work/plugin-config.md`. Next: build steps
+  1–3 in a new Sonnet session, then 4–6 on Opus.
 
 ## Open
 

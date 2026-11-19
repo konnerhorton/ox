@@ -183,3 +183,77 @@ config that can't be read while you edit:
     `@plugin` and the target keep their colors, and the line after the closing quote is colored normally. A
     single-line `@plugin "x.py"` looks as before.
 12. **No regressions:** existing `@plugin "x.py"` logs load the same plugins; full test suite and ruff pass.
+
+## Plan
+
+Six build commits in two sessions: steps 1–3 on Sonnet (plumbing and highlighting, where the spec fixes the shapes
+and tests decide), then steps 4–6 on Opus (config resolution, lint messages, docs and close-out). Each commit passes
+`uv run pytest` and `uv run ruff check src/ tests/`.
+
+### 1. `plugin-config: parse @plugin configs into PluginDirective` (Sonnet)
+- `tree-sitter-ox/grammar.js`: `plugin_directive` gets `field("target", $.file_path)` and
+  `optional(field("config", $.plugin_config))`; new token `plugin_config: ($) => /"[^"]*"/`. Regenerate the parser,
+  then `uv sync --reinstall-package ox-train`. Risk: if the lexer confuses `plugin_config` with `quoted_string` or
+  `file_path`'s `"`, give `plugin_config` a `token(prec(...))`; nothing else may start with `"` after a target.
+- `tree-sitter-ox/test/corpus/plugin_directive.txt` (new): the forms of AC 1 (no config; one-line config; four-line
+  config with `'`, `[`, `{`, `#` and a blank line; an entry after it).
+- `src/ox/data.py`: `PluginDirective` (frozen, slots) with `loads_file`; `TrainingLog.plugin_directives` replaces the
+  `plugin_paths` field, which becomes a property.
+- `src/ox/parse.py`: `process_plugin_directive(node, file)` returns a `PluginDirective` (raw config without its
+  quotes, `line = start_point[0] + 1`).
+- `src/ox/cli.py`: `_parse_single_file`/`_load_recursive`/`parse_file` carry directives. `load_plugins` is unchanged
+  in this commit and still reads `plugin_paths` against the root log, so behavior is the same.
+- `tests/test_plugins.py`: `_make_log` builds `PluginDirective`s.
+- Tests: `tree-sitter test` and `tests/test_parse.py` (`TestPluginDirective`: fields, absolute file, 1-based line,
+  `plugin_paths` only `.py` targets, an entry after a multi-line config is parsed) prove AC 1, 2; the existing suite,
+  AC 12 so far.
+
+### 2. `plugin-config: one plugin per file` (Sonnet)
+- `src/ox/plugins.py`: `LOAD_WARNINGS: list[str]`, cleared by `load_plugins`. `_register_descriptors` takes a dict or
+  a list; a list of more than one appends `<path> registers <n> plugins; a file may register one. Not loaded.` and
+  registers nothing (spec decision 4). Builtins keep their one-item lists.
+- `tests/test_plugins.py`: `test_multiple_descriptors_in_one_call` becomes the refusal test; add dict and one-item
+  list cases, an empty list, and a test that every builtin's `register()` yields exactly one descriptor (AC 8).
+
+### 3. `plugin-config: highlight multi-line configs in VS Code and micro` (Sonnet)
+- `editors/vscode/syntaxes/ox.tmLanguage.json`: `plugin-directive` becomes `patterns` of a `begin`/`end` rule
+  (`^(@plugin)\s+("[^"]+")\s+(")` … `"`, body `string.quoted.double.ox`) before the existing single-line `match`.
+- `editors/micro/syntax/ox.yaml`: a `constant.string` region starting at a config's opening quote after
+  `@plugin "<target>"` and ending at `"`; check that `@plugin` keeps `preproc` and the target stays a string.
+- `editors/vscode/package.json` version 0.2.0 → 0.3.0; `editors/vscode/CHANGELOG.md` entry.
+- Tests: none automated. AC 11 is checked by eye at the end of this session, in VS Code (extension host via F5, or the
+  packaged `.vsix`) and in micro (copy `syntax/ox.yaml` into `~/.config/micro/syntax/`), with a file holding a
+  single-line `@plugin "x.py"`, a one-line config and a four-line config followed by an entry. The user confirms.
+
+### 4. `plugin-config: resolve plugin configs when the log loads` (Opus)
+- `src/ox/plugins.py`: `read_plugin_config(text)` (`ast.literal_eval`; `SyntaxError`/`ValueError`/`TypeError` →
+  `ValueError` with one-line reason). `load_plugins(log=None) -> dict[str, object]`: builtins, then each file
+  directive resolved against `directive.file.parent` (spec decision 3), recording which name each file registered;
+  then the config walk of spec decision 1, then the unknown-name pass. `_load_from_log_directives` and `base_path` go.
+- `src/ox/data.py`: `TrainingLog.plugin_configs: dict[str, object]` (default empty) and `plugin_config(name)`.
+- `src/ox/cli.py`: `load_log` does `log = replace(log, plugin_configs=load_plugins(log))` before the context;
+  `print_load_summary` prints each `LOAD_WARNINGS` entry in yellow after the counts, `markup=False` for the text.
+- `tests/test_plugins.py`: callers of `load_plugins(log, base)` move to logs on disk loaded through `load_log`, with
+  a fixture plugin file written to `tmp_path`.
+- Tests, in a new `TestPluginConfig` class through `load_log`: AC 3 (file config, name config, unconfigured `None`,
+  builtin `volume`), AC 4 (config in an include; `sub/inc.ox` loading `sub/plugins/x.py`), AC 5 (three duplicate
+  cases, one warning each naming both lines), AC 6 (both bad configs; `ctx.db` answers a query), AC 7, AC 9 (`print_load_summary`
+  output through `capsys`, as in `tests/test_cli.py`).
+
+### 5. `plugin-config: lint plugin directives` (Opus)
+- `src/ox/lint.py`: `_plugin_diagnostics(root, lines)` called from `collect_diagnostics`, skipping directives with
+  errors: the three checks of spec decision 5, with their severities and messages. The config span runs from its
+  start to its end point, converted to characters per row (it can span lines, so `_char_span` doesn't fit); the
+  target span covers the quoted target.
+- Tests: `tests/test_lint.py` for each check's severity, message and span, and silence on a valid config and on a
+  config after a `.py` path; `tests/test_lsp.py` for one of each through `get_diagnostics` (AC 10). An unclosed config
+  quote (spec decision 6) yields the parse error at the directive.
+
+### 6. `plugin-config: document plugin configs, close out` (Opus)
+- `docs/plugins.md`, `docs/getting-started.md`, `CLAUDE.md` format notation, as in the spec;
+  `examples/plugin_template.py` and `examples/plugins/wendler531.py` return one dict.
+- Check `SPEC.md` "Plugins" against what was built.
+- Close-out: `CHANGELOG.md` Unreleased (configuring plugins, the include path fix, one plugin per file);
+  `STATUS.md` (clear "In progress", move plugin-config to Done, set Next from `repl-summary` decision 13);
+  `docs/work/TODO.md` for anything deferred with a trigger (plugin name matching its file name, D8; a declared config
+  schema). AC 12: full suite and ruff. Then merge with `--no-ff` (approval), and upload the `.vsix` by hand.
