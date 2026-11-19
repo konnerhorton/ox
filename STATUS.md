@@ -1,8 +1,14 @@
 # Status
 
-**Next:** not chosen.
+**Next:** `plugin-config`, the first unit `repl-summary` depends on (its decision 13): config for a plugin
+through `@plugin "<name>" "<config>"`.
 
 Last checkpoint: 1, after micro-syntax, 2026-11-15, `e9d430c`.
+
+## In progress
+
+- `plugin-config` (branch): intent committed in `docs/work/plugin-config.md`. Next: write `## Spec`, starting
+  with the grammar token (decision 1) and the lint rules (decisions 3–6).
 
 ## Open
 
@@ -11,9 +17,10 @@ Last checkpoint: 1, after micro-syntax, 2026-11-15, `e9d430c`.
   LSP and `lint` don't know it yet, and the parsed fields aren't in SQL.
 - **Template blocks** (`@template`): the grammar parses them, nothing processes them, and `format:` has no
   link to them (TODO #6).
-- **`repl-summary`** (branch, intent and spec committed): a summary of `rich` panels when the REPL starts.
-  Parked. Its intent predates `repl-add` and says `add` follows it, so it needs a rebase and a rewritten
-  intent before it resumes.
+- **`repl-summary`** (branch; intent rewritten, spec predates the rewrite): a summary of `rich` panels when
+  the REPL starts. Parked until its prerequisite units are merged (decision 13: `plugin-config`, time windows,
+  `movements`, `mix`, `srpe` load output, `progress`). The author's log is migrated to tagged `@movement`
+  definitions, which those units were waiting on.
 
 ## Done
 
