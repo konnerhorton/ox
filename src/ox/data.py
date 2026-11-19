@@ -447,6 +447,16 @@ class TrainingLog:
     weigh_ins: tuple[WeighIn, ...] = field(default_factory=tuple)
     plugin_directives: tuple[PluginDirective, ...] = field(default_factory=tuple)
     movement_definitions: tuple[MovementDefinition, ...] = field(default_factory=tuple)
+    plugin_configs: dict[str, object] = field(default_factory=dict)
+
+    def plugin_config(self, name: str) -> object | None:
+        """The parsed config the log gives plugin `name`, or None if it gives none.
+
+        Set when the log loads (`ox.cli.load_log`): the first
+        `@plugin "<name>" "<config>"`, or config on the line loading the
+        plugin's file, wins.
+        """
+        return self.plugin_configs.get(name)
 
     @property
     def plugin_paths(self) -> tuple[str, ...]:

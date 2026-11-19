@@ -1,6 +1,7 @@
 """Command-line interface for ox."""
 
 import sqlite3
+from dataclasses import replace
 from datetime import date
 from importlib.metadata import version as _pkg_version
 
@@ -31,6 +32,7 @@ from ox.db import create_db
 from ox.grammar import LANGUAGE
 from ox.lint import collect_diagnostics
 from ox.plugins import (
+    LOAD_WARNINGS,
     PLUGINS,
     USER_PLUGINS,
     PlotResult,
@@ -235,8 +237,8 @@ def parse_file(file_path: Path) -> TrainingLog:
 def load_log(file: Path) -> tuple[TrainingLog, sqlite3.Connection, PluginContext]:
     """Parse the log, build its database and load its plugins."""
     log = parse_file(file)
+    log = replace(log, plugin_configs=load_plugins(log))
     db = create_db(log)
-    load_plugins(log, file)
     return log, db, PluginContext(db=db, log=log)
 
 
@@ -249,10 +251,11 @@ def print_load_summary(log: TrainingLog) -> None:
     )
     if USER_PLUGINS:
         console.print(
-            f"[green]✓[/green] Loaded user plugins: {', '.join(sorted(USER_PLUGINS))}\n"
+            f"[green]✓[/green] Loaded user plugins: {', '.join(sorted(USER_PLUGINS))}"
         )
-    else:
-        console.print()
+    for warning in LOAD_WARNINGS:
+        console.print(warning, style="yellow", markup=False)
+    console.print()
     if log.diagnostics:
         console.print(
             f"[yellow]Warning: {len(log.diagnostics)} parse error(s). "
