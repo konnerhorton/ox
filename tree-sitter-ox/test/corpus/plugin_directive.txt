@@ -1,0 +1,48 @@
+==================
+Plugin file, no config
+==================
+
+@plugin "plugins/x.py"
+
+---
+
+(source_file
+  (plugin_directive
+    target: (file_path)))
+
+==================
+Plugin name with a one-line config
+==================
+
+@plugin "mix" "{'categories': ['strength', 'skill']}"
+
+---
+
+(source_file
+  (plugin_directive
+    target: (file_path)
+    config: (plugin_config)))
+
+==================
+Plugin file with a multi-line config, then an entry
+==================
+
+@plugin "plugins/mix.py" "{
+  'categories': ['strength', 'conditioning'],  # a comment
+
+  'groups': {'a': 'b'},
+}"
+2025-01-10 T pullups: BW 5x10
+
+---
+
+(source_file
+  (plugin_directive
+    target: (file_path)
+    config: (plugin_config))
+  (singleline_entry
+    date: (date)
+    item: (item)
+    details: (details
+      weight: (weight)
+      rep_scheme: (rep_scheme))))

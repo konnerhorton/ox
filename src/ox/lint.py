@@ -334,6 +334,83 @@ def _semantic_warnings(root, lines: list[str]) -> list[Diagnostic]:
     return warnings
 
 
+def _to_char(point: tuple[int, int], lines: list[str]) -> int:
+    """A tree-sitter point's column in characters (tree-sitter counts bytes)."""
+    row, byte_col = point
+    line = lines[row].encode("utf-8") if row < len(lines) else b""
+    return len(line[:byte_col].decode("utf-8", errors="ignore"))
+
+
+def _node_diagnostic(node, lines: list[str], message: str, severity: str):
+    """A diagnostic spanning a node, which may cover several lines."""
+    return Diagnostic(
+        line=node.start_point[0] + 1,
+        col=_to_char(node.start_point, lines),
+        end_line=node.end_point[0] + 1,
+        end_col=_to_char(node.end_point, lines),
+        message=message,
+        severity=severity,
+    )
+
+
+def _plugin_diagnostics(root, lines: list[str]) -> list[Diagnostic]:
+    """Check `@plugin` directives: configs parse, names have one, once per name.
+
+    Names are checked within this file only: lint sees one file at a time and
+    doesn't run plugin files, so a name configured in two files, or on its
+    file's line and by name, is left to the REPL's load warnings.
+    """
+    from ox.plugins import read_plugin_config
+
+    found = []
+    configured: dict[str, int] = {}
+    for node in root.children:
+        if node.type != "plugin_directive":
+            continue
+        # An unclosed config quote runs to the next `"`, leaving an error after
+        # the config inside the directive: the config check still reports it
+        target = node.child_by_field_name("target")
+        config = node.child_by_field_name("config")
+        if target is None or target.has_error or target.is_missing:
+            continue
+        name = target.text.decode("utf-8")[1:-1]
+        loads_file = name.endswith(".py")
+        if config is None:
+            if not loads_file:
+                found.append(
+                    _node_diagnostic(
+                        target,
+                        lines,
+                        f'@plugin "{name}" does nothing: add a config, '
+                        "or a .py path to load a file",
+                        "error",
+                    )
+                )
+            continue
+        if not loads_file:
+            if name in configured:
+                found.append(
+                    _node_diagnostic(
+                        target,
+                        lines,
+                        f"'{name}' is already configured on line {configured[name]}; "
+                        "this config is ignored",
+                        "warning",
+                    )
+                )
+            else:
+                configured[name] = node.start_point[0] + 1
+        try:
+            read_plugin_config(config.text.decode("utf-8")[1:-1])
+        except ValueError as e:
+            found.append(
+                _node_diagnostic(
+                    config, lines, f"Plugin config doesn't parse: {e}", "error"
+                )
+            )
+    return found
+
+
 def collect_diagnostics(tree) -> tuple[Diagnostic, ...]:
     """Walk a tree-sitter tree and collect ERROR/MISSING nodes as Diagnostics.
 
@@ -403,4 +480,5 @@ def collect_diagnostics(tree) -> tuple[Diagnostic, ...]:
         if node.start_point[0] not in hints
     )
     diagnostics.extend(_semantic_warnings(tree.root_node, lines))
+    diagnostics.extend(_plugin_diagnostics(tree.root_node, lines))
     return tuple(sorted(diagnostics, key=lambda d: (d.line, d.col)))

@@ -273,6 +273,57 @@ class TestSemanticWarnings:
         assert [d.severity for d in diagnostics] == ["error"]
 
 
+class TestPluginDiagnostics:
+    """@plugin checks: configs parse, a name has a config, one config per name."""
+
+    def test_config_doesnt_parse(self):
+        d = _only('@plugin "volume" "{\'a\': [}"\n')
+        assert d.severity == "error"
+        assert d.message.startswith("Plugin config doesn't parse: closing parenthesis")
+        assert (d.line, d.col, d.end_line, d.end_col) == (1, 17, 1, 27)
+
+    def test_multiline_config_span(self):
+        text = '# é\n@plugin "é" "{\n  \'a\': x,\n}"\n'
+        d = _only(text)
+        assert d.message == "Plugin config doesn't parse: 'x' is not a literal (line 2)"
+        assert (d.line, d.col, d.end_line, d.end_col) == (2, 12, 4, 2)
+
+    def test_name_without_config(self):
+        d = _only('@plugin "mix"\n')
+        assert d.severity == "error"
+        assert d.message == (
+            '@plugin "mix" does nothing: add a config, or a .py path to load a file'
+        )
+        assert (d.line, d.col, d.end_line, d.end_col) == (1, 8, 1, 13)
+
+    def test_name_configured_twice(self):
+        d = _only('@plugin "mix" "1"\n\n@plugin "mix" "2"\n')
+        assert d.severity == "warning"
+        assert (
+            d.message == "'mix' is already configured on line 1; this config is ignored"
+        )
+        assert (d.line, d.col, d.end_line, d.end_col) == (3, 8, 3, 13)
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "@plugin \"summary\" \"{'panels': ['sessions -n 5']}\"\n",
+            "@plugin \"plugins/mix.py\" \"{\n  'categories': ['a'],\n}\"\n",
+            '@plugin "plugins/x.py"\n',
+            '@plugin "nope" "{}"\n',
+            '@plugin "x.py" "1"\n@plugin "x" "2"\n',
+        ],
+    )
+    def test_silent(self, text):
+        assert collect_diagnostics(_parse_tree(text)) == ()
+
+    def test_unclosed_quote_is_a_config_error(self):
+        text = '@plugin "mix" "{\'a\': 1}\n2025-01-10 T pullups: BW 5x10 "ok"\n'
+        diags = collect_diagnostics(_parse_tree(text))
+        assert diags[0].line == 1
+        assert diags[0].message.startswith("Plugin config doesn't parse")
+
+
 class TestTrainingLogDiagnostics:
     def test_parse_file_valid_log_no_diagnostics(self, simple_log_file):
         log = parse_file(simple_log_file)

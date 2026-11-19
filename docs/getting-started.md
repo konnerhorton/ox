@@ -223,7 +223,18 @@ Plugins extend ox with custom analysis or generation. Reference a Python file fr
 @plugin "plugins/my_plugin.py"
 ```
 
-See [Plugins](plugins.md) for the built-ins and for writing your own.
+A plugin can take settings from your log: a config, a Python literal in double quotes, after the plugin's name or
+after the path that loads it. It may span lines; strings inside it use single quotes.
+
+```
+@plugin "summary" "{'panels': ['sessions -n 5']}"
+@plugin "plugins/mix.py" "{
+  'categories': ['strength', 'conditioning'],
+}"
+```
+
+See [Plugins](plugins.md) for the built-ins, [configuring a plugin](plugins.md#configuring-a-plugin), and writing
+your own.
 
 ### Includes
 

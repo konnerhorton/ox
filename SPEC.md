@@ -37,6 +37,16 @@ What's built, what's open and what's next: [`STATUS.md`](STATUS.md).
 - LSP completions for session templates
 - Snippets for common entry patterns
 
+## Plugins
+
+- **Every analysis feature is a plugin,** builtin or user. A plugin receives the parsed log and its database and
+  returns a table, text or a plot.
+- **One file registers one plugin.** `@plugin "<file>.py"` loads it, relative to the `.ox` file that holds it.
+- **Plugins are configured from the log:** `@plugin "<name>" "<config>"`, or `@plugin "<file>.py" "<config>"` on the
+  line that loads it. The config is a Python literal (it may span lines; inner strings use single quotes) that ox
+  parses and the plugin interprets; ox checks only that it parses. The first config for a plugin wins. Settings live in
+  the log, not beside it, so they travel with it and lint can check them.
+
 ## Non-Goals
 
 - **Not a workout planner or coach.** Ox records and analyzes. It doesn't prescribe.

@@ -212,10 +212,11 @@ ox> formats
 
 Plugins come from two sources:
 
-1. **Built-ins** — shipped with ox (`volume`, `e1rm`, `weighin`, `wendler531`, `srpe`)
+1. **Built-ins** — shipped with ox (`volume`, `e1rm`, `weighin`, `wendler531`, `srpe`, `formats`)
 2. **`@plugin` directives** — Python files referenced from your `.ox` log
 
-To load a custom plugin, add an `@plugin` directive to your log file. The path is resolved relative to the `.ox` file that contains it:
+To load a custom plugin, add an `@plugin` directive to your log file. A path ending in `.py` loads that file,
+resolved relative to the `.ox` file that contains the directive:
 
 ```
 @plugin "plugins/my_plugin.py"
@@ -224,13 +225,55 @@ To load a custom plugin, add an `@plugin` directive to your log file. The path i
 
 Plugins loaded via `@plugin` override built-ins with the same name.
 
+## Configuring a Plugin
+
+A plugin can take settings from your log. Put a config after the plugin's name, or after the path that loads its
+file:
+
+```
+@plugin "summary" "{'panels': ['sessions -n 5', 'mix --since 8w']}"
+@plugin "plugins/mix.py" "{
+  'categories': ['strength', 'conditioning', 'skill'],
+}"
+```
+
+A built-in has no file, so it is configured by name. A user plugin can be configured either way; the name is the
+one its `register()` gives.
+
+The config is a Python literal (a dict, list, string, number, `True`/`False`/`None`) inside double quotes:
+
+- It may span lines, and may hold comments (`#`) and blank lines.
+- It can't contain `"`: write strings inside it with single quotes.
+- Names, calls and arithmetic aren't literals, so `{'start': today()}` is rejected.
+- What the keys mean is up to the plugin; its own docs list them.
+
+If a plugin is configured more than once, the first config wins, in load order: a file's own directives, then each
+`@include`d file's. The REPL warns about the configs it ignores; `lint` and the editor flag a name configured twice
+in the same file.
+
+A config that doesn't parse is an error in `lint` and the editor. When the log loads, that plugin is left
+unconfigured and the REPL prints a warning, so it still starts. It also warns about a config for a name no plugin
+registered. `@plugin "<name>"` with no config does nothing, and `lint` reports it.
+
+A plugin reads its config with `ctx.log.plugin_config(name)`, which returns the parsed value, or `None` when the log
+doesn't configure that plugin:
+
+```python
+def mix(ctx: PluginContext, since: str = "8w"):
+    config = ctx.log.plugin_config("mix") or {}
+    categories = config.get("categories", [])
+    ...
+```
+
 ### Reserved names
 
 Avoid naming a plugin the same as a built-in REPL command (`query`, `tables`, `reload`, `lint`, `plugins`, `help`, `exit`, `quit`) — built-ins win the name lookup and the plugin will be unreachable.
 
 ## Writing a Plugin
 
-Export a `register()` function returning a list of descriptors. Each plugin function receives a `PluginContext` as its first argument and returns a `TableResult`, `TextResult`, or `PlotResult`.
+Export a `register()` function returning the plugin's descriptor, a dict. A file registers one plugin. (A list
+holding one descriptor also works; a file whose `register()` returns several isn't loaded, and the REPL says so.)
+Each plugin function receives a `PluginContext` as its first argument and returns a `TableResult`, `TextResult`, or `PlotResult`.
 
 ```python
 from ox.plugins import PluginContext, TableResult, TextResult, PlotResult
@@ -247,7 +290,7 @@ def my_plugin(ctx: PluginContext, movement: str, unit: str = "lb"):
     # Or return PlotResult(["line1", "line2", ...])
 
 def register():
-    return [{
+    return {
         "name": "my-plugin",
         "fn": my_plugin,
         "description": "Total reps per day",
@@ -255,7 +298,7 @@ def register():
             {"name": "movement", "type": str, "required": True, "short": "m"},
             {"name": "unit", "type": str, "required": False, "default": "lb", "short": "u"},
         ],
-    }]
+    }
 ```
 
 ### Descriptor fields
@@ -327,7 +370,7 @@ def tonnage(ctx: PluginContext, unit: str = "kg", bin: str = "weekly"):
 
 
 def register():
-    return [{
+    return {
         "name": "tonnage",
         "fn": tonnage,
         "description": "Total weight lifted per period",
@@ -335,5 +378,5 @@ def register():
             {"name": "unit", "type": str, "required": False, "default": "kg", "short": "u"},
             {"name": "bin", "type": str, "required": False, "default": "weekly", "short": "b"},
         ],
-    }]
+    }
 ```

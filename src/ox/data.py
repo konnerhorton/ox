@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime, date, time, timedelta
+from pathlib import Path
 from typing import Optional, List, Iterator, Literal
 from pint import Quantity
 
@@ -405,6 +406,30 @@ class MovementIndexEntry:
     status: Literal["trained", "planned", "defined"]
 
 
+@dataclass(frozen=True, slots=True)
+class PluginDirective:
+    """An `@plugin` directive: a file to load, or a plugin name to configure.
+
+    Attributes:
+        target: The first string, without quotes: a `.py` path (relative to
+            `file`) or a plugin name
+        config: The raw text between the config's quotes, or None when the
+            directive has no config
+        file: Absolute path of the `.ox` file holding the directive
+        line: 1-based line of the directive
+    """
+
+    target: str
+    config: str | None
+    file: Path
+    line: int
+
+    @property
+    def loads_file(self) -> bool:
+        """Whether the directive loads a plugin file (its target ends in .py)."""
+        return self.target.endswith(".py")
+
+
 @dataclass
 class TrainingLog:
     """A collection of training sessions with query methods.
@@ -420,8 +445,23 @@ class TrainingLog:
     diagnostics: tuple[Diagnostic, ...] = field(default_factory=tuple)
     queries: tuple[StoredQuery, ...] = field(default_factory=tuple)
     weigh_ins: tuple[WeighIn, ...] = field(default_factory=tuple)
-    plugin_paths: tuple[str, ...] = field(default_factory=tuple)
+    plugin_directives: tuple[PluginDirective, ...] = field(default_factory=tuple)
     movement_definitions: tuple[MovementDefinition, ...] = field(default_factory=tuple)
+    plugin_configs: dict[str, object] = field(default_factory=dict)
+
+    def plugin_config(self, name: str) -> object | None:
+        """The parsed config the log gives plugin `name`, or None if it gives none.
+
+        Set when the log loads (`ox.cli.load_log`): the first
+        `@plugin "<name>" "<config>"`, or config on the line loading the
+        plugin's file, wins.
+        """
+        return self.plugin_configs.get(name)
+
+    @property
+    def plugin_paths(self) -> tuple[str, ...]:
+        """Targets of the `@plugin` directives that load a file, in load order."""
+        return tuple(d.target for d in self.plugin_directives if d.loads_file)
 
     @property
     def completed_sessions(self) -> tuple[TrainingSession, ...]:

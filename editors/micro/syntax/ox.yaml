@@ -43,6 +43,15 @@ rules:
 
     - statement: '^\s*(date|name|completed|format|srpe|note|equipment|tags?|url):'
 
-    - constant.string: '"[^"]*"'
+    # Strings and comments are regions, so a plugin config can span lines and the rules
+    # above don't color its contents. The earliest region start on a line wins, so a `"`
+    # in a comment doesn't open a string.
+    - constant.string:
+        start: '"'
+        end: '"'
+        rules: []
 
-    - comment: '^\s*#.*$'
+    - comment:
+        start: '^\s*#'
+        end: '$'
+        rules: []

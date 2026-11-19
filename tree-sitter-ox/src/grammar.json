@@ -108,11 +108,27 @@
           },
           {
             "type": "FIELD",
-            "name": "path",
+            "name": "target",
             "content": {
               "type": "SYMBOL",
               "name": "file_path"
             }
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "FIELD",
+                "name": "config",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "plugin_config"
+                }
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
           },
           {
             "type": "CHOICE",
@@ -128,6 +144,10 @@
           }
         ]
       }
+    },
+    "plugin_config": {
+      "type": "PATTERN",
+      "value": "\"[^\"]*\""
     },
     "file_path": {
       "type": "SEQ",

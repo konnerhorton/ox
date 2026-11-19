@@ -52,6 +52,27 @@ class TestGetDiagnostics:
         assert any(d.range.start.line == 1 for d in diags)
 
 
+class TestPluginDiagnostics:
+    def test_plugin_checks_through_lsp(self):
+        text = '@plugin "mix"\n@plugin "volume" "{"\n@plugin "volume" "1"\n'
+        diags = get_diagnostics(text)
+        assert [
+            (d.range.start.line, d.severity, d.message.split(":")[0]) for d in diags
+        ] == [
+            (0, lsp.DiagnosticSeverity.Error, '@plugin "mix" does nothing'),
+            (1, lsp.DiagnosticSeverity.Error, "Plugin config doesn't parse"),
+            (
+                2,
+                lsp.DiagnosticSeverity.Warning,
+                "'volume' is already configured on line 2; this config is ignored",
+            ),
+        ]
+        assert (diags[1].range.start.character, diags[1].range.end.character) == (
+            17,
+            20,
+        )
+
+
 class TestValidateIncludes:
     def test_missing_include_warns(self, tmp_path):
         doc = tmp_path / "main.ox"
