@@ -5,6 +5,7 @@ from pathlib import Path
 
 from ox.data import PluginDirective, TrainingLog
 from ox.plugins import (
+    LOAD_WARNINGS,
     PLUGINS,
     _load_from_log_directives,
     _register_descriptors,
@@ -79,26 +80,45 @@ class TestRegisterDescriptors:
         _register_descriptors([desc2], "second-source")
         assert PLUGINS["dup"]["description"] == "second"
 
-    def test_multiple_descriptors_in_one_call(self):
-        _register_descriptors(
+    def test_refuses_more_than_one(self):
+        LOAD_WARNINGS.clear()
+        name = _register_descriptors(
             [
-                {
-                    "name": "p1",
-                    "fn": _dummy_fn,
-                    "description": "first",
-                    "params": [],
-                },
-                {
-                    "name": "p2",
-                    "fn": _dummy_fn,
-                    "description": "second",
-                    "params": [],
-                },
+                {"name": "p1", "fn": _dummy_fn, "description": "", "params": []},
+                {"name": "p2", "fn": _dummy_fn, "description": "", "params": []},
             ],
-            "test",
+            "two.py",
         )
-        assert "p1" in PLUGINS
-        assert "p2" in PLUGINS
+        assert name is None
+        assert PLUGINS == {}
+        assert LOAD_WARNINGS == [
+            "two.py registers 2 plugins; a file may register one. Not loaded."
+        ]
+
+    def test_accepts_dict(self):
+        desc = {"name": "one", "fn": _dummy_fn, "description": "", "params": []}
+        assert _register_descriptors(desc, "test") == "one"
+        assert PLUGINS["one"] is desc
+
+    def test_accepts_one_item_list(self):
+        desc = {"name": "one", "fn": _dummy_fn, "description": "", "params": []}
+        assert _register_descriptors([desc], "test") == "one"
+        assert PLUGINS["one"] is desc
+
+    def test_empty_list_registers_nothing(self):
+        LOAD_WARNINGS.clear()
+        assert _register_descriptors([], "test") is None
+        assert PLUGINS == {}
+        assert LOAD_WARNINGS == []
+
+    def test_every_builtin_registers_one(self):
+        from ox.builtins import e1rm, formats, srpe, volume, weighin, wendler531
+
+        for mod in (volume, e1rm, weighin, wendler531, srpe, formats):
+            descs = mod.register()
+            if isinstance(descs, dict):
+                descs = [descs]
+            assert len(descs) == 1, mod.__name__
 
 
 class TestLoadFromLogDirectives:
