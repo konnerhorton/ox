@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Highlights a plugin config, `@plugin "<name>" "<config>"`, as a string on every line when it spans
+  several lines.
+
 ## 0.2.0
 
 - **Removed the Ox Dark theme.** A VS Code color theme replaces the active one, so selecting

@@ -36,11 +36,29 @@
       }
     },
     "plugin-directive": {
-      "match": "^(@plugin)\\s+(\"[^\"]+\")",
-      "captures": {
-        "1": { "name": "keyword.control.plugin.ox" },
-        "2": { "name": "string.quoted.double.ox" }
-      }
+      "patterns": [
+        {
+          "comment": "@plugin \"<target>\" \"<config>\": the config is a Python literal that may span lines",
+          "begin": "^(@plugin)\\s+(\"[^\"]+\")\\s+(\")",
+          "beginCaptures": {
+            "1": { "name": "keyword.control.plugin.ox" },
+            "2": { "name": "string.quoted.double.ox" },
+            "3": { "name": "string.quoted.double.ox" }
+          },
+          "end": "\"",
+          "endCaptures": {
+            "0": { "name": "string.quoted.double.ox" }
+          },
+          "contentName": "string.quoted.double.ox"
+        },
+        {
+          "match": "^(@plugin)\\s+(\"[^\"]+\")",
+          "captures": {
+            "1": { "name": "keyword.control.plugin.ox" },
+            "2": { "name": "string.quoted.double.ox" }
+          }
+        }
+      ]
     },
     "query-entry": {
       "match": "^(\\d{4}-\\d{2}-\\d{2})\\s+(query)\\s+(\"[^\"]*\")\\s+(\"[^\"]*\")$",
