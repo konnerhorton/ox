@@ -243,3 +243,11 @@ any work. In `weighin` the `Window` can't be called `window` (that param is the 
 - Close-out: `CHANGELOG.md` Unreleased entry (spec Changes); `STATUS.md` "Next" moves to the next `repl-summary`
   prerequisite and Done gains time windows; `CLAUDE.md` Project Structure's `sql_utils.py` line adds
   `time_window`; `SPEC.md` is already updated (spec commit). Step 1's snapshot goes, if the 🟡 above stands.
+
+### Notes from the build
+- Step 1: neither example log has `^rm` sets, so the `e1rm` snapshot cases run on a new `tests/data/rm_sets.ox`
+  (squat and deadlift, Jan–Mar 2025, mixed units); step 3's `e1rm` tests use it too.
+- Step 1: plots are snapshotted as the arguments each plugin passes to `ox.plot` (`scatter`, `bar`,
+  `multi_series`, recorded by a monkeypatch in `tests/test_time_windows.py`), not as rendered lines. Plotext's
+  bar-chart x-label decimation depends on `PYTHONHASHSEED`, so `srpe -o plot` renders differently across processes
+  (TODO #18).
