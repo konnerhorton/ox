@@ -104,15 +104,31 @@ def test_first_word(completer):
 
 # AC 3
 def test_flags(completer):
-    assert texts(completer, "volume --") == ["--movement", "--bin", "--unit"]
-    assert texts(completer, "volume -m squat --") == ["--bin", "--unit"]
+    assert texts(completer, "volume --") == [
+        "--movement",
+        "--bin",
+        "--unit",
+        "--since",
+        "--until",
+    ]
+    assert texts(completer, "volume -m squat --") == [
+        "--bin",
+        "--unit",
+        "--since",
+        "--until",
+    ]
     notes = dict(complete(completer, "volume --"))
     assert notes["--bin"] == "default: weekly"
     assert notes["--movement"] == "required"
 
 
 def test_flags_skip_long_form_used(completer):
-    assert texts(completer, "volume --bin daily -") == ["--movement", "--unit"]
+    assert texts(completer, "volume --bin daily -") == [
+        "--movement",
+        "--unit",
+        "--since",
+        "--until",
+    ]
 
 
 def test_flag_note_optional(completer):

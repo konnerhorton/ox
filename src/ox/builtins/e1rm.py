@@ -8,6 +8,7 @@ Usage:
     e1rm -m deadlift
     e1rm -m squat -f epley
     e1rm -m deadlift -o plot
+    e1rm -m squat --since 2025-01-01 --until 2025-12-31
 
 Example .ox line:
     deadlift: 315lbs 1x3 "^rm top set felt good"
@@ -15,6 +16,7 @@ Example .ox line:
 
 from ox import plot
 from ox.plugins import PlotResult, PluginContext, TableResult
+from ox.sql_utils import SINCE_PARAM, UNTIL_PARAM, time_window
 from ox.units import Q_
 
 
@@ -46,12 +48,16 @@ def estimated_1rm(
     height=None,
     y_step=None,
     x_scale=None,
+    since=None,
+    until=None,
 ):
     """Estimated 1RM progression for a movement.
 
     Finds sets where the movement note contains "^rm", takes the
     heaviest set per movement line, and calculates estimated 1RM.
+    `since` and `until` limit it to a window (see `ox.sql_utils.time_window`).
     """
+    span_clause, span_params = time_window(since, until).sql("t.date")
     if formula not in FORMULAS:
         raise ValueError(
             f"Unknown formula '{formula}'. Choose from: {', '.join(FORMULAS)}"
@@ -62,7 +68,7 @@ def estimated_1rm(
     calc = FORMULAS[formula]
 
     rows = ctx.db.execute(
-        """
+        f"""
         SELECT
             t.date,
             t.weight_magnitude,
@@ -73,9 +79,10 @@ def estimated_1rm(
           AND t.completed = 1
           AND t.movement_note LIKE '%^rm%'
           AND t.weight_magnitude IS NOT NULL
+          AND {span_clause}
         ORDER BY t.date, t.weight_magnitude DESC
         """,
-        (movement,),
+        (movement, *span_params),
     ).fetchall()
 
     if not rows:
@@ -174,6 +181,8 @@ def register():
                     "required": False,
                     "short": "x",
                 },
+                SINCE_PARAM,
+                UNTIL_PARAM,
             ],
         }
     ]

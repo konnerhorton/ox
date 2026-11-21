@@ -254,3 +254,81 @@ def test_shared_params():
     assert parse_plugin_args(params, "") == {"since": None, "until": None}
     with pytest.raises(ValueError, match="Unknown flag: -u"):
         parse_plugin_args(params, "-u 1y")
+
+
+# --- volume and e1rm (AC 7, AC 10) ------------------------------------------
+
+EXAMPLE = "examples/example.ox"
+RM_SETS = "tests/data/rm_sets.ox"
+
+
+def test_volume_iso_window_keeps_matching_rows():
+    """AC 7: a Sunday-to-Saturday window keeps exactly those weeks' rows."""
+    full = _run(EXAMPLE, "volume", "-m squat").rows
+    got = _run(EXAMPLE, "volume", "-m squat --since 2024-02-04 --until 2024-02-24")
+    assert [r[0] for r in got.rows] == ["2024-02-04", "2024-02-11", "2024-02-18"]
+    assert got.rows == [r for r in full if "2024-02-04" <= r[0] <= "2024-02-18"]
+
+
+def test_volume_partial_first_and_last_bins():
+    """AC 7: a mid-week bound keeps the partial bin, with only in-window days.
+
+    Week of Sun 2024-02-04 in example.ox: Mon 02-05 `squat: 135lb 5x10` (6750 lb,
+    50 reps) and Wed 02-07 `135/155/175/195/175lb 5/5/5/3/5` (675 + 775 + 875 +
+    585 + 875 = 3785 lb, 23 reps).
+    """
+    full = dict((r[0], r[1:]) for r in _run(EXAMPLE, "volume", "-m squat").rows)
+    assert full["2024-02-04"] == (10535.0, 73, 144.3)
+    since = _run(EXAMPLE, "volume", "-m squat --since 2024-02-06").rows
+    assert since[0] == ("2024-02-04", 3785.0, 23, 164.6)
+    until = _run(EXAMPLE, "volume", "-m squat --until 2024-02-06").rows
+    assert until[-1] == ("2024-02-04", 6750.0, 50, 135.0)
+
+
+def test_volume_empty_window():
+    assert _run(EXAMPLE, "volume", "-m squat --since 2030-01-01").rows == []
+
+
+@pytest.mark.parametrize("movement", ["squat", "deadlift"])
+def test_e1rm_iso_window_keeps_matching_rows(movement):
+    """AC 7."""
+    full = _run(RM_SETS, "e1rm", f"-m {movement}").rows
+    got = _run(RM_SETS, "e1rm", f"-m {movement} --since 2025-01-20 --until 2025-02-05")
+    expected = [r for r in full if "2025-01-20" <= r[0] <= "2025-02-05"]
+    assert len(expected) == 2
+    assert got.rows == expected
+
+
+def test_e1rm_plot_window(recorded_plots):
+    got = _run(RM_SETS, "e1rm", "-m squat -o plot --since 2025-02-01")
+    assert json.loads(got.lines[0])["args"][0] == ["2025-02-05", "2025-03-05"]
+
+
+def test_e1rm_empty_window():
+    assert _run(RM_SETS, "e1rm", "-m squat --until 2024-12-31").rows == []
+    assert _run(RM_SETS, "e1rm", "-m squat -o plot --until 2024-12-31").lines == []
+
+
+@pytest.mark.parametrize("plugin", ["volume", "e1rm"])
+def test_flags_parse(plugin):
+    """AC 10: -s and --since parse; --until has no short flag; -u is still --unit."""
+    _ctx(EXAMPLE)
+    params = PLUGINS[plugin]["params"]
+    for args in ("-m squat -s 8w", "-m squat --since 8w"):
+        assert parse_plugin_args(params, args)["since"] == "8w"
+    parsed = parse_plugin_args(params, "-m squat --until 2025-12-31 -u kg")
+    assert parsed["until"] == "2025-12-31"
+    assert parsed["unit"] == "kg"
+
+
+@pytest.mark.parametrize("plugin", ["volume", "e1rm"])
+def test_bad_value_prints_error(plugin, capsys):
+    """AC 10: a bad value prints the error and returns, as a bad flag does."""
+    from ox.cli import run_plugin
+
+    run_plugin(_ctx(EXAMPLE), plugin, "-m squat --since 8x")
+    out = " ".join(capsys.readouterr().out.split())
+    assert (
+        "--since: '8x' isn't a window. "
+        "Use a count and unit (30d, 8w, 6m, 1y) or a date (2026-01-01)"
+    ) in out
