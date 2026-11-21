@@ -1,10 +1,15 @@
 """SQL helper utilities for ox plugins.
 
-Plugins may import `parse_plugin_args`, `plugin_usage`, `weight_sql_expr` and
-`time_bin_expr` from here; see docs/plugins.md, "Helpers".
+Plugins may import `parse_plugin_args`, `plugin_usage`, `weight_sql_expr`,
+`time_bin_expr`, and for time windows `time_window`, `Window`, `SINCE_PARAM` and
+`UNTIL_PARAM` from here; see docs/plugins.md, "Helpers".
 """
 
+import calendar
+import re
 import shlex
+from dataclasses import dataclass
+from datetime import date, timedelta
 
 from ox.units import Q_, ureg
 
@@ -55,6 +60,114 @@ def time_bin_expr(bin: str, col: str = "date") -> str:
             f"Unknown time bin '{bin}'. Choose from: {', '.join(TIME_BINS)}"
         )
     return TIME_BINS[bin].format(col=col)
+
+
+SINCE_PARAM = {
+    "name": "since",
+    "type": str,
+    "default": None,
+    "required": False,
+    "short": "s",
+}
+UNTIL_PARAM = {"name": "until", "type": str, "default": None, "required": False}
+
+_RELATIVE = re.compile(r"([1-9][0-9]*)([dwmy])")
+_ISO_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+
+@dataclass(frozen=True, slots=True)
+class Window:
+    """A date range, both ends inclusive; `None` leaves that end unbounded."""
+
+    start: date | None = None
+    end: date | None = None
+
+    def contains(self, d: date | str) -> bool:
+        """Whether `d` (a `date` or an ISO date string) falls in the window."""
+        if isinstance(d, str):
+            d = date.fromisoformat(d)
+        if self.start is not None and d < self.start:
+            return False
+        return self.end is None or d <= self.end
+
+    def sql(self, col: str = "date") -> tuple[str, tuple[str, ...]]:
+        """A `WHERE` clause and its params limiting `col` to the window.
+
+        `col` is interpolated into the clause; the bounds are passed as ISO
+        string params. With neither bound set, returns `("1 = 1", ())`.
+        """
+        clauses, params = [], []
+        if self.start is not None:
+            clauses.append(f"{col} >= ?")
+            params.append(self.start.isoformat())
+        if self.end is not None:
+            clauses.append(f"{col} <= ?")
+            params.append(self.end.isoformat())
+        if not clauses:
+            return "1 = 1", ()
+        return " AND ".join(clauses), tuple(params)
+
+
+def _months_back(d: date, n: int) -> date:
+    """`d` moved back `n` calendar months, clamped to the end of a shorter month."""
+    total = d.year * 12 + (d.month - 1) - n
+    year, month = divmod(total, 12)
+    month += 1
+    return date(year, month, min(d.day, calendar.monthrange(year, month)[1]))
+
+
+def _parse_bound(value: str, flag: str, today: date) -> date:
+    """One `--since`/`--until` value as a date (see `time_window`)."""
+    if _ISO_DATE.fullmatch(value):
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            pass
+    elif m := _RELATIVE.fullmatch(value):
+        n, unit = int(m.group(1)), m.group(2)
+        if unit == "d":
+            boundary = today - timedelta(days=n)
+        elif unit == "w":
+            boundary = today - timedelta(weeks=n)
+        else:
+            boundary = _months_back(today, n if unit == "m" else 12 * n)
+        return boundary + timedelta(days=1) if flag == "--since" else boundary
+    raise ValueError(
+        f"{flag}: '{value}' isn't a window. "
+        "Use a count and unit (30d, 8w, 6m, 1y) or a date (2026-01-01)"
+    )
+
+
+def time_window(
+    since: str | None = None, until: str | None = None, today: date | None = None
+) -> Window:
+    """The window a plugin's `--since` and `--until` values describe.
+
+    Each value is an ISO date (`2026-01-01`, exactly `YYYY-MM-DD`) or a count
+    and unit: `d` days, `w` weeks, `m` calendar months, `y` calendar years
+    (`30d`, `8w`, `6m`, `1y`). A count and unit names a boundary that many units
+    before `today`, clamped to the end of a shorter month; `--since` starts the
+    day after it and `--until` ends on it, so `--since 7d` is the last 7 days
+    counting today and adjacent windows tile. Both ends are inclusive, and a
+    missing value leaves that end unbounded.
+
+    Args:
+        since: The `--since` value, or None
+        until: The `--until` value, or None
+        today: The date relative values count back from (default `date.today()`)
+
+    Raises:
+        ValueError: If a value isn't one of the spellings above, or the start
+            is after the end
+    """
+    today = today or date.today()
+    start = None if since is None else _parse_bound(since, "--since", today)
+    end = None if until is None else _parse_bound(until, "--until", today)
+    if start is not None and end is not None and start > end:
+        raise ValueError(
+            f"--since {start.isoformat()} is after --until {end.isoformat()}"
+        )
+    return Window(start, end)
 
 
 def flag_name(param: dict) -> str:
