@@ -1,5 +1,12 @@
 # Unreleased
 
+- **Limit a report to a time window.** `volume`, `e1rm`, `srpe` and `weighin` take `-s/--since` and `--until`:
+  a count and unit counted back from today (`30d`, `8w`, `6m`, `1y`) or a date (`2026-01-01`). Both ends are
+  inclusive, and either works alone: `volume -m squat -s 8w`, `e1rm -m squat --since 2025-01-01 --until
+  2025-12-31`. Rolling values (`srpe -o acwr`, `weighin`'s rolling average) still count the days before the
+  window starts, so they don't change at its edge. Your own plugins can take the same flags with
+  `SINCE_PARAM`, `UNTIL_PARAM` and `time_window` from `ox.sql_utils`; see "Helpers" in the plugin docs.
+- **Fixed: the plugin docs gave `weighin -w`'s default as 7.** It is 0, which draws no rolling average.
 - **Configure a plugin from your log.** Put a config after a plugin's name, `@plugin "volume" "{'x': 1}"`, or
   after the path that loads its file, `@plugin "plugins/mix.py" "{'categories': ['strength']}"`. The config is
   a Python literal in double quotes; it may span lines, and strings inside it use single quotes. A plugin reads

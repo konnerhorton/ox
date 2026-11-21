@@ -8,6 +8,14 @@ Plugins extend ox with custom analysis and generation. Each plugin receives a `P
 
 ## Built-in Plugins
 
+`volume`, `e1rm`, `weighin` and `srpe` take a time window: `-s/--since` and `--until` limit what they show to a
+date range. Each takes a count and unit counted back from today, `d` days, `w` weeks, `m` calendar months or `y`
+calendar years (`30d`, `8w`, `6m`, `1y`), or a date (`2026-01-01`). Both ends are inclusive, so `--since 7d` is
+the last seven days counting today, and `--since 2y --until 1y` is the year that ended a year ago. Either flag
+works alone. The window limits what's shown, not what's computed: a rolling value (`srpe -o acwr`, `weighin`'s
+rolling average) still uses the days before the start, and a binned output (weekly `volume`) keeps the bins at
+each edge, which may be partial.
+
 ### `volume`
 
 Volume over time for a movement.
@@ -15,6 +23,7 @@ Volume over time for a movement.
 ```
 ox> volume -m squat
 ox> volume -m deadlift --bin monthly --unit kg
+ox> volume -m squat --since 8w
 ```
 
 | Param | Default | Options |
@@ -22,6 +31,8 @@ ox> volume -m deadlift --bin monthly --unit kg
 | `-m/--movement` | *required* | movement name |
 | `-b/--bin` | `weekly` | `daily`, `weekly`, `weekly-num`, `monthly` |
 | `-u/--unit` | `lb` | any mass unit |
+| `-s/--since` | none | start of the window: `8w`, `2026-01-01` |
+| `--until` | none | end of the window: `1y`, `2025-12-31` |
 
 ### `e1rm`
 
@@ -30,6 +41,7 @@ Estimated 1RM progression. Only uses sets with `^rm` in the note.
 ```
 ox> e1rm -m deadlift
 ox> e1rm -m squat --formula epley --output plot
+ox> e1rm -m squat --since 2025-01-01 --until 2025-12-31
 ```
 
 | Param | Default | Options |
@@ -38,6 +50,8 @@ ox> e1rm -m squat --formula epley --output plot
 | `-f/--formula` | `brzycki` | `brzycki`, `epley` |
 | `-u/--unit` | `lb` | any mass unit |
 | `-o/--output` | `table` | `table`, `plot` |
+| `-s/--since` | none | start of the window: `8w`, `2026-01-01` |
+| `--until` | none | end of the window: `1y`, `2025-12-31` |
 
 Mark max-effort sets in your log with `^rm`:
 
@@ -53,13 +67,19 @@ Body weight tracking with statistics and trend analysis.
 ox> weighin
 ox> weighin --output plot --window 14
 ox> weighin --output stats
+ox> weighin --output stats --since 3m
 ```
 
 | Param | Default | Options |
 |---|---|---|
 | `-u/--unit` | `lb` | any mass unit |
 | `-o/--output` | `table` | `table`, `plot`, `stats` |
-| `-w/--window` | `7` | rolling average window (days) |
+| `-w/--window` | `0` | rolling average window (days) for `plot`; `0` draws no average |
+| `-s/--since` | none | start of the window: `8w`, `2026-01-01` |
+| `--until` | none | end of the window: `1y`, `2025-12-31` |
+
+With a window, `table`, `stats` and the plot's points cover only the weigh-ins in it; the rolling average still
+averages the days before its start.
 
 Supports multiple scales — `stats` output shows per-scale breakdowns.
 
@@ -74,12 +94,15 @@ ox> srpe -o plot
 ox> srpe -o acwr
 ox> srpe -o monotony
 ox> srpe -o strain
+ox> srpe -o acwr --since 4w
 ```
 
 | Param | Default | Options |
 |---|---|---|
 | `-b/--bin` | `weekly` | `daily`, `weekly`, `monthly` |
 | `-o/--output` | `table` | `table`, `plot`, `acwr`, `monotony`, `strain` |
+| `-s/--since` | none | start of the window: `8w`, `2026-01-01` |
+| `--until` | none | end of the window: `1y`, `2025-12-31` |
 
 **Output modes:**
 
@@ -329,12 +352,14 @@ after its flag offers movement names from the log (for `movements`, per comma-se
 
 ### Helpers
 
-`ox.sql_utils` has two helpers for building plugin SQL. Each returns a SQL expression as a string, to
-put in your query with an f-string.
+`ox.sql_utils` has helpers for building plugin SQL and for taking a time window the way the builtins do.
 
 ```python
-from ox.sql_utils import time_bin_expr, weight_sql_expr
+from ox.sql_utils import SINCE_PARAM, UNTIL_PARAM, time_bin_expr, time_window, weight_sql_expr
 ```
+
+`weight_sql_expr` and `time_bin_expr` each return a SQL expression as a string, to put in your query with an
+f-string.
 
 **`weight_sql_expr(magnitude_col, unit_col, target_unit)`** converts a weight column to
 `target_unit`. `magnitude_col` and `unit_col` name the columns holding the number and its unit (in
@@ -347,24 +372,40 @@ know raises `ValueError`, and one that isn't a mass (`"meter"`) raises Pint's `D
 (`2025-01-08`), `weekly` (the date of that week's Sunday), `weekly-num` (`2025-W01`) or `monthly`
 (`2025-01`); any other name raises `ValueError`. `col` names the date column.
 
-Weekly tonnage across all movements, in a unit you choose:
+**`time_window(since=None, until=None, today=None)`** turns `--since` and `--until` values into a `Window`, with
+the spellings and boundaries the builtins use (see "Built-in Plugins"): a count and unit counted back from `today`
+(default: today's date), or a `YYYY-MM-DD` date; months and years clamp to the end of a shorter month. A value
+that isn't one of those, or a start after the end, raises `ValueError`, which the REPL prints like a bad flag.
+Call it first in your plugin, so a bad value fails before any work.
+
+**`Window`** has `start` and `end` (`datetime.date`, inclusive; `None` is unbounded) and two methods:
+`contains(d)` takes a `date` or an ISO date string, for filtering rows in Python; `sql(col="date")` returns a
+`(clause, params)` pair for a `WHERE`, such as `("date >= ? AND date <= ?", ("2026-01-01", "2026-03-31"))`, or
+`("1 = 1", ())` with neither bound. `col` is put in the clause as written.
+
+**`SINCE_PARAM`** and **`UNTIL_PARAM`** are the param descriptors for `-s/--since` and `--until`. Add them to your
+`params` and take `since=None, until=None`; the values reach your function as strings, for `time_window`.
+
+Weekly tonnage across all movements, in a unit you choose, over an optional window:
 
 ```python
 from ox.plugins import PluginContext, TableResult
-from ox.sql_utils import time_bin_expr, weight_sql_expr
+from ox.sql_utils import SINCE_PARAM, UNTIL_PARAM, time_bin_expr, time_window, weight_sql_expr
 
 
-def tonnage(ctx: PluginContext, unit: str = "kg", bin: str = "weekly"):
+def tonnage(ctx: PluginContext, unit: str = "kg", bin: str = "weekly", since=None, until=None):
+    span_clause, span_params = time_window(since, until).sql("date")
     period = time_bin_expr(bin, "date")
     weight = weight_sql_expr("weight_magnitude", "weight_unit", unit)
     rows = ctx.db.execute(
         f"""
         SELECT {period} AS period, ROUND(SUM(reps * {weight}), 1)
         FROM training
-        WHERE weight_magnitude IS NOT NULL
+        WHERE weight_magnitude IS NOT NULL AND {span_clause}
         GROUP BY period
         ORDER BY period
-        """
+        """,
+        span_params,
     ).fetchall()
     return TableResult(["period", f"tonnage ({unit})"], rows)
 
@@ -377,6 +418,8 @@ def register():
         "params": [
             {"name": "unit", "type": str, "required": False, "default": "kg", "short": "u"},
             {"name": "bin", "type": str, "required": False, "default": "weekly", "short": "b"},
+            SINCE_PARAM,
+            UNTIL_PARAM,
         ],
     }
 ```

@@ -251,3 +251,7 @@ any work. In `weighin` the `Window` can't be called `window` (that param is the 
   `multi_series`, recorded by a monkeypatch in `tests/test_time_windows.py`), not as rendered lines. Plotext's
   bar-chart x-label decimation depends on `PYTHONHASHSEED`, so `srpe -o plot` renders differently across processes
   (TODO #18).
+- Step 6: the 🟡 in step 1 stood, so the snapshot and `test_no_flags_unchanged` are deleted; AC 11 held through
+  steps 2–5 (`b4eb775` is the last commit with it). `rm_sets.ox` and the `ox.plot` recorder stay for the window
+  tests. `tests/test_time_windows.py` calls `load_plugins()` before looking up builtins, since other tests clear
+  `PLUGINS` (now a `CLAUDE.md` note).
