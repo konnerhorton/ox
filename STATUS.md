@@ -2,7 +2,7 @@
 
 **Next:** `movements`, the next unit `repl-summary` depends on (its decision 13).
 
-Last checkpoint: 1, after micro-syntax, 2026-11-15, `e9d430c`.
+Last checkpoint: 2, after time-windows, 2026-11-21, `70fa26c`.
 
 ## In progress
 
