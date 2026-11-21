@@ -8,6 +8,7 @@ Usage:
     weighin -o stats
     weighin -u kg
     weighin -o plot -w 14
+    weighin -o stats -s 3m
 
 Example .ox lines:
     2025-01-10 W 185lb
@@ -20,6 +21,7 @@ from datetime import date as _date, timedelta as _timedelta
 
 from ox import plot
 from ox.plugins import PlotResult, PluginContext, TableResult
+from ox.sql_utils import SINCE_PARAM, UNTIL_PARAM, Window, time_window
 from ox.units import Q_
 
 
@@ -48,6 +50,14 @@ def _rolling_avg(data, window_days):
     return result
 
 
+def _windowed_rolling_avg(data, window_days, span: Window):
+    """`_rolling_avg` over all of `data`, keeping the points `span` contains.
+
+    So the first point in the window still averages the weigh-ins before it.
+    """
+    return [p for p in _rolling_avg(data, window_days) if span.contains(p[0])]
+
+
 def _linear_trend(pairs):
     """Least-squares slope in units per day.
 
@@ -72,8 +82,17 @@ def _linear_trend(pairs):
     return num / den
 
 
-def weigh_in_report(ctx: PluginContext, unit="lb", output="table", window=0):
-    """Weigh-in statistics over time."""
+def weigh_in_report(
+    ctx: PluginContext, unit="lb", output="table", window=0, since=None, until=None
+):
+    """Weigh-in statistics over time.
+
+    `since` and `until` limit the output to a window (see
+    `ox.sql_utils.time_window`): the table, the plot's points and the stats
+    cover only the weigh-ins in it, while the plot's rolling average still
+    uses the weigh-ins before the start.
+    """
+    span = time_window(since, until)
     if output not in ("table", "plot", "stats"):
         raise ValueError("output must be 'table', 'plot', or 'stats'")
 
@@ -85,7 +104,13 @@ def weigh_in_report(ctx: PluginContext, unit="lb", output="table", window=0):
         """
     ).fetchall()
 
-    if not rows:
+    data = []
+    for date_str, mag, raw_unit, scale in rows:
+        converted = round(float(Q_(mag, raw_unit).to(unit).magnitude), 2)
+        data.append((date_str, converted, scale))
+    shown = [r for r in data if span.contains(r[0])]
+
+    if not shown:
         if output == "plot":
             return PlotResult(["No weigh-in data found."])
         if output == "stats":
@@ -103,24 +128,19 @@ def weigh_in_report(ctx: PluginContext, unit="lb", output="table", window=0):
             )
         return TableResult(["date", f"weight ({unit})", "scale"], [])
 
-    data = []
-    for date_str, mag, raw_unit, scale in rows:
-        converted = round(float(Q_(mag, raw_unit).to(unit).magnitude), 2)
-        data.append((date_str, converted, scale))
-
     if output == "table":
         return TableResult(
             ["date", f"weight ({unit})", "scale"],
-            [(d, w, s or "") for d, w, s in data],
+            [(d, w, s or "") for d, w, s in shown],
         )
 
     if output == "plot":
-        if len(data) < 2:
+        if len(shown) < 2:
             return PlotResult(["Not enough data to plot."])
-        scales = list(dict.fromkeys(s for _, _, s in data))
+        scales = list(dict.fromkeys(s for _, _, s in shown))
         series: list[plot.Series] = []
         for s in scales:
-            scale_data = [(d, w) for d, w, sc in data if sc == s]
+            scale_data = [(d, w) for d, w, sc in shown if sc == s]
             series.append(
                 plot.Series(
                     label=s if s is not None else "(no scale)",
@@ -130,7 +150,7 @@ def weigh_in_report(ctx: PluginContext, unit="lb", output="table", window=0):
                 )
             )
         if window > 0:
-            avg_data = _rolling_avg(data, window)
+            avg_data = _windowed_rolling_avg(data, window, span)
             series.append(
                 plot.Series(
                     label=f"{window}-day rolling avg",
@@ -143,10 +163,10 @@ def weigh_in_report(ctx: PluginContext, unit="lb", output="table", window=0):
 
     # stats
     by_scale = defaultdict(list)
-    for date_str, weight, scale in data:
+    for date_str, weight, scale in shown:
         by_scale[scale].append((date_str, weight))
 
-    all_pairs = [(d, w) for d, w, _ in data]
+    all_pairs = [(d, w) for d, w, _ in shown]
 
     def make_row(label, pairs):
         weights = [w for _, w in pairs]
@@ -209,6 +229,8 @@ def register():
                     "required": False,
                     "short": "w",
                 },
+                SINCE_PARAM,
+                UNTIL_PARAM,
             ],
         }
     ]

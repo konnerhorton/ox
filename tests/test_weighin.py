@@ -2,7 +2,12 @@
 
 import pytest
 
-from ox.builtins.weighin import _rolling_avg, _linear_trend, weigh_in_report
+from ox.builtins.weighin import (
+    _linear_trend,
+    _rolling_avg,
+    _windowed_rolling_avg,
+    weigh_in_report,
+)
 from ox.data import TrainingLog
 from ox.plugins import PluginContext, PlotResult
 
@@ -273,4 +278,100 @@ class TestWeighInPluginRegistration:
 
         load_plugins()
         params = {p["name"] for p in PLUGINS["weighin"]["params"]}
-        assert params == {"unit", "output", "window"}
+        assert params == {"unit", "output", "window", "since", "until"}
+
+
+class TestTimeWindow:
+    """AC 9. In the window 2025-01-05..08: 01-05 184.0 (no scale), 01-06 184.6
+    (home), 01-08 183.5 (no scale)."""
+
+    WINDOW = {"since": "2025-01-05", "until": "2025-01-08"}
+
+    def test_table_keeps_only_window_rows(self, weigh_in_multi_scale_db):
+        _cols, rows = _run_weighin(weigh_in_multi_scale_db, **self.WINDOW)
+        assert rows == [
+            ("2025-01-05", 184.0, ""),
+            ("2025-01-06", 184.6, "home scale"),
+            ("2025-01-08", 183.5, ""),
+        ]
+
+    def test_stats_cover_only_the_window(self, weigh_in_multi_scale_db):
+        _cols, rows = _run_weighin(
+            weigh_in_multi_scale_db, output="stats", **self.WINDOW
+        )
+        by_label = {r[0]: r for r in rows}
+        assert by_label["(no scale)"][1:3] == (2, 183.5)
+        assert by_label["home scale"][1:3] == (1, 184.6)
+        # (184.0 + 184.6 + 183.5) / 3 = 184.03
+        assert by_label["(all)"][1:6] == (3, 183.5, 183.5, 184.6, 184.03)
+
+    def test_rolling_avg_uses_days_before_start(self, weigh_in_multi_scale_db):
+        """7-day average on 01-05: all data gives (185.0 + 184.5 + 184.8 +
+        185.2 + 184.0) / 5 = 184.7; the window's data alone gives 184.0."""
+        from ox.sql_utils import time_window
+
+        rows = weigh_in_multi_scale_db.execute(
+            "SELECT date, weight_magnitude, scale FROM weigh_ins ORDER BY date"
+        ).fetchall()
+        span = time_window(**self.WINDOW)
+        shown = [r for r in rows if span.contains(r[0])]
+        windowed = _windowed_rolling_avg(rows, 7, span)
+        assert [d for d, _ in windowed] == [r[0] for r in shown]
+        assert windowed[0][1] == pytest.approx(184.7)
+        assert dict(_rolling_avg(rows, 7))["2025-01-05"] == windowed[0][1]
+        assert _rolling_avg(shown, 7)[0][1] == pytest.approx(184.0)
+
+    def test_plot_uses_window(self, weigh_in_multi_scale_db, monkeypatch):
+        from ox import plot
+
+        calls = []
+        monkeypatch.setattr(plot, "multi_series", lambda s, **kw: calls.append(s))
+        weigh_in_report(
+            _ctx(weigh_in_multi_scale_db), output="plot", window=7, **self.WINDOW
+        )
+        *points, line = calls[0]
+        assert sorted(d for s in points for d in s.dates) == [
+            "2025-01-05",
+            "2025-01-06",
+            "2025-01-08",
+        ]
+        assert line.values[0] == pytest.approx(184.7)
+
+    def test_one_weigh_in_is_not_enough_to_plot(self, weigh_in_multi_scale_db):
+        _cols, rows = _run_weighin(
+            weigh_in_multi_scale_db, output="plot", since="2025-01-09"
+        )
+        assert rows == [("Not enough data to plot.",)]
+
+    @pytest.mark.parametrize(
+        "output, expected",
+        [
+            ("plot", [("No weigh-in data found.",)]),
+            ("table", []),
+            ("stats", []),
+        ],
+    )
+    def test_empty_window(self, weigh_in_multi_scale_db, output, expected):
+        _cols, rows = _run_weighin(
+            weigh_in_multi_scale_db, output=output, since="2025-02-01"
+        )
+        assert rows == expected
+
+    def test_flags_parse(self, weigh_in_multi_scale_db, capsys):
+        """AC 10 for weighin: -u is still --unit and -w still --window."""
+        from ox.cli import run_plugin
+        from ox.plugins import PLUGINS, load_plugins
+        from ox.sql_utils import parse_plugin_args
+
+        load_plugins()
+        params = PLUGINS["weighin"]["params"]
+        for args in ("-s 8w", "--since 8w"):
+            assert parse_plugin_args(params, args)["since"] == "8w"
+        parsed = parse_plugin_args(params, "--until 2025-12-31 -u kg -w 7")
+        assert (parsed["until"], parsed["unit"], parsed["window"]) == (
+            "2025-12-31",
+            "kg",
+            7,
+        )
+        run_plugin(_ctx(weigh_in_multi_scale_db), "weighin", "--since 8x")
+        assert "--since: '8x' isn't a window." in capsys.readouterr().out
