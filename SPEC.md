@@ -46,6 +46,10 @@ What's built, what's open and what's next: [`STATUS.md`](STATUS.md).
   line that loads it. The config is a Python literal (it may span lines; inner strings use single quotes) that ox
   parses and the plugin interprets; ox checks only that it parses. The first config for a plugin wins. Settings live in
   the log, not beside it, so they travel with it and lint can check them.
+- **Time windows are two shared flags.** A plugin that reports over time takes `--since` and `--until`
+  (`time_window` in `ox.sql_utils`): a count and unit (`30d`, `8w`, `6m`, `1y`) counted back from today, or an ISO
+  date; both ends inclusive. The window limits what's shown, not what's computed: rolling values still use earlier
+  data, and bins at the edges may be partial.
 
 ## Non-Goals
 
