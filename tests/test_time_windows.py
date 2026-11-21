@@ -332,3 +332,82 @@ def test_bad_value_prints_error(plugin, capsys):
         "--since: '8x' isn't a window. "
         "Use a count and unit (30d, 8w, 6m, 1y) or a date (2026-01-01)"
     ) in out
+
+
+# --- srpe (AC 8, AC 10) -----------------------------------------------------
+
+ADVANCED = "examples/advanced.ox"
+
+
+def test_srpe_table_partial_first_bin():
+    """AC 8. Week of Mon 2025-01-13 in advanced.ox: 5x50 + 5x40 + 4x35 + 5x45 + 5x40
+    = 1015 AU over 5 sessions; from Wed 01-15 only 140 + 225 + 200 = 565 AU over 3.
+    """
+    full = _run(ADVANCED, "srpe", "").rows
+    assert full[1] == ("2025-01-13", 5, 1015.0, 203.0, 250.0)
+    got = _run(ADVANCED, "srpe", "--since 2025-01-15").rows
+    assert got[0] == ("2025-01-13", 3, 565.0, 188.3, 225.0)
+    assert got[1:] == full[2:]
+
+
+@pytest.mark.parametrize("output", ["monotony", "strain"])
+def test_srpe_weekly_outputs_partial_first_week(output):
+    """AC 8: monotony and strain bucket only the window's days."""
+    got = _run(ADVANCED, "srpe", f"-o {output} --since 2025-01-15").rows
+    assert got[0][:2] == ("2025-01-13", 565.0)
+
+
+def test_srpe_plot_window(recorded_plots):
+    got = _run(ADVANCED, "srpe", "-o plot --since 2025-02-10 --until 2025-02-23")
+    labels, values = json.loads(got.lines[0])["args"]
+    full = {r[0]: r[2] for r in _run(ADVANCED, "srpe", "").rows}
+    assert labels == ["2025-02-10", "2025-02-17"]
+    assert values == [full["2025-02-10"], full["2025-02-17"]]
+
+
+def test_srpe_acwr_window_keeps_rolling_values():
+    """AC 8: rows in the window match the unwindowed rows value for value.
+
+    2025-02-03 is four weeks in, so recomputing over only the window's sessions
+    would give different acute and chronic values; the second assert shows it.
+    """
+    from ox.builtins.srpe import _acwr_report, _extract_srpe_data
+
+    full = _run(ADVANCED, "srpe", "-o acwr").rows
+    got = _run(ADVANCED, "srpe", "-o acwr --since 2025-02-03").rows
+    assert got == [r for r in full if r[0] >= "2025-02-03"]
+    assert got and len(got) < len(full)
+    data = [r for r in _extract_srpe_data(_ctx(ADVANCED)) if r[0] >= "2025-02-03"]
+    assert _acwr_report(data).rows != got
+
+
+def test_srpe_acwr_until():
+    full = _run(ADVANCED, "srpe", "-o acwr").rows
+    got = _run(ADVANCED, "srpe", "-o acwr --until 2025-01-20").rows
+    assert got == [r for r in full if r[0] <= "2025-01-20"]
+
+
+@pytest.mark.parametrize("output", ["table", "acwr", "monotony", "strain"])
+def test_srpe_empty_window(output):
+    """Spec decision 8: each output's existing empty result."""
+    got = _run(ADVANCED, "srpe", f"-o {output} --since 2030-01-01")
+    assert got.rows == []
+    assert got.columns == _run(EXAMPLE, "srpe", f"-o {output}").columns
+
+
+def test_srpe_plot_empty_window():
+    got = _run(ADVANCED, "srpe", "-o plot --since 2030-01-01")
+    assert got.lines == ["No sRPE data found."]
+
+
+def test_srpe_flags_parse(capsys):
+    """AC 10 for srpe."""
+    from ox.cli import run_plugin
+
+    _ctx(ADVANCED)
+    params = PLUGINS["srpe"]["params"]
+    for args in ("-s 8w", "--since 8w"):
+        assert parse_plugin_args(params, args)["since"] == "8w"
+    assert parse_plugin_args(params, "--until 2025-12-31")["until"] == "2025-12-31"
+    run_plugin(_ctx(ADVANCED), "srpe", "-o acwr --since 8x")
+    assert "--since: '8x' isn't a window." in capsys.readouterr().out
