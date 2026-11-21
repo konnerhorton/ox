@@ -1,6 +1,6 @@
 # Status
 
-**Next:** shared time windows (`--since 8w`), the next unit `repl-summary` depends on (its decision 13).
+**Next:** `movements`, the next unit `repl-summary` depends on (its decision 13).
 
 Last checkpoint: 1, after micro-syntax, 2026-11-15, `e9d430c`.
 
@@ -16,8 +16,8 @@ None.
 - **Template blocks** (`@template`): the grammar parses them, nothing processes them, and `format:` has no
   link to them (TODO #6).
 - **`repl-summary`** (branch; intent rewritten, spec predates the rewrite): a summary of `rich` panels when
-  the REPL starts. Parked until its prerequisite units are merged (decision 13: time windows, `movements`, `mix`,
-  `srpe` load output, `progress`; `plugin-config` is done). The author's log is migrated to tagged `@movement`
+  the REPL starts. Parked until its prerequisite units are merged (decision 13: `movements`, `mix`, `srpe` load
+  output, `progress`; `plugin-config` and time windows are done). The author's log is migrated to tagged `@movement`
   definitions, which those units were waiting on.
 
 ## Done
@@ -29,6 +29,8 @@ None.
   `srpe`, `wendler531`, `formats` (checks `format:` against its vocabulary); plots through `ox.plot`.
 - **Plugin config:** `@plugin "<name>" "<config>"` (or a config after a `.py` path), a Python literal read by
   `ctx.log.plugin_config(name)`; one plugin per file; lint, LSP and highlighting.
+- **Time windows:** `-s/--since` and `--until` on `volume`, `e1rm`, `srpe`, `weighin`, parsed by `time_window`
+  in `ox.sql_utils` for user plugins too.
 - **CLI:** REPL with `add`, `plugins`, `query`, `tables`, `lint`, `reload`, plugins by name, and
   context-aware tab completion.
 - **Editors:** LSP (diagnostics, completion, folding); VSCode extension on the Marketplace

@@ -13,6 +13,8 @@ Usage:
     srpe -o acwr
     srpe -o monotony
     srpe -o strain
+    srpe -o acwr -s 4w
+    srpe --since 2025-01-01 --until 2025-12-31
 """
 
 import math
@@ -21,6 +23,7 @@ from datetime import date as _date, timedelta as _timedelta
 
 from ox import plot
 from ox.plugins import PlotResult, PluginContext, TableResult
+from ox.sql_utils import SINCE_PARAM, UNTIL_PARAM, time_window
 
 
 def _extract_srpe_data(ctx: PluginContext) -> list[tuple[str, float, float, float]]:
@@ -248,24 +251,41 @@ def _strain_risk(monotony: float | None, strain: float | None) -> str:
     return "low"
 
 
-def srpe_report(ctx: PluginContext, bin: str = "weekly", output: str = "table"):
+def srpe_report(
+    ctx: PluginContext,
+    bin: str = "weekly",
+    output: str = "table",
+    since: str | None = None,
+    until: str | None = None,
+):
     """Training load from session RPE over time.
+
+    The window limits what's shown: `acwr` is computed over every session and
+    then filtered, so its rolling values still use the days before the start;
+    the other outputs group only the sessions in the window, so their edge
+    bins may be partial.
 
     Args:
         ctx: Plugin context with db and log
         bin: Time bin size ("daily", "weekly", "monthly")
         output: Output format ("table", "plot", "acwr", "monotony", "strain")
+        since: Start of the window (see `ox.sql_utils.time_window`)
+        until: End of the window
     """
+    span = time_window(since, until)
     _valid_outputs = ("table", "plot", "acwr", "monotony", "strain")
     if output not in _valid_outputs:
         raise ValueError(f"output must be one of: {', '.join(_valid_outputs)}")
 
     data = _extract_srpe_data(ctx)
+    if output == "acwr":
+        report = _acwr_report(data)
+        rows = [r for r in report.rows if span.contains(r[0])]
+        return TableResult(report.columns, rows)
+    data = [r for r in data if span.contains(r[0])]
     if not data:
         if output == "plot":
             return PlotResult(["No sRPE data found."])
-        if output == "acwr":
-            return _acwr_report([])
         if output == "monotony":
             return _monotony_report([])
         if output == "strain":
@@ -273,8 +293,6 @@ def srpe_report(ctx: PluginContext, bin: str = "weekly", output: str = "table"):
         return TableResult(["period", "sessions", "total_AU", "avg_AU", "max_AU"], [])
 
     # Dispatch to specialized reports
-    if output == "acwr":
-        return _acwr_report(data)
     if output == "monotony":
         return _monotony_report(data)
     if output == "strain":
@@ -352,6 +370,8 @@ def register():
                     "required": False,
                     "short": "o",
                 },
+                SINCE_PARAM,
+                UNTIL_PARAM,
             ],
         }
     ]

@@ -54,3 +54,8 @@ living doc and delete it here.
 - [ ] **#17 A declared config schema for plugins.** A plugin could declare the keys and types its config takes,
   so `lint` checks them instead of each plugin validating its own. Trigger: several plugins read configs
   (`summary`, `mix`, ...) and repeat the same validation.
+
+- [ ] **#18 Bar-chart x-labels change between runs.** `ox.plot.bar` renders different x-tick labels for the same
+  data depending on `PYTHONHASHSEED` (seen on `srpe -o plot` with `advanced.ox`): plotext's label decimation goes
+  through a set. Fix by choosing the labels in `ox.plot` and passing them with `xticks`. Trigger: a test or a
+  snapshot compares rendered bar lines.

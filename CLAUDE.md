@@ -30,6 +30,8 @@ Status and what's next: `STATUS.md`.
   micro's built-in colorschemes define, checked against the `color-link` lines in the binary
   (`strings /usr/bin/micro | grep '^color-link'`). RE2 takes the first matching alternative, not the longest,
   so put longer alternatives (progressive weights) first.
+- `PLUGINS` is a global registry and some tests clear it: a test that looks up a builtin calls `load_plugins()`
+  first rather than relying on an earlier load.
 - The REPL reads nothing from piped stdin ("Input is not a terminal"). To run a plugin from a script, call
   `ox.cli.load_log(path)` and then `PLUGINS[name]["fn"](ctx, **parse_plugin_args(params, args))`; `@plugin`
   plugins in the file are loaded by then.
@@ -50,7 +52,8 @@ Where the layout isn't obvious from the file names:
 ```
 src/ox/
   parse.py      - Tree-sitter node → data structures (the core parser)
-  sql_utils.py  - Helpers for plugins: parse_plugin_args, plugin_usage, weight_sql_expr, time_bin_expr
+  sql_utils.py  - Helpers for plugins: parse_plugin_args, plugin_usage, weight_sql_expr, time_bin_expr,
+                  time_window (--since/--until)
   plot.py       - Thin facade over plotext (scatter, multi_line, bar); returns PlotResult lines
   completion.py - REPL tab completion, including add's line and name completers
   grammar.py    - LANGUAGE: the compiled grammar (C extension ox._grammar, built from _grammar.c by setup.py)
