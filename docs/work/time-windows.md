@@ -154,3 +154,92 @@ Golden values use `today = 2026-11-19`, worked by hand from decisions 1–3.
 12. **User plugins:** a fixture plugin that adds `SINCE_PARAM` and `UNTIL_PARAM` and calls `time_window` filters
     like the builtins; `docs/plugins.md`'s windowed `tonnage` example runs.
 13. Full test suite and ruff pass.
+
+## Plan
+
+Six build commits, all on Opus: the helper and its boundary rules come first, then one plugin per commit in rising
+order of difficulty (SQL filters, then the outputs that compute over rows outside the window), then docs and
+close-out. Steps 1–3 and 4–6 fit one session each; start a new session before step 4. Each commit passes
+`uv run pytest` and `uv run ruff check src/ tests/`. The new tests live in `tests/test_time_windows.py`, except
+where a step names another file.
+
+Plugins call `time_window(since, until)` first, before any query or other validation, so a bad value fails before
+any work. In `weighin` the `Window` can't be called `window` (that param is the rolling-average length): call it
+`span` in every plugin, for one name throughout.
+
+### 1. `time-windows: snapshot plugin output with no window` (Opus)
+- `tests/data/no_window.json` (new): the output of the current code, before any plugin changes, on `example.ox` and
+  `advanced.ox`: `volume -m <m>` (weekly and monthly), `e1rm -m <m>` (table and plot; a movement with `^rm` sets),
+  `srpe` with each of its five outputs, `weighin` with `table`, `stats`, `plot` and `plot -w 7`. Tables as
+  `[columns, rows]`, plots as their lines (plot sizes are fixed defaults in `ox.plot`, so lines are deterministic).
+  Generated once from a scratch script run through `ox.cli.load_log` and `parse_plugin_args`, which isn't committed.
+- `tests/test_time_windows.py` (new): `test_no_flags_unchanged`, parametrized over the snapshot's cases, runs each
+  through `parse_plugin_args` and compares, JSON-normalised (tuples → lists).
+- Tests: AC 11, held green by every later step. This is a characterization of existing output, not golden values
+  for new behavior. 🟡 Proposed: delete the snapshot and its test in step 6, since later units (`srpe` load output,
+  `progress`) change these outputs on purpose and shouldn't have to regenerate it; the commit history keeps the
+  evidence. The alternative is keeping it as a general regression test.
+
+### 2. `time-windows: add time_window and Window to sql_utils` (Opus)
+- `src/ox/sql_utils.py`: `Window` (frozen, slots) with `contains` and `sql`; `time_window(since, until, today)`;
+  `SINCE_PARAM`, `UNTIL_PARAM`; module docstring lists them.
+  - Parsing: a strict regex for each form, `^([1-9]\d*)([dwmy])$` and `^\d{4}-\d{2}-\d{2}$`, then
+    `date.fromisoformat` for the date (which rejects `2026-02-30`). Spec decision 3: the regex is what stops
+    `20260101` and `2026-W01-1`.
+  - A relative value gives a boundary `b` (today − N days/weeks, or calendar months/years back with month-end
+    clamping, via a private `_months_back(d, n)`; years are `12n` months). `--since` → `b + 1 day`, `--until` → `b`
+    (spec decision 1). An ISO date is the bound itself.
+  - `_months_back` clamps with `calendar.monthrange` (stdlib; no new dependency).
+  - Errors: spec decision 5's two messages, word for word. The flag name is passed in by `time_window`.
+  - `sql(col)`: build the clause from the bounds that are set (`{col} >= ?`, `{col} <= ?`, joined by `AND`), or
+    `"1 = 1"`, `()`. `col` is interpolated, like `time_bin_expr`'s; params are ISO strings.
+- Tests: AC 1–4 as golden tables (today 2026-11-19, 2026-03-31, 2028-02-29); AC 5, one parametrized test over the
+  nine bad values asserting the full message, plus start-after-end and equal bounds; AC 6, `contains` at and one
+  day outside each bound for `date` and `str`, unbounded, and `sql()` for none/since/until/both, run against
+  `simple_db` (`SELECT date FROM training WHERE …`, dates 2025-01-10/11/12) for the expected rows.
+
+### 3. `time-windows: --since and --until on volume and e1rm` (Opus)
+- `src/ox/builtins/volume.py`: `since=None, until=None`; `span.sql("date")` joins `WHERE movement_name = ?` with
+  `AND`, its params appended. `SINCE_PARAM`, `UNTIL_PARAM` in `params`. Usage docstring gains `volume -m squat -s 8w`.
+- `src/ox/builtins/e1rm.py`: the same, on `t.date`.
+- Tests: AC 7, on `example.ox`: ISO `--since`/`--until` keep only the matching rows for each plugin; a weekly
+  `volume` with `--since` on a mid-week date (pick a week with sessions on both sides of it) has a first row whose
+  totals are only the in-window days, checked against a sum worked from the log's lines. AC 10 for these two: `-s
+  8w`, `--since 8w`, `--until 2025-12-31` parse, `-u kg` still lands in `unit`; `run_plugin(ctx, "volume", "-m squat
+  --since 8x")` returns normally and `capsys` holds the decision-5 message.
+
+### 4. `time-windows: --since and --until on srpe` (Opus)
+- `src/ox/builtins/srpe.py`: `srpe_report(ctx, bin, output, since=None, until=None)`. For `acwr`: `_acwr_report`
+  over all of `data`, then keep the rows `span.contains(row[0])`. For every other output: filter `data` by the
+  window first, then the existing code, so an empty window takes the existing empty branch ("No sRPE data
+  found." for `plot`; spec decision 8). Monotony and strain bucket the filtered days, so their edge weeks are
+  partial too, as the spec says for binned output.
+- Tests: AC 8 on `advanced.ox` (8 weeks from 2025-01-06): `table` with a mid-week `--since` has a partial first bin
+  (sessions and total AU worked from the log); `acwr` with `--since 2025-02-03` has exactly the unwindowed rows on
+  or after that date, value for value, and none before. That date is 4 weeks in, so its acute and chronic values
+  differ from recomputing over filtered data, and the test would catch filtering first. An empty window (a future
+  `--since`) gives each output's empty result. AC 10 for `srpe`.
+
+### 5. `time-windows: --since and --until on weighin` (Opus)
+- `src/ox/builtins/weighin.py`: `weigh_in_report(ctx, unit, output, window, since=None, until=None)`. Convert all
+  rows to `data` as now, then `shown = [r for r in data if span.contains(r[0])]`. The empty-result block moves
+  below and tests `shown`, so an empty window gives the existing empty results. `table`, `stats`, and the plot's
+  scatter series use `shown`; "Not enough data to plot" tests `len(shown)`. The rolling line comes from a new
+  `_windowed_rolling_avg(data, window_days, span)`: `_rolling_avg` over all of `data`, then filtered.
+- `tests/test_weighin.py`: AC 9 on `weigh_in_multi_scale_db`: `table` rows and `stats` counts are only the window's;
+  `stats`' `current` is the last weigh-in in it. `_windowed_rolling_avg`'s first point equals `_rolling_avg(data)`
+  at that date and differs from `_rolling_avg(shown)` there (choose a `--since` with weigh-ins in the 6 days before
+  it, so the two differ). One weigh-in in the window gives "Not enough data to plot."; none gives "No weigh-in data
+  found.". AC 10 for `weighin`, including `-w 7` still meaning `--window`.
+
+### 6. `time-windows: document time windows, close out` (Opus)
+- `docs/plugins.md`: `-s/--since` and `--until` rows and one example in each of the four builtins' sections;
+  "Helpers" documents `time_window`, `Window` (`contains`, `sql`), `SINCE_PARAM`, `UNTIL_PARAM` and the boundary
+  rules in brief; the `tonnage` example takes `since`/`until`, adds the two params, and joins `span.sql()` to its
+  `WHERE`. `weighin`'s table gives `-w/--window`'s default as `0` (no rolling line), matching the code; it said `7`.
+- Tests: AC 12: a fixture plugin in `tmp_path` that adds both params and calls `time_window` filters like `volume`,
+  loaded through `@plugin` and `load_log`; a test extracts the `tonnage` code block from `docs/plugins.md`, writes it
+  to `tmp_path`, loads it and runs it with `--since`, so the docs example can't rot. AC 13: the full suite and ruff.
+- Close-out: `CHANGELOG.md` Unreleased entry (spec Changes); `STATUS.md` "Next" moves to the next `repl-summary`
+  prerequisite and Done gains time windows; `CLAUDE.md` Project Structure's `sql_utils.py` line adds
+  `time_window`; `SPEC.md` is already updated (spec commit). Step 1's snapshot goes, if the 🟡 above stands.
